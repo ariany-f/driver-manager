@@ -19,11 +19,12 @@ import {
   syncDrive,
   uploadDriveFile,
 } from './services/drive.js';
+import { viewFromLocation, writeViewPath } from './lib/routes.js';
 
 export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('acervo');
+  const [currentView, setCurrentView] = useState(viewFromLocation);
   const [territorios, setTerritorios] = useState([]);
   const [tags, setTags] = useState([]);
   const [files, setFiles] = useState([]);
@@ -40,6 +41,11 @@ export default function App() {
   const novidadesDispensadas = useRef(false);
   const escolherPasta = useRef(false);
   const [pickFolder, setPickFolder] = useState(false);
+
+  const goTo = useCallback((view) => {
+    setCurrentView(view);
+    writeViewPath(view);
+  }, []);
 
   const applyArchive = (archive) => {
     setFiles(archive.files);
@@ -123,6 +129,12 @@ export default function App() {
     setDriveStatus(null);
     setDriveMessage('');
   }, [loadIdentidade, refreshDrive]);
+
+  useEffect(() => {
+    const onPop = () => setCurrentView(viewFromLocation());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -279,7 +291,7 @@ export default function App() {
   const logout = () => {
     endSession().catch(() => {}).finally(() => {
       setIsAdmin(false);
-      setCurrentView('acervo');
+      goTo('acervo');
     });
   };
 
@@ -294,7 +306,7 @@ export default function App() {
         isAdmin={isAdmin}
         labelsEnabled={labelsEnabled}
         activeView={activeView}
-        onNavigate={setCurrentView}
+        onNavigate={goTo}
         onLogin={() => setLoginOpen(true)}
         onLogout={logout}
       />
@@ -340,7 +352,7 @@ export default function App() {
           busy={classificando}
           error={driveError}
           onClose={() => setClassificarNovos([])}
-          onOpenIdentidade={() => { setClassificarNovos([]); setCurrentView('categorias'); }}
+          onOpenIdentidade={() => { setClassificarNovos([]); goTo('categorias'); }}
           onSave={salvarClassificacaoNovos}
         />
       )}
@@ -353,7 +365,7 @@ export default function App() {
           <BancoNecessario
             isAdmin={isAdmin}
             error={driveError}
-            onOpenSettings={() => setCurrentView('configuracoes')}
+            onOpenSettings={() => goTo('configuracoes')}
             onLogin={() => setLoginOpen(true)}
           />
         )}

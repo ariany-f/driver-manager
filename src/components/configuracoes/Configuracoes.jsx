@@ -292,39 +292,23 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
           </div>
         )}
 
-        <form onSubmit={handleDatabaseSubmit} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Database size={18} strokeWidth={2.5} /> Banco de dados
           </div>
           <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
-            MySQL da Hostinger. Sem este banco a aplicação não abre. Ao salvar, o servidor cria as tabelas, inclusive a autorização do Google Drive. Pastas, arquivos, tags e territórios também ficam aqui. No hPanel, libere este computador em MySQL remoto.
+            MySQL da Hostinger. Sem este banco a aplicação não abre.
           </p>
           {databaseFields.map(field => (
             <div key={field.key}>
-              <label htmlFor={field.key} className="block font-display font-bold text-sm uppercase tracking-wider mb-2">{field.label}</label>
-              <div className="relative">
-                <input
-                  id={field.key}
-                  name={field.key}
-                  type={field.secret && !showDatabase ? 'password' : 'text'}
-                  autoComplete="off"
-                  placeholder={field.placeholder}
-                  value={databaseForm[field.key]}
-                  onChange={(event) => setDatabaseForm(current => ({ ...current, [field.key]: event.target.value }))}
-                  className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-mono text-sm text-[#2C1A14] caret-[#2C1A14] outline-none bg-white [color-scheme:light]"
-                />
-                {field.secret && (
-                  <button
-                    type="button"
-                    onClick={() => setShowDatabase(current => !current)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
-                    aria-label={showDatabase ? 'Ocultar senha' : 'Mostrar senha'}
-                    aria-pressed={showDatabase}
-                  >
-                    {showDatabase ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
-                  </button>
-                )}
-              </div>
+              <label htmlFor={`view-${field.key}`} className="block font-display font-bold text-sm uppercase tracking-wider mb-2">{field.label}</label>
+              <input
+                id={`view-${field.key}`}
+                readOnly
+                type={field.secret ? 'password' : 'text'}
+                value={databaseForm[field.key]}
+                className="w-full border-4 border-[#2C1A14] p-3 font-mono text-sm text-[#2C1A14] outline-none bg-[#E4CFB2] [color-scheme:light]"
+              />
             </div>
           ))}
           <p className={`font-sans text-sm font-bold ${databaseState.connected ? 'text-[#627933]' : 'text-[#C13B22]'}`}>
@@ -332,10 +316,65 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
           </p>
           {databaseMessage && <p className="font-sans text-sm font-bold text-[#627933]">{databaseMessage}</p>}
           {(databaseError || databaseState.error) && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{databaseError || databaseState.error}</p>}
-          <ButtonPrimary type="submit" color="bgOlive" disabled={loading || savingDatabase} className="w-full sm:w-auto">
-            {savingDatabase ? 'Conectando' : 'Salvar banco'}
-          </ButtonPrimary>
-        </form>
+          <button
+            type="button"
+            onClick={() => {
+              setDatabaseDraft(databaseForm);
+              setShowDatabase(false);
+              setDatabaseError('');
+              setDatabaseOpen(true);
+            }}
+            className="font-sans text-[11px] text-[#2C1A14]/35 underline underline-offset-2 decoration-[#2C1A14]/20 hover:text-[#2C1A14]/70"
+          >
+            alterar conexão
+          </button>
+        </section>
+
+        {databaseOpen && (
+          <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
+            <form onSubmit={handleDatabaseSubmit} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_#1E3A5F] w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-2xl font-display font-black uppercase text-[#2C1A14]">Conexão do MySQL</h3>
+              <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
+                Ao salvar, o servidor cria as tabelas que ainda não existem. No hPanel, libere este computador em MySQL remoto.
+              </p>
+              {databaseFields.map(field => (
+                <div key={field.key}>
+                  <label htmlFor={field.key} className="block font-display font-bold text-sm uppercase tracking-wider mb-2">{field.label}</label>
+                  <div className="relative">
+                    <input
+                      id={field.key}
+                      name={field.key}
+                      type={field.secret && !showDatabase ? 'password' : 'text'}
+                      autoComplete="off"
+                      placeholder={field.placeholder}
+                      value={databaseDraft[field.key]}
+                      onChange={(event) => setDatabaseDraft(current => ({ ...current, [field.key]: event.target.value }))}
+                      className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-mono text-sm text-[#2C1A14] caret-[#2C1A14] outline-none bg-white [color-scheme:light]"
+                    />
+                    {field.secret && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDatabase(current => !current)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
+                        aria-label={showDatabase ? 'Ocultar senha' : 'Mostrar senha'}
+                        aria-pressed={showDatabase}
+                      >
+                        {showDatabase ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {databaseError && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{databaseError}</p>}
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                <button type="button" onClick={() => setDatabaseOpen(false)} disabled={savingDatabase} className="min-h-11 font-display font-bold uppercase text-[#2C1A14] px-4 disabled:opacity-50">Cancelar</button>
+                <ButtonPrimary type="submit" color="bgOlive" disabled={savingDatabase} className="w-full sm:w-auto">
+                  {savingDatabase ? 'Conectando' : 'Salvar banco'}
+                </ButtonPrimary>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

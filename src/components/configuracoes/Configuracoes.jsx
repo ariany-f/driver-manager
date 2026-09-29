@@ -59,8 +59,8 @@ export default function Configuracoes({ onSaved }) {
     <div className="h-full overflow-y-auto p-3 sm:p-4 md:p-8">
       <div className="w-full max-w-3xl space-y-6">
         <div className="border-b-4 border-[#2C1A14] pb-4">
-          <h1 className="text-3xl sm:text-5xl font-display font-black uppercase leading-none tracking-tighter">
-            Config<span className="text-[#1E3A5F]">urações</span>
+          <h1 className="text-3xl sm:text-5xl font-display font-black uppercase leading-none tracking-tighter text-[#2C1A14]">
+            Configurações
           </h1>
           <p className="mt-3 font-sans font-bold text-sm text-[#2C1A14]/80">
             As chaves do Google Drive ficam no arquivo .env deste computador, até existir um banco de dados.

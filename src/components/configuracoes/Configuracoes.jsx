@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Database, Eye, EyeOff, Settings } from 'lucide-react';
+import { Database, Eye, EyeOff, Pencil, Settings } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getDatabaseSettings, saveDatabaseSettings } from '../../services/database.js';
-import { getDriveSettings, saveDriveSettings } from '../../services/drive.js';
+import { getDriveSettings, saveDriveField } from '../../services/drive.js';
 
 const fields = [
   { key: 'GOOGLE_CLIENT_ID', label: 'Google Client ID', secret: false },
@@ -35,6 +35,9 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
   const [databaseState, setDatabaseState] = useState({ configured: false, connected: false, error: '', tables: [] });
   const [showSecret, setShowSecret] = useState(false);
   const [showDatabase, setShowDatabase] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [draft, setDraft] = useState('');
+  const [showDraft, setShowDraft] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingDatabase, setSavingDatabase] = useState(false);
@@ -76,15 +79,25 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
     };
   }, [onDatabaseChange]);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const openEdit = (field) => {
+    setEditing(field);
+    setDraft(field.key === 'GOOGLE_REDIRECT_URI' && form.redirectFromApp ? '' : (form[field.key] || ''));
+    setShowDraft(false);
+    setError('');
+    setMessage('');
+  };
+
+  const saveField = async (value) => {
     setSaving(true);
     setMessage('');
     setError('');
     try {
-      const saved = await saveDriveSettings(form);
-      setForm({ ...emptyForm(), ...saved });
-      setMessage('Configuração salva no .env. O Drive já usa estes valores.');
+      const saved = await saveDriveField(editing.key, value);
+      setForm({ ...emptyForm(), ...saved, redirectFromApp: Boolean(saved.redirectFromApp) });
+      setEditing(null);
+      setMessage(editing.key === 'GOOGLE_REDIRECT_URI'
+        ? (value ? 'URL de retorno salva só no .env.' : 'A URL de retorno voltou a seguir o endereço desta aplicação.')
+        : 'Chave salva.');
       if (onSaved) await onSaved();
     } catch (saveError) {
       setError(saveError.message);
@@ -126,11 +139,11 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             Configurações
           </h1>
           <p className="mt-3 font-sans font-bold text-sm text-[#2C1A14]/80">
-            As chaves do Google ficam no MySQL quando o banco já tem essa conexão. Se não tiver, o servidor usa o .env. Ao conectar, a pessoa escolhe a pasta do acervo. Sem o MySQL, a aplicação não abre.
+            As chaves do Google ficam no MySQL quando o banco já tem essa conexão. Se não tiver, o servidor usa o .env. A URL de retorno segue o endereço desta aplicação e não entra no banco. Sem o MySQL, a aplicação não abre.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Settings size={18} strokeWidth={2.5} /> Google Drive
           </div>
@@ -141,39 +154,93 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             fields.map(field => (
               <div key={field.key}>
                 <label htmlFor={field.key} className="block font-display font-bold text-sm uppercase tracking-wider mb-2">{field.label}</label>
-                <div className="relative">
-                  <input
-                    id={field.key}
-                    name={field.key}
-                    type={field.secret && !showSecret ? 'password' : 'text'}
-                    autoComplete="off"
-                    value={form[field.key]}
-                    onChange={(event) => setForm(current => ({ ...current, [field.key]: event.target.value }))}
-                    className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-mono text-sm text-[#2C1A14] caret-[#2C1A14] outline-none bg-white [color-scheme:light]"
-                  />
-                  {field.secret && (
-                    <button
-                      type="button"
-                      onClick={() => setShowSecret(current => !current)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
-                      aria-label={showSecret ? 'Ocultar segredo' : 'Mostrar segredo'}
-                      aria-pressed={showSecret}
-                    >
-                      {showSecret ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
-                    </button>
-                  )}
+                <div className="flex gap-2">
+                  <div className="relative flex-1 min-w-0">
+                    <input
+                      id={field.key}
+                      name={field.key}
+                      readOnly
+                      type={field.secret && !showSecret ? 'password' : 'text'}
+                      autoComplete="off"
+                      value={form[field.key]}
+                      className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-mono text-sm text-[#2C1A14] outline-none bg-[#E4CFB2] [color-scheme:light]"
+                    />
+                    {field.secret && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSecret(current => !current)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
+                        aria-label={showSecret ? 'Ocultar segredo' : 'Mostrar segredo'}
+                        aria-pressed={showSecret}
+                      >
+                        {showSecret ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(field)}
+                    className="min-h-11 shrink-0 px-3 border-2 border-[#2C1A14] bg-white font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2"
+                  >
+                    <Pencil size={16} strokeWidth={2.5} /> Editar
+                  </button>
                 </div>
+                {field.key === 'GOOGLE_REDIRECT_URI' && (
+                  <p className="mt-2 font-sans text-xs font-bold text-[#2C1A14]/70">
+                    {form.redirectFromApp ? 'Segue o endereço desta aplicação. O banco não guarda essa URL.' : 'Há um valor próprio no .env. O banco não guarda essa URL.'}
+                  </p>
+                )}
               </div>
             ))
           )}
 
           {message && <p className="font-sans text-sm font-bold text-[#627933]">{message}</p>}
-          {error && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
+          {error && !editing && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
+        </section>
 
-          <ButtonPrimary type="submit" color="bgNavy" disabled={loading || saving} className="w-full sm:w-auto">
-            {saving ? 'Salvando' : 'Salvar'}
-          </ButtonPrimary>
-        </form>
+        {editing && (
+          <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
+            <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_#1E3A5F] w-full max-w-lg p-5 space-y-4">
+              <h3 className="text-2xl font-display font-black uppercase text-[#2C1A14]">Editar {editing.label}</h3>
+              {editing.key === 'GOOGLE_REDIRECT_URI' && (
+                <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
+                  Em branco, a URL volta a ser a deste endereço, com /api/drive/callback. Isso fica só no .env.
+                </p>
+              )}
+              <div className="relative">
+                <input
+                  type={editing.secret && !showDraft ? 'password' : 'text'}
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  autoFocus
+                  className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-mono text-sm text-[#2C1A14] outline-none bg-white [color-scheme:light]"
+                />
+                {editing.secret && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDraft(current => !current)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
+                    aria-label={showDraft ? 'Ocultar segredo' : 'Mostrar segredo'}
+                  >
+                    {showDraft ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
+                  </button>
+                )}
+              </div>
+              {error && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                <button type="button" onClick={() => setEditing(null)} disabled={saving} className="min-h-11 font-display font-bold uppercase text-[#2C1A14] px-4 disabled:opacity-50">Cancelar</button>
+                {editing.key === 'GOOGLE_REDIRECT_URI' && (
+                  <button type="button" onClick={() => saveField('')} disabled={saving} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-white font-display font-black uppercase text-xs disabled:opacity-50">
+                    Usar o endereço da aplicação
+                  </button>
+                )}
+                <ButtonPrimary onClick={() => saveField(draft.trim())} disabled={saving} color="bgNavy" className="w-full sm:w-auto">
+                  {saving ? 'Salvando' : 'Salvar'}
+                </ButtonPrimary>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleDatabaseSubmit} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">

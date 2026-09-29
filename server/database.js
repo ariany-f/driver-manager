@@ -250,12 +250,12 @@ export async function saveDatabaseSettings(root, env, updates) {
   return { ...readDatabaseSettings(env), ...publicStatus(status) };
 }
 
-function configFromRow(row) {
+function configFromRow(row, redirectUri) {
   return {
     clientId: String(row.client_id || '').trim(),
     clientSecret: String(row.client_secret || '').trim(),
     folderId: String(row.folder_id || '').trim(),
-    redirectUri: String(row.redirect_uri || '').trim(),
+    redirectUri,
     source: 'banco',
   };
 }
@@ -265,10 +265,10 @@ export async function resolveDriveConfig(env) {
   const status = await databaseStatus(env);
   if (!status.connected) return fromEnv;
   const db = await withPool(env);
-  const [rows] = await db.query('SELECT client_id, client_secret, folder_id, redirect_uri FROM drive_config WHERE id = 1');
+  const [rows] = await db.query('SELECT client_id, client_secret, folder_id FROM drive_config WHERE id = 1');
   const row = rows[0];
-  if (!row || !(row.client_id || row.client_secret || row.folder_id || row.redirect_uri)) return fromEnv;
-  return configFromRow(row);
+  if (!row || !(row.client_id || row.client_secret || row.folder_id)) return fromEnv;
+  return configFromRow(row, fromEnv.redirectUri);
 }
 
 export async function saveDriveConfig(env, config) {
@@ -279,11 +279,10 @@ export async function saveDriveConfig(env, config) {
     config.clientId || '',
     config.clientSecret || '',
     config.folderId || '',
-    config.redirectUri || '',
   ];
   await db.query(
-    `INSERT INTO drive_config (id, client_id, client_secret, folder_id, redirect_uri) VALUES (1, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE client_id = ?, client_secret = ?, folder_id = ?, redirect_uri = ?`,
+    `INSERT INTO drive_config (id, client_id, client_secret, folder_id) VALUES (1, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE client_id = ?, client_secret = ?, folder_id = ?`,
     [...values, ...values],
   );
 }

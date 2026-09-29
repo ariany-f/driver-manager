@@ -162,7 +162,8 @@ async function handleDriveRequest(req, res, { root, env }) {
       GOOGLE_CLIENT_ID: config.clientId,
       GOOGLE_CLIENT_SECRET: config.clientSecret,
       DRIVE_FOLDER_ID: config.folderId,
-      GOOGLE_REDIRECT_URI: config.redirectUri,
+      GOOGLE_REDIRECT_URI: redirectUri,
+      redirectFromApp: !config.redirectUri,
       source: config.source,
     });
     return;
@@ -171,13 +172,16 @@ async function handleDriveRequest(req, res, { root, env }) {
   if (req.method === 'PUT' && pathname === '/api/drive/settings') {
     const body = await readJson(req);
     const saved = await saveDriveEnv(root, env, body);
-    await saveDriveConfig(env, saved);
+    const onlyRedirect = Object.keys(body).every(key => key === 'GOOGLE_REDIRECT_URI');
+    if (!onlyRedirect) await saveDriveConfig(env, saved);
     const stored = await resolveDriveConfig(env);
+    const effectiveRedirect = resolveRedirectUri(stored, req.headers.host || 'localhost', req.headers['x-forwarded-proto']);
     sendJson(res, 200, {
       GOOGLE_CLIENT_ID: stored.clientId,
       GOOGLE_CLIENT_SECRET: stored.clientSecret,
       DRIVE_FOLDER_ID: stored.folderId,
-      GOOGLE_REDIRECT_URI: stored.redirectUri,
+      GOOGLE_REDIRECT_URI: effectiveRedirect,
+      redirectFromApp: !stored.redirectUri,
       source: stored.source,
     });
     return;
@@ -236,7 +240,6 @@ async function handleDriveRequest(req, res, { root, env }) {
       GOOGLE_CLIENT_ID: config.clientId,
       GOOGLE_CLIENT_SECRET: config.clientSecret,
       DRIVE_FOLDER_ID: folderId,
-      GOOGLE_REDIRECT_URI: config.redirectUri,
     });
     await saveDriveConfig(env, saved);
     const folderName = await getFolderName(env, saved);

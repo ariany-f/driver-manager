@@ -17,9 +17,14 @@ export function getDriveSettings() {
 export function saveDriveSettings(settings) {
   return fetch('/api/drive/settings', {
     method: 'PUT',
+    credentials: 'same-origin',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(settings),
   }).then(readJson);
+}
+
+export function saveDriveField(key, value) {
+  return saveDriveSettings({ [key]: value });
 }
 
 export function listDriveFolders(parentId) {

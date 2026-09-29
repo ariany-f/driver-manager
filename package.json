@@ -12,7 +12,7 @@
   "dependencies": {
     "lucide-react": "^1.49.0",
     "mysql2": "^3.24.5",
-    "pdfjs-dist": "^6.3.289",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "xlsx": "^0.18.5"

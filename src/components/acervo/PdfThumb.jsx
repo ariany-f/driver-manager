@@ -51,7 +51,7 @@ async function renderFirstPage(url) {
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
-    await page.render({ canvas, viewport }).promise;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
     return canvas.toDataURL('image/jpeg', 0.72);
   } finally {
     await pdf.destroy();

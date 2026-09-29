@@ -15,6 +15,51 @@ import MoveFileModal from '../modals/MoveFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import { flattenFolders } from '../../lib/folders.js';
 
+const MIME_EXT = {
+  'application/pdf': 'PDF',
+  'application/vnd.google-apps.document': 'GDOC',
+  'application/vnd.google-apps.spreadsheet': 'XLSX',
+  'application/vnd.google-apps.presentation': 'PPTX',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+  'application/vnd.ms-excel.sheet.macroEnabled.12': 'XLSM',
+  'application/msword': 'DOC',
+  'application/vnd.ms-excel': 'XLS',
+  'image/jpeg': 'JPG',
+  'image/png': 'PNG',
+  'image/webp': 'WEBP',
+  'image/gif': 'GIF',
+  'image/svg+xml': 'SVG',
+};
+
+function fileExtension(file) {
+  const name = String(file?.name || '');
+  const dot = name.lastIndexOf('.');
+  if (dot > 0 && dot < name.length - 1) {
+    const ext = name.slice(dot + 1);
+    if (/^[a-z0-9]{1,8}$/i.test(ext)) return ext.toUpperCase();
+  }
+  const mime = String(file?.mimeType || '');
+  if (MIME_EXT[mime]) return MIME_EXT[mime];
+  const sub = mime.slice(mime.indexOf('/') + 1).split(/[+.]/).pop();
+  if (mime.includes('/') && /^[a-z0-9]{2,8}$/i.test(sub)) return sub.toUpperCase();
+  return '';
+}
+
+function FileName({ file, className = '' }) {
+  const ext = fileExtension(file);
+  return (
+    <p className={className}>
+      <span className="break-all group-hover:text-[#C13B22] transition-colors">{file.name}</span>
+      {ext && (
+        <span className="ml-2 inline-block align-middle border-2 border-[#2C1A14] bg-[#EAB308] px-1 py-0.5 font-mono text-[10px] font-black leading-none tracking-wider text-[#2C1A14] whitespace-nowrap">
+          {ext}
+        </span>
+      )}
+    </p>
+  );
+}
+
 export default function Acervo({ isAdmin, files, setFiles, folders, territorios, tags, drive, labelsEnabled }) {
   const [editingFile, setEditingFile] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
@@ -335,7 +380,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <FileThumb file={file} iconSize={28} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight break-all">{file.name}</p>
+                    <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
                       <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{file.date}</span>
@@ -390,7 +435,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           <FileThumb file={file} iconSize={32} badge />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase break-all group-hover:text-[#C13B22] transition-colors">{file.name}</p>
+                          <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
                             <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{file.date}</span>

@@ -161,9 +161,9 @@ const ConfirmModal = ({ isOpen, title, text, onConfirm, onCancel }) => {
            <h3 className="text-2xl font-display font-black uppercase tracking-wide">{title}</h3>
          </div>
          <p className="font-sans font-medium text-lg text-[#2C1A14] mb-8">{text}</p>
-         <div className="flex justify-end gap-4">
-            <button onClick={onCancel} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2">Cancelar</button>
-            <ButtonPrimary onClick={onConfirm} color="bgRust">Sim, Excluir</ButtonPrimary>
+         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            <button onClick={onCancel} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
+            <ButtonPrimary onClick={onConfirm} color="bgRust" className="w-full sm:w-auto">Sim, Excluir</ButtonPrimary>
          </div>
       </div>
     </div>
@@ -223,9 +223,9 @@ const FolderModal = ({ config, flatFolders, onClose, onSave }) => {
           )}
         </div>
         
-        <div className="mt-8 flex justify-end gap-4">
-          <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2">Cancelar</button>
-          <ButtonPrimary onClick={handleSubmit} color="bgOlive" disabled={!folderName.trim()}>
+        <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
+          <ButtonPrimary onClick={handleSubmit} color="bgOlive" disabled={!folderName.trim()} className="w-full sm:w-auto">
              {isEdit ? 'Salvar' : 'Criar Pasta'}
           </ButtonPrimary>
         </div>
@@ -266,9 +266,9 @@ const MoveFileModal = ({ isOpen, file, flatFolders, onClose, onSave }) => {
           </div>
         </div>
         
-        <div className="mt-8 flex justify-end gap-4">
-          <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2">Cancelar</button>
-          <ButtonPrimary onClick={() => onSave(file.id, selectedFolderId)} color="bgMustard">Confirmar</ButtonPrimary>
+        <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
+          <ButtonPrimary onClick={() => onSave(file.id, selectedFolderId)} color="bgMustard" className="w-full sm:w-auto">Confirmar</ButtonPrimary>
         </div>
       </div>
     </div>
@@ -291,7 +291,7 @@ const ClassificacaoModal = ({ file, territorios, tags, onClose, onSave }) => {
             <h3 className="text-xl font-display font-black text-[#2C1A14] uppercase tracking-wide flex items-center gap-2">
               <Tags size={24} className="text-[#C13B22]" strokeWidth={2.5} /> Classificar
             </h3>
-            <p className="text-sm font-sans font-medium text-[#2C1A14]/70 mt-1 truncate max-w-sm">{file.name}</p>
+            <p className="text-sm font-sans font-medium text-[#2C1A14]/70 mt-1 truncate max-w-[11rem] sm:max-w-sm">{file.name}</p>
           </div>
           <button onClick={onClose} className="text-[#2C1A14] hover:bg-[#C13B22] hover:text-white p-2 border-2 border-transparent hover:border-[#2C1A14] transition-colors"><X size={24} strokeWidth={3} /></button>
         </div>
@@ -324,9 +324,9 @@ const ClassificacaoModal = ({ file, territorios, tags, onClose, onSave }) => {
             </div>
           </div>
         </div>
-        <div className="p-4 border-t-4 border-[#2C1A14] bg-[#F4EFE6] flex justify-end gap-4 shrink-0">
-          <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 decoration-2 px-4 py-2">Cancelar</button>
-          <ButtonPrimary onClick={() => onSave(file.id, selectedTerritorios, selectedTags)} color="bgMustard">Salvar</ButtonPrimary>
+        <div className="p-4 border-t-4 border-[#2C1A14] bg-[#F4EFE6] flex flex-col-reverse sm:flex-row sm:justify-end gap-3 shrink-0">
+          <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 decoration-2 px-4 py-2 w-full sm:w-auto">Cancelar</button>
+          <ButtonPrimary onClick={() => onSave(file.id, selectedTerritorios, selectedTags)} color="bgMustard" className="w-full sm:w-auto">Salvar</ButtonPrimary>
         </div>
       </div>
     </div>
@@ -337,10 +337,10 @@ const FileViewer = ({ file, onClose }) => {
   const [scale, setScale] = useState(1);
   return (
     <div className="fixed inset-0 bg-[#2C1A14]/90 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-8">
-      <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[16px_16px_0px_#EAB308] w-full max-w-6xl h-full max-h-[90vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
-        <div className="flex justify-between items-center p-5 border-b-4 border-[#2C1A14] bg-[#F4EFE6] shrink-0">
-          <h3 className="text-2xl font-display font-black text-[#2C1A14] uppercase truncate pr-4 flex items-center gap-3">
-             <FileIcon type={file.type} size={28} /> {file.name}
+      <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[6px_6px_0px_#EAB308] sm:shadow-[16px_16px_0px_#EAB308] w-full max-w-6xl h-full max-h-[92vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
+        <div className="flex justify-between items-center p-3 sm:p-5 border-b-4 border-[#2C1A14] bg-[#F4EFE6] shrink-0 gap-3">
+          <h3 className="text-sm sm:text-2xl font-display font-black text-[#2C1A14] uppercase truncate min-w-0 flex items-center gap-2 sm:gap-3">
+             <FileIcon type={file.type} size={22} /> <span className="truncate">{file.name}</span>
           </h3>
           <button onClick={onClose} className="bg-white text-[#2C1A14] hover:bg-[#C13B22] hover:text-white p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all shrink-0">
             <X size={24} strokeWidth={3} />
@@ -391,6 +391,8 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
   const [folderModalConfig, setFolderModalConfig] = useState({ isOpen: false, mode: 'create', parentId: '', folder: null });
   const [folderToDelete, setFolderToDelete] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState(['pesq', 'proj']);
+  const [foldersOpen, setFoldersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Filtering & Pagination State
   const [searchQuery, setSearchQuery] = useState('');
@@ -406,6 +408,12 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
     if (!folderId) return '/ (Raiz)';
     const found = flatFolders.find(f => f.id === folderId);
     return found ? found.path : '/ (Raiz)';
+  };
+
+  const selectFolder = (id) => {
+    setActiveFolderId(id);
+    setCurrentPage(1);
+    setFoldersOpen(false);
   };
 
   const handleFilterToggle = (id, list, setList) => {
@@ -468,7 +476,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
         <div 
           className={`group flex items-center gap-3 py-2.5 px-3 cursor-pointer text-[#2C1A14] transition-colors border-b-2 ${isActive ? 'bg-[#2C1A14] text-[#F4EFE6] border-[#2C1A14]' : 'border-transparent hover:bg-black/5 hover:border-[#2C1A14]'}`}
           style={{ paddingLeft: `${(depth * 1) + 0.75}rem` }}
-          onClick={(e) => { e.stopPropagation(); setActiveFolderId(folder.id); setCurrentPage(1); }}
+          onClick={(e) => { e.stopPropagation(); selectFolder(folder.id); }}
         >
           <div 
              className="p-1 hover:bg-black/10 -ml-1 transition-colors rounded"
@@ -484,7 +492,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
           <span className="truncate flex-1" title={folder.name}>{folder.name}</span>
 
           {isAdmin && (
-             <div className="hidden group-hover:flex items-center gap-1.5 shrink-0 bg-[#F4EFE6]/90 p-1 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] ml-2">
+             <div className="flex lg:hidden lg:group-hover:flex items-center gap-1.5 shrink-0 bg-[#F4EFE6]/90 p-1 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] ml-2">
                <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'create', parentId: folder.id }); }} className="text-[#849B55] hover:scale-110" title="Subpasta"><Plus size={14} strokeWidth={3}/></button>
                <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'edit', folder }); }} className="text-[#EAB308] hover:scale-110" title="Renomear"><Edit size={14} strokeWidth={3}/></button>
                <button onClick={(e) => { e.stopPropagation(); setFolderToDelete(folder); }} className="text-[#C13B22] hover:scale-110" title="Excluir"><Trash2 size={14} strokeWidth={3}/></button>
@@ -502,66 +510,134 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
     );
   };
 
+  const activeFilterCount = selectedTerritorios.length + selectedTags.length + selectedTypes.length;
+
+  const newFolderButton = isAdmin ? (
+    <button onClick={() => setFolderModalConfig({ isOpen: true, mode: 'create', parentId: '' })} className="bg-white p-1.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] hover:-translate-y-0.5 hover:bg-[#849B55] hover:text-white transition-all shrink-0" title="Nova Pasta na Raiz" aria-label="Nova pasta na raiz">
+      <Plus size={20} strokeWidth={3} />
+    </button>
+  ) : null;
+
+  const renderDirectoryList = () => (
+    <div className="flex-1 overflow-y-auto py-2 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pb-20">
+      <div
+        className={`flex items-center gap-3 py-3 px-6 cursor-pointer text-[#2C1A14] transition-colors border-b-2 ${activeFolderId === '' ? 'bg-[#2C1A14] text-[#F4EFE6] border-[#2C1A14]' : 'border-transparent hover:bg-black/5 hover:border-[#2C1A14]'}`}
+        onClick={() => selectFolder('')}
+      >
+        <Archive size={22} strokeWidth={2} />
+        <span className="font-display font-bold uppercase text-sm tracking-wide">Todos os Arquivos</span>
+      </div>
+      <div className="my-2 border-t-2 border-dashed border-[#2C1A14]/20 mx-4"></div>
+      {folders.map(folder => <FolderNode key={folder.id} folder={folder} />)}
+    </div>
+  );
+
+  const renderFileActions = (file) => (
+    <div className="flex items-center justify-end gap-2">
+      {isAdmin && (
+        <>
+          <button onClick={() => setMovingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Mover" aria-label="Mover">
+            <CornerDownRight size={18} strokeWidth={2.5}/>
+          </button>
+          <button onClick={() => setEditingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#849B55] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Classificar" aria-label="Classificar">
+            <Tags size={18} strokeWidth={2.5}/>
+          </button>
+        </>
+      )}
+      <button onClick={() => setViewingFile(file)} className="bg-[#1E3A5F] border-2 border-[#2C1A14] p-2.5 hover:bg-[#C13B22] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14] text-white" title="Ver arquivo" aria-label="Ver arquivo">
+        <Eye size={18} strokeWidth={2.5}/>
+      </button>
+    </div>
+  );
+
+  const pagination = totalPages > 1 ? (
+    <div className="bg-[#2C1A14] p-3 flex justify-between items-center gap-3 text-white font-display text-xs uppercase">
+      <span>Página {currentPage} de {totalPages}</span>
+      <div className="flex gap-2">
+        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Anterior</button>
+        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Próxima</button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="flex h-full relative overflow-hidden animate-in fade-in duration-300">
       
-      {/* Sidebar - GED Area */}
+      {/* Sidebar - desktop */}
       <div className="w-80 border-r-4 border-[#2C1A14] bg-[#F4EFE6] flex-col hidden lg:flex shrink-0 relative z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)]">
         <div className="p-6 border-b-4 border-[#2C1A14] bg-[#EAB308] flex justify-between items-center">
-          <div>
-             <h2 className="text-xl font-display font-black text-[#2C1A14] uppercase tracking-tighter flex items-center gap-2">
-               <FolderTree size={24} strokeWidth={3} /> Diretórios
-             </h2>
-          </div>
-          {isAdmin && (
-             <button onClick={() => setFolderModalConfig({ isOpen: true, mode: 'create', parentId: '' })} className="bg-white p-1.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] hover:-translate-y-0.5 hover:bg-[#849B55] hover:text-white transition-all" title="Nova Pasta na Raiz">
-               <Plus size={20} strokeWidth={3} />
-             </button>
-          )}
+          <h2 className="text-xl font-display font-black text-[#2C1A14] uppercase tracking-tighter flex items-center gap-2">
+            <FolderTree size={24} strokeWidth={3} /> Diretórios
+          </h2>
+          {newFolderButton}
         </div>
-        <div className="flex-1 overflow-y-auto py-2 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pb-20">
-          
-          <div 
-             className={`flex items-center gap-3 py-3 px-6 cursor-pointer text-[#2C1A14] transition-colors border-b-2 ${activeFolderId === '' ? 'bg-[#2C1A14] text-[#F4EFE6] border-[#2C1A14]' : 'border-transparent hover:bg-black/5 hover:border-[#2C1A14]'}`}
-             onClick={() => { setActiveFolderId(''); setCurrentPage(1); }}
-          >
-             <Archive size={22} strokeWidth={2} />
-             <span className="font-display font-bold uppercase text-sm tracking-wide">Todos os Arquivos</span>
-          </div>
-          
-          <div className="my-2 border-t-2 border-dashed border-[#2C1A14]/20 mx-4"></div>
-          
-          {folders.map(folder => <FolderNode key={folder.id} folder={folder} />)}
-        </div>
+        {renderDirectoryList()}
       </div>
 
+      {foldersOpen && (
+        <div className="absolute inset-0 z-30 flex lg:hidden">
+          <div className="w-[min(88%,20rem)] h-full bg-[#F4EFE6] border-r-4 border-[#2C1A14] flex flex-col shadow-[8px_0_0_#C13B22]">
+            <div className="p-4 border-b-4 border-[#2C1A14] bg-[#EAB308] flex justify-between items-center gap-3">
+              <h2 className="text-lg font-display font-black text-[#2C1A14] uppercase tracking-tighter flex items-center gap-2">
+                <FolderTree size={22} strokeWidth={3} /> Diretórios
+              </h2>
+              <div className="flex items-center gap-2">
+                {newFolderButton}
+                <button onClick={() => setFoldersOpen(false)} className="bg-white p-1.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14]" aria-label="Fechar diretórios">
+                  <X size={20} strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+            {renderDirectoryList()}
+          </div>
+          <button className="flex-1 bg-[#2C1A14]/60" onClick={() => setFoldersOpen(false)} aria-label="Fechar diretórios" />
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 relative z-10">
         <div className="w-full space-y-6">
           
-          <div className="flex justify-between items-end border-b-4 border-[#2C1A14] pb-6 mb-2 gap-4">
-            <div>
-              <h1 className="text-4xl md:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter mb-2">
-                Busca & <span className="text-[#1E3A5F]">Acervo</span>
-              </h1>
-              <p className="font-mono text-sm font-bold text-[#2C1A14]/70 tracking-tight bg-white border-2 border-[#2C1A14] inline-block px-3 py-1 shadow-[2px_2px_0px_#2C1A14]">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 mb-2 gap-4">
+            <div className="min-w-0">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h1 className="min-w-0 text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">
+                  Busca & <span className="text-[#1E3A5F]">Acervo</span>
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => setFoldersOpen(true)}
+                  className="lg:hidden shrink-0 bg-[#EAB308] text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2"
+                >
+                  <FolderTree size={18} strokeWidth={3} /> Pastas
+                </button>
+              </div>
+              <p className="font-mono text-xs sm:text-sm font-bold text-[#2C1A14]/70 tracking-tight bg-white border-2 border-[#2C1A14] inline-block max-w-full px-3 py-1 shadow-[2px_2px_0px_#2C1A14] break-all">
                 Pasta Atual: {getDisplayPath(activeFolderId)}
               </p>
             </div>
-            {isAdmin && <ButtonPrimary icon={Plus} color="bgRust" className="hidden sm:flex">Upload</ButtonPrimary>}
+            {isAdmin && <ButtonPrimary icon={Plus} color="bgRust" className="w-full sm:w-auto">Upload</ButtonPrimary>}
           </div>
 
           {/* Advanced Filtering Box */}
-          <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 mb-8 shadow-[8px_8px_0px_rgba(44,26,20,0.1)] space-y-6">
-             <div className="flex gap-4 items-center">
-                <Search size={24} className="text-[#C13B22] hidden sm:block" strokeWidth={3}/>
+          <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-4 sm:p-6 mb-8 shadow-[4px_4px_0px_rgba(44,26,20,0.1)] md:shadow-[8px_8px_0px_rgba(44,26,20,0.1)] space-y-4 sm:space-y-6">
+             <div className="flex gap-3 sm:gap-4 items-center">
+                <Search size={24} className="text-[#C13B22] hidden sm:block shrink-0" strokeWidth={3}/>
                 <input 
                   type="text" placeholder="Buscar por nome do arquivo..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border-4 border-[#2C1A14] p-3 font-sans font-medium text-lg outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all placeholder:text-[#2C1A14]/40"
+                  className="w-full min-w-0 bg-white border-4 border-[#2C1A14] p-3 font-sans font-medium text-base sm:text-lg outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all placeholder:text-[#2C1A14]/40"
                 />
              </div>
+
+             <button
+               type="button"
+               onClick={() => setFiltersOpen(open => !open)}
+               className="md:hidden w-full bg-white border-2 border-[#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-widest shadow-[3px_3px_0px_#2C1A14]"
+             >
+               {filtersOpen ? 'Ocultar filtros' : 'Filtros'}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+             </button>
              
-             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t-2 border-dashed border-[#2C1A14]/20">
+             <div className={`${filtersOpen ? 'grid' : 'hidden'} md:grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t-2 border-dashed border-[#2C1A14]/20`}>
                 <div className="md:col-span-5">
                    <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#1E3A5F]">Filtrar por Territórios</span>
                    <div className="flex flex-wrap gap-2">
@@ -604,8 +680,46 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
              {filteredFiles.length} registros encontrados
           </div>
 
+          <div className="lg:hidden space-y-3">
+            {currentFiles.map(file => (
+              <article key={file.id} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3">
+                <div className="flex gap-3">
+                  <div className="relative w-16 h-16 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[3px_3px_0px_#2C1A14] overflow-hidden flex items-center justify-center">
+                    {file.type === 'image' ? (
+                      <img src={file.url} alt="" className="w-full h-full object-cover filter contrast-125" />
+                    ) : (
+                      <div className="w-full h-full bg-[#E4CFB2]/30 flex items-center justify-center">
+                        <FileIcon type={file.type} className="opacity-40" size={28} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight break-words">{file.name}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
+                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{file.date}</span>
+                    </div>
+                    <div className="mt-2 inline-flex max-w-full items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20" title={getDisplayPath(file.folderId)}>
+                      <Folder size={12} className="shrink-0 text-[#EAB308]" />
+                      <span className="truncate">{getDisplayPath(file.folderId)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap">
+                  {file.territorios.map(id => <Badge key={id} item={territorios.find(t => t.id === id)} isTerritory />)}
+                  {file.tags.map(id => <Badge key={id} item={tags.find(t => t.id === id)} />)}
+                </div>
+                <div className="mt-2">{renderFileActions(file)}</div>
+              </article>
+            ))}
+            {currentFiles.length === 0 && (
+              <p className="px-3 py-10 text-center font-display font-bold uppercase text-[#2C1A14]/50 border-4 border-dashed border-[#2C1A14]/30">Nenhum arquivo encontrado com estes filtros.</p>
+            )}
+            {pagination}
+          </div>
+
           {/* Results Table */}
-          <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)] overflow-x-auto">
+          <div className="hidden lg:block bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)] overflow-x-auto">
              <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
                   <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
@@ -658,21 +772,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
                          </div>
                        </td>
                        <td className="px-5 py-4">
-                         <div className="flex items-center justify-end gap-2">
-                           {isAdmin && (
-                             <>
-                               <button onClick={() => setMovingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Mover">
-                                 <CornerDownRight size={18} strokeWidth={2.5}/>
-                               </button>
-                               <button onClick={() => setEditingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2 hover:bg-[#849B55] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Classificar">
-                                 <Tags size={18} strokeWidth={2.5}/>
-                               </button>
-                             </>
-                           )}
-                           <button onClick={() => setViewingFile(file)} className="bg-[#1E3A5F] border-2 border-[#2C1A14] p-2 hover:bg-[#C13B22] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14] text-white">
-                             <Eye size={18} strokeWidth={2.5}/>
-                           </button>
-                         </div>
+                         {renderFileActions(file)}
                        </td>
                      </tr>
                    ))}
@@ -682,16 +782,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
                 </tbody>
              </table>
              
-             {/* Pagination Bar */}
-             {totalPages > 1 && (
-               <div className="bg-[#2C1A14] p-3 flex justify-between items-center text-white font-display text-xs uppercase border-t-4 border-[#2C1A14]">
-                 <span>Página {currentPage} de {totalPages}</span>
-                 <div className="flex gap-2">
-                   <button onClick={() => setCurrentPage(p=>Math.max(1, p-1))} disabled={currentPage===1} className="px-3 py-1 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Anterior</button>
-                   <button onClick={() => setCurrentPage(p=>Math.min(totalPages, p+1))} disabled={currentPage===totalPages} className="px-3 py-1 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Próxima</button>
-                 </div>
-               </div>
-             )}
+             <div className="border-t-4 border-[#2C1A14]">{pagination}</div>
           </div>
         </div>
       </div>
@@ -773,27 +864,27 @@ const Dashboard = ({ files, territorios }) => {
     .filter(t => t.name);
 
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-8 animate-in fade-in duration-300">
-      <div className="w-full space-y-8">
-        <div className="border-b-4 border-[#2C1A14] pb-6">
-          <h1 className="text-4xl md:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Métricas do <span className="text-[#C13B22]">Acervo</span></h1>
+    <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300">
+      <div className="w-full space-y-6 sm:space-y-8">
+        <div className="border-b-4 border-[#2C1A14] pb-4 sm:pb-6">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Métricas do <span className="text-[#C13B22]">Acervo</span></h1>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#EAB308] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_#2C1A14] flex flex-col justify-center">
-             <div className="flex items-center gap-4 mb-2">
-               <Archive size={40} className="text-[#2C1A14]" strokeWidth={2.5}/>
-               <h2 className="text-2xl font-display font-black uppercase">Total de Arquivos</h2>
+          <div className="bg-[#EAB308] border-4 border-[#2C1A14] p-4 sm:p-6 shadow-[4px_4px_0px_#2C1A14] sm:shadow-[8px_8px_0px_#2C1A14] flex flex-col justify-center">
+             <div className="flex items-center gap-3 sm:gap-4 mb-2">
+               <Archive size={32} className="text-[#2C1A14] shrink-0" strokeWidth={2.5}/>
+               <h2 className="text-xl sm:text-2xl font-display font-black uppercase">Total de Arquivos</h2>
              </div>
-             <p className="text-6xl font-display font-black text-[#2C1A14]">{files.length}</p>
+             <p className="text-4xl sm:text-6xl font-display font-black text-[#2C1A14]">{files.length}</p>
           </div>
           
-          <div className="bg-[#849B55] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_#2C1A14] flex flex-col justify-center text-[#F4EFE6]">
-             <div className="flex items-center gap-4 mb-2">
-               <BarChart size={40} className="text-[#F4EFE6]" strokeWidth={2.5}/>
-               <h2 className="text-2xl font-display font-black uppercase">Volume de Dados</h2>
+          <div className="bg-[#849B55] border-4 border-[#2C1A14] p-4 sm:p-6 shadow-[4px_4px_0px_#2C1A14] sm:shadow-[8px_8px_0px_#2C1A14] flex flex-col justify-center text-[#F4EFE6]">
+             <div className="flex items-center gap-3 sm:gap-4 mb-2">
+               <BarChart size={32} className="text-[#F4EFE6] shrink-0" strokeWidth={2.5}/>
+               <h2 className="text-xl sm:text-2xl font-display font-black uppercase">Volume de Dados</h2>
              </div>
-             <p className="text-6xl font-display font-black">{formattedSize}</p>
+             <p className="text-4xl sm:text-6xl font-display font-black break-words">{formattedSize}</p>
           </div>
         </div>
 
@@ -906,24 +997,49 @@ const GerenciarIdentidade = ({ territorios, setTerritorios, tags, setTags }) => 
   const currentList = activeTab === 'territorios' ? territorios : tags;
 
   return (
-    <div className="h-full overflow-y-auto p-4 md:p-8 animate-in fade-in duration-300 relative">
+    <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300 relative">
       <div className="w-full space-y-6">
         
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b-4 border-[#2C1A14] pb-6 gap-4">
-          <h1 className="text-4xl md:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Identidade <span className="text-[#849B55]">Visual</span></h1>
-          <ButtonPrimary onClick={() => openModal()} icon={Plus} color="bgOlive">Criar {activeTab === 'territorios' ? 'Território' : 'Tag'}</ButtonPrimary>
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 gap-4">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Identidade <span className="text-[#849B55]">Visual</span></h1>
+          <ButtonPrimary onClick={() => openModal()} icon={Plus} color="bgOlive" className="w-full sm:w-auto">Criar {activeTab === 'territorios' ? 'Território' : 'Tag'}</ButtonPrimary>
         </div>
 
-        <div className="flex gap-4 border-b-2 border-[#2C1A14]/20 pb-4">
-           <button onClick={() => setActiveTab('territorios')} className={`font-display font-black uppercase text-lg px-4 py-2 border-4 transition-all ${activeTab === 'territorios' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#C13B22]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
+        <div className="flex flex-wrap gap-3 border-b-2 border-[#2C1A14]/20 pb-4">
+           <button onClick={() => setActiveTab('territorios')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'territorios' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#C13B22]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
              Territórios
            </button>
-           <button onClick={() => setActiveTab('tags')} className={`font-display font-black uppercase text-lg px-4 py-2 border-4 transition-all ${activeTab === 'tags' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#EAB308]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
+           <button onClick={() => setActiveTab('tags')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'tags' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#EAB308]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
              Tags Livres
            </button>
         </div>
 
-        <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)]">
+        <div className="md:hidden space-y-3">
+          {currentList.map(item => (
+            <div key={item.id} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3 flex items-center justify-between gap-3">
+              <span
+                className="px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2 min-w-0"
+                style={{ backgroundColor: item.bgColor, color: item.textColor }}
+              >
+                {activeTab === 'territorios' && <span className="w-2 h-2 rounded-full bg-current opacity-70 shrink-0"></span>}
+                <span className="truncate">{item.name}</span>
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => openModal(item)} className="bg-white border-2 border-[#2C1A14] p-2.5 shadow-[2px_2px_0px_#2C1A14]" title="Editar" aria-label="Editar">
+                  <Edit size={16} strokeWidth={2.5}/>
+                </button>
+                <button onClick={() => handleDelete(item.id)} className="bg-white border-2 border-[#2C1A14] p-2.5 text-[#C13B22] shadow-[2px_2px_0px_#2C1A14]" title="Excluir" aria-label="Excluir">
+                  <Trash2 size={16} strokeWidth={2.5}/>
+                </button>
+              </div>
+            </div>
+          ))}
+          {currentList.length === 0 && (
+            <p className="px-3 py-8 text-center font-mono text-[#2C1A14]/60 border-4 border-dashed border-[#2C1A14]/30">Nenhum registro encontrado.</p>
+          )}
+        </div>
+
+        <div className="hidden md:block bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)]">
            <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
@@ -967,7 +1083,7 @@ const GerenciarIdentidade = ({ territorios, setTerritorios, tags, setTags }) => 
 
       {modalOpen && (
         <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in zoom-in duration-200">
-          <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[12px_12px_0px_#849B55] w-full max-w-lg relative p-6">
+          <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[6px_6px_0px_#849B55] sm:shadow-[12px_12px_0px_#849B55] w-full max-w-lg relative p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
             <h3 className="text-2xl font-display font-black text-[#2C1A14] uppercase mb-6 flex items-center gap-2 border-b-4 border-[#2C1A14] pb-2">
               {editingItem ? 'Editar' : 'Criar'} {activeTab === 'territorios' ? 'Território' : 'Tag'}
             </h3>
@@ -985,7 +1101,7 @@ const GerenciarIdentidade = ({ territorios, setTerritorios, tags, setTags }) => 
               <div>
                 <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Cor de Fundo</label>
                 <div className="bg-white border-4 border-[#2C1A14] p-3 space-y-4">
-                  <div className="grid grid-cols-10 gap-1.5">
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
                     {PREDEFINED_COLORS.map(c => (
                       <button 
                         key={c} onClick={() => setColor(c)}
@@ -1015,9 +1131,9 @@ const GerenciarIdentidade = ({ territorios, setTerritorios, tags, setTags }) => 
               </div>
             </div>
             
-            <div className="mt-8 flex justify-end gap-4">
-              <button onClick={closeModal} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2">Cancelar</button>
-              <ButtonPrimary onClick={handleSave} color="bgMustard" disabled={!name.trim()}>Salvar</ButtonPrimary>
+            <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+              <button onClick={closeModal} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
+              <ButtonPrimary onClick={handleSave} color="bgMustard" disabled={!name.trim()} className="w-full sm:w-auto">Salvar</ButtonPrimary>
             </div>
           </div>
         </div>
@@ -1040,27 +1156,36 @@ export default function App() {
   return (
     <div className="h-screen w-full bg-[#E4CFB2] flex flex-col font-sans text-[#2C1A14] overflow-hidden selection:bg-[#EAB308] selection:text-[#2C1A14]">
       
-      <header className="bg-[#2C1A14] text-[#F4EFE6] border-b-4 border-[#C13B22] flex items-center justify-between px-4 sm:px-6 z-20 shrink-0 relative py-2">
-        <div className="flex items-center gap-6">
-          <div className="flex flex-col leading-none -rotate-2 cursor-pointer hover:scale-105 transition-transform" onClick={() => setCurrentView('acervo')}>
-             <span className="font-display font-black text-2xl tracking-tighter text-[#F4EFE6]">DIÁRIO</span>
-             <span className="font-display font-black text-[0.65rem] tracking-[0.3em] text-[#EAB308]">DO TERRITÓRIO</span>
-          </div>
-          {isAdmin && (
-            <div className="hidden md:flex gap-4 border-l-4 border-white/10 pl-6">
-              {[ {id:'acervo', lbl:'Acervo'}, {id:'dashboard', lbl:'Métricas'}, {id:'categorias', lbl:'Identidade'} ].map(v => (
-                <button key={v.id} onClick={() => setCurrentView(v.id)} className={`font-display font-bold uppercase text-xs tracking-widest px-2 py-1 border-b-4 ${activeView === v.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}>{v.lbl}</button>
-              ))}
+      <header className="bg-[#2C1A14] text-[#F4EFE6] border-b-4 border-[#C13B22] z-20 shrink-0 relative">
+        <div className="flex items-center justify-between gap-3 px-3 sm:px-6 py-2">
+          <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+            <div className="flex flex-col leading-none -rotate-2 cursor-pointer hover:scale-105 transition-transform shrink-0" onClick={() => setCurrentView('acervo')}>
+               <span className="font-display font-black text-xl sm:text-2xl tracking-tighter text-[#F4EFE6]">DIÁRIO</span>
+               <span className="font-display font-black text-[0.6rem] sm:text-[0.65rem] tracking-[0.2em] sm:tracking-[0.3em] text-[#EAB308]">DO TERRITÓRIO</span>
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
+            {isAdmin && (
+              <div className="hidden md:flex gap-4 border-l-4 border-white/10 pl-6">
+                {[ {id:'acervo', lbl:'Acervo'}, {id:'dashboard', lbl:'Métricas'}, {id:'categorias', lbl:'Identidade'} ].map(v => (
+                  <button key={v.id} onClick={() => setCurrentView(v.id)} className={`font-display font-bold uppercase text-xs tracking-widest px-2 py-1 border-b-4 ${activeView === v.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}>{v.lbl}</button>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={() => { setIsAdmin(!isAdmin); if(isAdmin) setCurrentView('acervo'); }}
-            className={`flex items-center gap-2 px-3 py-2 font-display font-bold uppercase text-xs border-2 transition-all ${isAdmin ? 'bg-[#C13B22] border-[#C13B22] text-white' : 'border-[#EAB308] text-[#EAB308] hover:bg-[#EAB308] hover:text-[#2C1A14]'}`}
+            title={isAdmin ? 'Admin' : 'Acesso Público'}
+            className={`flex items-center gap-2 px-2.5 sm:px-3 py-2 font-display font-bold uppercase text-xs border-2 transition-all shrink-0 ${isAdmin ? 'bg-[#C13B22] border-[#C13B22] text-white' : 'border-[#EAB308] text-[#EAB308] hover:bg-[#EAB308] hover:text-[#2C1A14]'}`}
           >
-            {isAdmin ? <><Unlock size={14} strokeWidth={3}/> Admin</> : <><Lock size={14} strokeWidth={3}/> Acesso Público</>}
+            {isAdmin ? <Unlock size={14} strokeWidth={3}/> : <Lock size={14} strokeWidth={3}/>}
+            <span className="hidden sm:inline">{isAdmin ? 'Admin' : 'Acesso Público'}</span>
           </button>
         </div>
+        {isAdmin && (
+          <nav className="md:hidden grid grid-cols-3 border-t-2 border-white/10">
+            {[ {id:'acervo', lbl:'Acervo'}, {id:'dashboard', lbl:'Métricas'}, {id:'categorias', lbl:'Identidade'} ].map(v => (
+              <button key={v.id} onClick={() => setCurrentView(v.id)} className={`font-display font-bold uppercase text-[11px] tracking-widest px-2 py-3 border-b-4 ${activeView === v.id ? 'border-[#EAB308] text-[#EAB308] bg-white/5' : 'border-transparent text-white/50'}`}>{v.lbl}</button>
+            ))}
+          </nav>
+        )}
       </header>
 
       <main className="flex-1 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">

@@ -1,7 +1,15 @@
 async function readJson(response) {
-  const payload = await response.json().catch(() => ({}));
+  const text = await response.text();
+  let payload = {};
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    payload = {};
+  }
   if (!response.ok) {
-    throw new Error(payload.error || 'Não foi possível entrar.');
+    throw new Error(payload.error || (response.status === 404
+      ? 'O acesso da equipe não está neste endereço. Publique de novo.'
+      : 'Não foi possível entrar.'));
   }
   return payload;
 }

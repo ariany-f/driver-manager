@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import { DriveError } from './driveClient.js';
 
 const COOKIE = 'acervo_session';
-const sessions = new Map();
 const SESSION_MS = 12 * 60 * 60 * 1000;
 
 function unwrap(value) {
@@ -23,24 +22,54 @@ function parseCookies(header) {
   return cookies;
 }
 
-function sessionToken(req) {
-  return parseCookies(req.headers.cookie)[COOKIE] || '';
+export function readCookie(req, name) {
+  return parseCookies(req.headers.cookie)[name] || '';
 }
 
-export function isAdminRequest(req) {
-  const token = sessionToken(req);
-  const session = token ? sessions.get(token) : null;
-  if (!session) return false;
-  if (session.expiresAt <= Date.now()) {
-    sessions.delete(token);
-    return false;
+function sessionSecret(env) {
+  return unwrap(env.SESSION_SECRET || env.ADMIN_PASSWORD || env.VITE_ADMIN_PASSWORD);
+}
+
+function sameSecret(left, right) {
+  const a = Buffer.from(String(left));
+  const b = Buffer.from(String(right));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+export function seal(env, data) {
+  const secret = sessionSecret(env);
+  if (!secret) return '';
+  const payload = Buffer.from(JSON.stringify(data)).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+export function openSeal(env, token) {
+  const secret = sessionSecret(env);
+  const value = String(token || '');
+  const separator = value.lastIndexOf('.');
+  if (!secret || separator <= 0) return null;
+  const payload = value.slice(0, separator);
+  const signature = value.slice(separator + 1);
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+  if (!sameSecret(signature, expected)) return null;
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+  } catch {
+    return null;
   }
-  return true;
 }
 
-function cookieBase(req) {
+export function isAdminRequest(req, env) {
+  const data = openSeal(env, readCookie(req, COOKIE));
+  return Boolean(data && data.exp > Date.now());
+}
+
+export function cookieAttributes(req) {
   const host = String(req.headers.host || '').split(':')[0];
-  const secure = host === 'localhost' || host === '127.0.0.1';
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = proto === 'https' || host === 'localhost' || host === '127.0.0.1';
   return `HttpOnly; SameSite=Lax; Path=/${secure ? '; Secure' : ''}`;
 }
 
@@ -51,14 +80,9 @@ function expectedAdmin(env) {
   };
 }
 
-function sameSecret(left, right) {
-  const a = Buffer.from(String(left));
-  const b = Buffer.from(String(right));
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
-}
-
 function readBody(req) {
+  if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body);
+  if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body));
   return new Promise((resolve, reject) => {
     const chunks = [];
     req.on('data', chunk => chunks.push(chunk));
@@ -68,6 +92,7 @@ function readBody(req) {
 }
 
 async function readJson(req) {
+  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) return req.body;
   const raw = await readBody(req);
   if (!raw.length) return {};
   try {
@@ -87,7 +112,7 @@ export async function handleAuthRequest(req, res, env) {
   const url = new URL(req.url, 'http://localhost');
 
   if (req.method === 'GET' && url.pathname === '/api/auth/session') {
-    sendJson(res, 200, { admin: isAdminRequest(req) });
+    sendJson(res, 200, { admin: isAdminRequest(req, env) });
     return;
   }
 
@@ -99,17 +124,14 @@ export async function handleAuthRequest(req, res, env) {
     if (!expected.email || !expected.password || email !== expected.email || !sameSecret(password, expected.password)) {
       throw new DriveError('E-mail ou senha incorretos.', 401);
     }
-    const token = crypto.randomBytes(32).toString('hex');
-    sessions.set(token, { expiresAt: Date.now() + SESSION_MS });
-    res.setHeader('Set-Cookie', `${COOKIE}=${token}; ${cookieBase(req)}`);
+    const token = seal(env, { exp: Date.now() + SESSION_MS });
+    res.setHeader('Set-Cookie', `${COOKIE}=${token}; ${cookieAttributes(req)}`);
     sendJson(res, 200, { admin: true });
     return;
   }
 
   if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
-    const token = sessionToken(req);
-    if (token) sessions.delete(token);
-    res.setHeader('Set-Cookie', `${COOKIE}=; ${cookieBase(req)}; Max-Age=0`);
+    res.setHeader('Set-Cookie', `${COOKIE}=; ${cookieAttributes(req)}; Max-Age=0`);
     sendJson(res, 200, { admin: false });
     return;
   }

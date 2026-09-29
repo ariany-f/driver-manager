@@ -23,9 +23,9 @@ import {
   syncArchive,
   uploadDriveFile,
 } from './driveClient.js';
-import { handleAuthRequest, isAdminRequest, requiresAdmin } from './session.js';
+import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
 
-const states = new Map();
+const OAUTH_COOKIE = 'acervo_oauth';
 const UPLOAD_LIMIT = 200 * 1024 * 1024;
 
 function sendJson(res, status, body) {
@@ -68,23 +68,27 @@ async function readJson(req) {
   }
 }
 
-function rememberState() {
+function rememberState(req, res, env) {
   const state = crypto.randomBytes(16).toString('hex');
-  states.set(state, Date.now() + 10 * 60 * 1000);
+  const token = seal(env, { state, exp: Date.now() + 10 * 60 * 1000 });
+  res.setHeader('Set-Cookie', `${OAUTH_COOKIE}=${token}; ${cookieAttributes(req)}; Max-Age=600`);
   return state;
 }
 
-function consumeState(state) {
-  const expires = states.get(state);
-  states.delete(state);
-  return Boolean(expires && expires > Date.now());
+function consumeState(req, env, state) {
+  const data = openSeal(env, readCookie(req, OAUTH_COOKIE));
+  return Boolean(data && data.exp > Date.now() && data.state === state);
+}
+
+function clearOauthCookie(res, req) {
+  res.setHeader('Set-Cookie', `${OAUTH_COOKIE}=; ${cookieAttributes(req)}; Max-Age=0`);
 }
 
 async function handleDriveRequest(req, res, { root, env }) {
   const url = new URL(req.url, 'http://localhost');
   const pathname = url.pathname;
   const config = readDriveConfig(env);
-  const redirectUri = resolveRedirectUri(config, req.headers.host || 'localhost');
+  const redirectUri = resolveRedirectUri(config, req.headers.host || 'localhost', req.headers['x-forwarded-proto']);
 
   if (req.method === 'GET' && pathname === '/api/drive/status') {
     const token = await loadToken(root);
@@ -135,18 +139,19 @@ async function handleDriveRequest(req, res, { root, env }) {
   }
 
   if (req.method === 'GET' && pathname === '/api/drive/connect') {
-    const state = rememberState();
+    const state = rememberState(req, res, env);
     redirect(res, buildAuthUrl(config, redirectUri, state));
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/drive/callback') {
     const error = url.searchParams.get('error');
+    clearOauthCookie(res, req);
     if (error) {
       redirect(res, `/?drive=error&message=${encodeURIComponent(error === 'access_denied' ? 'A autorização foi cancelada na tela do Google.' : error)}`);
       return;
     }
-    if (!consumeState(url.searchParams.get('state'))) {
+    if (!consumeState(req, env, url.searchParams.get('state'))) {
       redirect(res, `/?drive=error&message=${encodeURIComponent('A autorização expirou. Tente conectar de novo.')}`);
       return;
     }
@@ -237,6 +242,29 @@ async function handleDriveRequest(req, res, { root, env }) {
   sendJson(res, 404, { error: 'Rota do Drive não encontrada.' });
 }
 
+export async function handleApi(req, res, { root, env }) {
+  const pathname = (req.url || '').split('?')[0];
+  try {
+    if (pathname.startsWith('/api/auth')) {
+      await handleAuthRequest(req, res, env);
+      return;
+    }
+    if (!pathname.startsWith('/api/drive')) {
+      sendJson(res, 404, { error: 'Rota não encontrada.' });
+      return;
+    }
+    if (requiresAdmin(req.method, pathname) && !isAdminRequest(req, env)) {
+      sendJson(res, 401, { error: 'Entre como equipe para continuar.' });
+      return;
+    }
+    await handleDriveRequest(req, res, { root, env });
+  } catch (error) {
+    const status = error instanceof DriveError ? error.status : 500;
+    if (!res.headersSent) sendJson(res, status, { error: error.message || 'Falha na conexão com o Google Drive.' });
+    else res.end();
+  }
+}
+
 export function driveApiPlugin(env) {
   const root = process.cwd();
   return {
@@ -245,21 +273,7 @@ export function driveApiPlugin(env) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = req.url?.split('?')[0] || '';
         if (!pathname.startsWith('/api/drive') && !pathname.startsWith('/api/auth')) return next();
-        try {
-          if (pathname.startsWith('/api/auth')) {
-            await handleAuthRequest(req, res, env);
-            return;
-          }
-          if (requiresAdmin(req.method, pathname) && !isAdminRequest(req)) {
-            sendJson(res, 401, { error: 'Entre como equipe para continuar.' });
-            return;
-          }
-          await handleDriveRequest(req, res, { root, env });
-        } catch (error) {
-          const status = error instanceof DriveError ? error.status : 500;
-          if (!res.headersSent) sendJson(res, status, { error: error.message || 'Falha na conexão com o Google Drive.' });
-          else res.end();
-        }
+        await handleApi(req, res, { root, env });
       });
     },
   };

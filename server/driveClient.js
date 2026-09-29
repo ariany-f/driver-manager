@@ -73,9 +73,13 @@ export function missingDriveKeys(config) {
   return missing;
 }
 
-export function resolveRedirectUri(config, requestHost) {
+export function resolveRedirectUri(config, requestHost, forwardedProto) {
   if (config.redirectUri) return config.redirectUri;
-  return `http://${requestHost}/api/drive/callback`;
+  const host = String(requestHost || 'localhost').split(',')[0].trim();
+  const name = host.split(':')[0];
+  const proto = String(forwardedProto || '').split(',')[0].trim();
+  const secure = proto === 'https' || (name !== 'localhost' && name !== '127.0.0.1');
+  return `${secure ? 'https' : 'http'}://${host}/api/drive/callback`;
 }
 
 function tokenPath(root) {

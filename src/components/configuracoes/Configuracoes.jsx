@@ -37,6 +37,8 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
   const [databaseState, setDatabaseState] = useState({ configured: false, connected: false, error: '', tables: [] });
   const [showSecret, setShowSecret] = useState(false);
   const [showDatabase, setShowDatabase] = useState(false);
+  const [databaseOpen, setDatabaseOpen] = useState(false);
+  const [databaseDraft, setDatabaseDraft] = useState(emptyDatabase);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
   const [showDraft, setShowDraft] = useState(false);
@@ -134,7 +136,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
     setDatabaseMessage('');
     setDatabaseError('');
     try {
-      const saved = await saveDatabaseSettings(databaseForm);
+      const saved = await saveDatabaseSettings(databaseDraft);
       setDatabaseForm({ ...emptyDatabase(), ...saved, DATABASE_PORT: saved.DATABASE_PORT || '3306' });
       setDatabaseState({
         configured: Boolean(saved.configured),
@@ -143,6 +145,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
         tables: saved.tables || [],
       });
       if (onDatabaseChange) onDatabaseChange(Boolean(saved.connected));
+      setDatabaseOpen(false);
       if (saved.connected) setDatabaseMessage('MySQL conectado. A aplicação já pode guardar a conexão do Drive, as pastas, os arquivos, as tags e os territórios.');
       else if (saved.DATABASE_HOST) setDatabaseError(saved.error || 'Os dados foram salvos no .env, mas o MySQL não conectou.');
       else setDatabaseMessage('Banco desconectado. O acervo mostra só os arquivos.');

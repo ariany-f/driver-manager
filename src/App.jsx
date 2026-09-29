@@ -113,12 +113,12 @@ const getDescendantFolderIds = (folders, targetId) => {
 };
 
 // UI Helpers
-const ButtonPrimary = ({ children, onClick, className = '', icon: Icon, color = 'bgRust', disabled = false, title }) => {
+const ButtonPrimary = ({ children, onClick, className = '', icon: Icon, color = 'bgRust', disabled = false, title, type = 'button' }) => {
   const bgColors = { bgRust: 'bg-[#C13B22]', bgMustard: 'bg-[#EAB308]', bgNavy: 'bg-[#1E3A5F]', bgOlive: 'bg-[#849B55]', bgDark: 'bg-[#2C1A14]' };
   const textColors = { bgRust: 'text-white', bgMustard: 'text-[#2C1A14]', bgNavy: 'text-white', bgOlive: 'text-[#2C1A14]', bgDark: 'text-[#F4EFE6]' };
 
   return (
-    <button onClick={onClick} disabled={disabled} title={title} className={`relative group font-display font-bold py-3 px-6 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${textColors[color]} ${className}`}>
+    <button type={type} onClick={onClick} disabled={disabled} title={title} className={`relative group font-display font-bold py-3 px-6 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${textColors[color]} ${className}`}>
       <div className={`absolute inset-0 border-2 border-[#2C1A14] bg-[#2C1A14] translate-x-1.5 translate-y-1.5 group-hover:translate-x-2 group-hover:translate-y-2 transition-transform`}></div>
       <div className={`absolute inset-0 border-2 border-[#2C1A14] ${bgColors[color]} group-active:translate-x-1 group-active:translate-y-1 transition-transform`}></div>
       <div className="relative flex items-center justify-center gap-2 z-10">
@@ -1152,8 +1152,84 @@ const GerenciarIdentidade = ({ territorios, setTerritorios, tags, setTags }) => 
   );
 };
 
+const LoginModal = ({ isOpen, onClose, onSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setEmail('');
+    setPassword('');
+    setError('');
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const expectedEmail = String(import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+    const expectedPassword = String(import.meta.env.VITE_ADMIN_PASSWORD || '');
+    const emailOk = email.trim().toLowerCase() === expectedEmail;
+    const passwordOk = password === expectedPassword;
+    if (!expectedEmail || !expectedPassword || !emailOk || !passwordOk) {
+      setError('E-mail ou senha incorretos.');
+      return;
+    }
+    onSuccess();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+      <form onSubmit={handleSubmit} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_#1E3A5F] sm:shadow-[12px_12px_0px_#1E3A5F] w-full max-w-md relative p-4 sm:p-6">
+        <div className="flex justify-between items-start gap-3 border-b-4 border-[#2C1A14] pb-3 mb-6">
+          <h3 className="text-2xl font-display font-black text-[#2C1A14] uppercase flex items-center gap-2">
+            <Lock size={26} className="text-[#1E3A5F]" strokeWidth={2.5} /> Entrar
+          </h3>
+          <button type="button" onClick={onClose} className="bg-white text-[#2C1A14] p-2 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14]" aria-label="Fechar login">
+            <X size={20} strokeWidth={3} />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="login-email" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">E-mail</label>
+            <input
+              id="login-email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-base outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
+              placeholder="admin@acervo.com.br"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="login-password" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Senha</label>
+            <input
+              id="login-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-base outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
+              required
+            />
+          </div>
+          {error && <p role="alert" className="font-display font-bold uppercase text-sm text-[#C13B22]">{error}</p>}
+        </div>
+        <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+          <button type="button" onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
+          <ButtonPrimary type="submit" color="bgNavy" className="w-full sm:w-auto">Entrar</ButtonPrimary>
+        </div>
+      </form>
+    </div>
+  );
+};
+
 export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [currentView, setCurrentView] = useState('acervo');
 
   const [territorios, setTerritorios] = useState(initialTerritorios);
@@ -1181,13 +1257,20 @@ export default function App() {
               </div>
             )}
           </div>
-          <button onClick={() => { setIsAdmin(!isAdmin); if(isAdmin) setCurrentView('acervo'); }}
-            title={isAdmin ? 'Admin' : 'Acesso Público'}
+          <button onClick={() => {
+              if (isAdmin) {
+                setIsAdmin(false);
+                setCurrentView('acervo');
+                return;
+              }
+              setLoginOpen(true);
+            }}
+            title={isAdmin ? 'Sair' : 'Entrar'}
             className={`flex items-center gap-2 min-h-11 px-3 py-2 font-display font-bold uppercase text-xs border-2 transition-all shrink-0 ${isAdmin ? 'bg-[#C13B22] border-[#C13B22] text-white' : 'border-[#EAB308] text-[#EAB308] hover:bg-[#EAB308] hover:text-[#2C1A14]'}`}
           >
             {isAdmin ? <Unlock size={16} strokeWidth={3}/> : <Lock size={16} strokeWidth={3}/>}
-            <span className="sm:hidden">{isAdmin ? 'Admin' : 'Público'}</span>
-            <span className="hidden sm:inline">{isAdmin ? 'Admin' : 'Acesso Público'}</span>
+            <span className="sm:hidden">{isAdmin ? 'Sair' : 'Entrar'}</span>
+            <span className="hidden sm:inline">{isAdmin ? 'Sair' : 'Entrar'}</span>
           </button>
         </div>
         {isAdmin && (
@@ -1198,6 +1281,12 @@ export default function App() {
           </nav>
         )}
       </header>
+
+      <LoginModal
+        isOpen={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onSuccess={() => { setIsAdmin(true); setLoginOpen(false); }}
+      />
 
       <main className="flex-1 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
         {activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} />}

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import Badge from '../ui/Badge.jsx';
 import FileIcon from '../ui/FileIcon.jsx';
+import FileThumb from './FileThumb.jsx';
 import ClassificacaoModal from '../modals/ClassificacaoModal.jsx';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
 import FileViewer from '../modals/FileViewer.jsx';
@@ -322,13 +323,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
               <article key={file.id} onClick={() => setViewingFile(file)} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3 cursor-pointer active:translate-x-0.5 active:translate-y-0.5">
                 <div className="flex gap-3">
                   <div className="relative w-16 h-16 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[3px_3px_0px_#2C1A14] overflow-hidden flex items-center justify-center">
-                    {file.type === 'image' ? (
-                      <img src={file.url} alt="" className="w-full h-full object-cover filter contrast-125" />
-                    ) : (
-                      <div className="w-full h-full bg-[#E4CFB2]/30 flex items-center justify-center">
-                        <FileIcon type={file.type} className="opacity-40" size={28} />
-                      </div>
-                    )}
+                    <FileThumb file={file} iconSize={28} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight break-words">{file.name}</p>
@@ -383,13 +378,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-4">
                         <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[4px_4px_0px_#2C1A14] group-hover:-translate-y-1 group-hover:shadow-[6px_6px_0px_#C13B22] transition-all overflow-hidden flex items-center justify-center p-0.5">
-                          {file.type === 'image' ? (
-                            <img src={file.url} alt="Preview" className="w-full h-full object-cover filter contrast-125" />
-                          ) : (
-                            <div className="w-full h-full bg-[#E4CFB2]/30 flex items-center justify-center">
-                              <FileIcon type={file.type} className="opacity-40" size={32} />
-                            </div>
-                          )}
+                          <FileThumb file={file} iconSize={32} />
                           <div className="absolute -bottom-1 -right-1 bg-white border-2 border-[#2C1A14] p-0.5">
                             <FileIcon type={file.type} size={14} />
                           </div>

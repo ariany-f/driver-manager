@@ -173,7 +173,12 @@ async function handleDriveRequest(req, res, { root, env }) {
     const body = await readJson(req);
     const saved = await saveDriveEnv(root, env, body);
     const onlyRedirect = Object.keys(body).every(key => key === 'GOOGLE_REDIRECT_URI');
-    if (!onlyRedirect) await saveDriveConfig(env, saved);
+    if (onlyRedirect) {
+      if (!saved.wroteFile) throw new DriveError('Nesta publicação a URL de retorno segue o endereço do site. Não dá para gravá-la num arquivo.', 409);
+    } else {
+      const stored = await saveDriveConfig(env, saved);
+      if (!saved.wroteFile && !stored) throw new DriveError('Não foi possível guardar a configuração. O arquivo desta publicação é só leitura e o MySQL não está conectado.', 409);
+    }
     const stored = await resolveDriveConfig(env);
     const effectiveRedirect = resolveRedirectUri(stored, req.headers.host || 'localhost', req.headers['x-forwarded-proto']);
     sendJson(res, 200, {
@@ -241,7 +246,8 @@ async function handleDriveRequest(req, res, { root, env }) {
       GOOGLE_CLIENT_SECRET: config.clientSecret,
       DRIVE_FOLDER_ID: folderId,
     });
-    await saveDriveConfig(env, saved);
+    const stored = await saveDriveConfig(env, saved);
+    if (!saved.wroteFile && !stored) throw new DriveError('Não foi possível guardar a pasta. O arquivo desta publicação é só leitura e o MySQL não está conectado.', 409);
     const folderName = await getFolderName(env, saved);
     sendJson(res, 200, { folderId: saved.folderId, folderName });
     return;
@@ -349,7 +355,11 @@ export async function handleApi(req, res, { root, env }) {
     await handleDriveRequest(req, res, { root, env });
   } catch (error) {
     const status = error instanceof DriveError ? error.status : 500;
-    if (!res.headersSent) sendJson(res, status, { error: error.message || 'Falha na conexão com o Google Drive.' });
+    const raw = String(error?.message || '');
+    const message = error?.code === 'EROFS' || raw.includes('read-only file system')
+      ? 'O servidor publicado não grava arquivo de configuração. A pasta fica salva no banco.'
+      : (raw || 'Falha na conexão com o Google Drive.');
+    if (!res.headersSent) sendJson(res, status, { error: message });
     else res.end();
   }
 }

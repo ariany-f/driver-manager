@@ -238,7 +238,10 @@ export async function saveDatabaseSettings(root, env, updates) {
   const next = {};
   for (const key of DATABASE_ENV_KEYS) next[key] = unwrap(updates[key]);
   if (!next.DATABASE_PORT) next.DATABASE_PORT = '3306';
-  await saveEnvKeys(root, env, next, DATABASE_ENV_KEYS);
+  const wrote = await saveEnvKeys(root, env, next, DATABASE_ENV_KEYS);
+  if (!wrote) {
+    throw new DriveError('Nesta publicação as credenciais do banco ficam nas variáveis de ambiente do servidor. Não dá para alterá-las por esta tela.', 409);
+  }
   cache = null;
   if (pool) {
     await pool.end().catch(() => {});
@@ -273,7 +276,7 @@ export async function resolveDriveConfig(env) {
 
 export async function saveDriveConfig(env, config) {
   const status = await databaseStatus(env);
-  if (!status.connected) return;
+  if (!status.connected) return false;
   const db = await withPool(env);
   const values = [
     config.clientId || '',
@@ -285,6 +288,7 @@ export async function saveDriveConfig(env, config) {
      ON DUPLICATE KEY UPDATE client_id = ?, client_secret = ?, folder_id = ?`,
     [...values, ...values],
   );
+  return true;
 }
 
 export async function loadDriveConnection(env) {

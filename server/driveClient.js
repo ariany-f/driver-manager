@@ -41,6 +41,10 @@ function formatEnvValue(value) {
   return text;
 }
 
+function isReadOnlyFs(error) {
+  return error?.code === 'EROFS' || error?.code === 'EACCES' || error?.code === 'EPERM' || error?.code === 'ENOTSUP';
+}
+
 export async function saveEnvKeys(root, env, updates, keys) {
   const file = path.join(root, '.env');
   let text = '';
@@ -51,22 +55,37 @@ export async function saveEnvKeys(root, env, updates, keys) {
   }
   if (text && !text.endsWith('\n')) text += '\n';
 
+  const next = {};
   for (const key of keys) {
     if (!Object.prototype.hasOwnProperty.call(updates, key)) continue;
     const value = String(updates[key] ?? '').trim();
+    next[key] = value;
     const line = `${key}=${formatEnvValue(value)}`;
     const pattern = new RegExp(`^${key}=.*$`, 'm');
     if (pattern.test(text)) text = text.replace(pattern, line);
     else text += `${line}\n`;
-    env[key] = value;
   }
 
-  await writeFile(file, text);
+  try {
+    await writeFile(file, text);
+  } catch (error) {
+    if (isReadOnlyFs(error)) return false;
+    throw error;
+  }
+
+  Object.assign(env, next);
+  return true;
 }
 
 export async function saveDriveEnv(root, env, updates) {
-  await saveEnvKeys(root, env, updates, DRIVE_ENV_KEYS);
-  return readDriveConfig(env);
+  const wroteFile = await saveEnvKeys(root, env, updates, DRIVE_ENV_KEYS);
+  if (!wroteFile) {
+    for (const key of DRIVE_ENV_KEYS) {
+      if (key === 'GOOGLE_REDIRECT_URI' || !Object.prototype.hasOwnProperty.call(updates, key)) continue;
+      env[key] = String(updates[key] ?? '').trim();
+    }
+  }
+  return { ...readDriveConfig(env), wroteFile };
 }
 
 export function missingDriveKeys(config) {

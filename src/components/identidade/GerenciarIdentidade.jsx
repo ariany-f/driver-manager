@@ -1,0 +1,201 @@
+import { useState } from 'react';
+import { Edit, Plus, Trash2 } from 'lucide-react';
+import ButtonPrimary from '../ui/ButtonPrimary.jsx';
+import { getContrastTextColor, PREDEFINED_COLORS } from '../../lib/colors.js';
+
+export default function GerenciarIdentidade({ territorios, setTerritorios, tags, setTags }) {
+  const [activeTab, setActiveTab] = useState('territorios');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('#1E3A5F');
+
+  const openModal = (item = null) => {
+    if (item) {
+      setEditingItem(item);
+      setName(item.name);
+      setColor(item.bgColor);
+    } else {
+      setEditingItem(null);
+      setName('');
+      setColor(PREDEFINED_COLORS[Math.floor(Math.random() * PREDEFINED_COLORS.length)]);
+    }
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    const newItem = {
+      id: editingItem ? editingItem.id : `${activeTab}_${Date.now()}`,
+      name: name.trim(),
+      bgColor: color,
+      textColor: getContrastTextColor(color),
+    };
+
+    if (activeTab === 'territorios') {
+      if (editingItem) setTerritorios(prev => prev.map(territorio => territorio.id === editingItem.id ? newItem : territorio));
+      else setTerritorios(prev => [...prev, newItem]);
+    } else if (editingItem) {
+      setTags(prev => prev.map(tag => tag.id === editingItem.id ? newItem : tag));
+    } else {
+      setTags(prev => [...prev, newItem]);
+    }
+    closeModal();
+  };
+
+  const handleDelete = (id) => {
+    if (activeTab === 'territorios') setTerritorios(prev => prev.filter(territorio => territorio.id !== id));
+    else setTags(prev => prev.filter(tag => tag.id !== id));
+  };
+
+  const currentList = activeTab === 'territorios' ? territorios : tags;
+
+  return (
+    <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300 relative">
+      <div className="w-full space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 gap-4">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Identidade <span className="text-[#849B55]">Visual</span></h1>
+          <ButtonPrimary onClick={() => openModal()} icon={Plus} color="bgOlive" className="w-full sm:w-auto">Criar {activeTab === 'territorios' ? 'Território' : 'Tag'}</ButtonPrimary>
+        </div>
+
+        <div className="flex flex-wrap gap-3 border-b-2 border-[#2C1A14]/20 pb-4">
+          <button onClick={() => setActiveTab('territorios')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'territorios' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#C13B22]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
+            Territórios
+          </button>
+          <button onClick={() => setActiveTab('tags')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'tags' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#EAB308]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
+            Tags Livres
+          </button>
+        </div>
+
+        <div className="md:hidden space-y-3">
+          {currentList.map(item => (
+            <div key={item.id} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3 flex items-center justify-between gap-3">
+              <span
+                className="px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2 min-w-0"
+                style={{ backgroundColor: item.bgColor, color: item.textColor }}
+              >
+                {activeTab === 'territorios' && <span className="w-2 h-2 rounded-full bg-current opacity-70 shrink-0"></span>}
+                <span className="truncate">{item.name}</span>
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => openModal(item)} className="bg-white border-2 border-[#2C1A14] p-2.5 shadow-[2px_2px_0px_#2C1A14]" title="Editar" aria-label="Editar">
+                  <Edit size={16} strokeWidth={2.5} />
+                </button>
+                <button onClick={() => handleDelete(item.id)} className="bg-white border-2 border-[#2C1A14] p-2.5 text-[#C13B22] shadow-[2px_2px_0px_#2C1A14]" title="Excluir" aria-label="Excluir">
+                  <Trash2 size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {currentList.length === 0 && (
+            <p className="px-3 py-8 text-center font-mono text-[#2C1A14]/60 border-4 border-dashed border-[#2C1A14]/30">Nenhum registro encontrado.</p>
+          )}
+        </div>
+
+        <div className="hidden md:block bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)]">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
+                <th className="px-5 py-4 font-black w-2/3">Nome & Preview</th>
+                <th className="px-5 py-4 font-black text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y-2 divide-dashed divide-[#2C1A14]/20">
+              {currentList.map(item => (
+                <tr key={item.id} className="hover:bg-white/60 transition-colors">
+                  <td className="px-5 py-4">
+                    <span
+                      className="px-3 py-1.5 text-sm font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2"
+                      style={{ backgroundColor: item.bgColor, color: item.textColor }}
+                    >
+                      {activeTab === 'territorios' && <span className="w-2 h-2 rounded-full bg-current opacity-70"></span>}
+                      {item.name}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openModal(item)} className="bg-white border-2 border-[#2C1A14] p-2 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Editar">
+                        <Edit size={16} strokeWidth={2.5} />
+                      </button>
+                      <button onClick={() => handleDelete(item.id)} className="bg-white border-2 border-[#2C1A14] p-2 text-[#C13B22] hover:bg-[#C13B22] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Excluir">
+                        <Trash2 size={16} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {currentList.length === 0 && (
+                <tr>
+                  <td colSpan="2" className="px-5 py-8 text-center font-mono text-[#2C1A14]/60">Nenhum registro encontrado.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in zoom-in duration-200">
+          <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[6px_6px_0px_#849B55] sm:shadow-[12px_12px_0px_#849B55] w-full max-w-lg relative p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
+            <h3 className="text-2xl font-display font-black text-[#2C1A14] uppercase mb-6 flex items-center gap-2 border-b-4 border-[#2C1A14] pb-2">
+              {editingItem ? 'Editar' : 'Criar'} {activeTab === 'territorios' ? 'Território' : 'Tag'}
+            </h3>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Nome</label>
+                <input
+                  type="text" value={name} onChange={(e) => setName(e.target.value)}
+                  className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-lg outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
+                  placeholder="Ex: Zona Norte" autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Cor de Fundo</label>
+                <div className="bg-white border-4 border-[#2C1A14] p-3 space-y-4">
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                    {PREDEFINED_COLORS.map(swatch => (
+                      <button
+                        key={swatch} onClick={() => setColor(swatch)}
+                        className={`w-full aspect-square border-2 ${color === swatch ? 'border-[#2C1A14] scale-110 z-10 shadow-[2px_2px_0px_#2C1A14]' : 'border-transparent hover:scale-110 hover:border-[#2C1A14]/50 hover:z-10'} transition-all`}
+                        style={{ backgroundColor: swatch }}
+                        title={swatch}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3 border-t-2 border-dashed border-[#2C1A14]/20 pt-4">
+                    <span className="font-display font-bold text-xs uppercase">Cor Hex:</span>
+                    <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-8 h-8 p-0 border-2 border-[#2C1A14] cursor-pointer bg-transparent" />
+                    <input type="text" value={color} onChange={(e) => setColor(e.target.value)} className="w-24 border-2 border-[#2C1A14] p-1 font-mono text-sm uppercase outline-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <span className="block font-display font-bold text-sm uppercase tracking-wider mb-2 text-[#2C1A14]/60">Prévia</span>
+                <span
+                  className="px-4 py-2 text-lg font-display font-bold uppercase tracking-wider shadow-[4px_4px_0px_#2C1A14] border-4 border-[#2C1A14] inline-flex items-center gap-2"
+                  style={{ backgroundColor: color, color: getContrastTextColor(color) }}
+                >
+                  {activeTab === 'territorios' && <span className="w-2.5 h-2.5 rounded-full bg-current opacity-70"></span>}
+                  {name || 'Exemplo'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+              <button onClick={closeModal} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
+              <ButtonPrimary onClick={handleSave} color="bgMustard" disabled={!name.trim()} className="w-full sm:w-auto">Salvar</ButtonPrimary>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

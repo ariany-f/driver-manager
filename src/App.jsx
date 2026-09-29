@@ -6,6 +6,7 @@ import Dashboard from './components/dashboard/Dashboard.jsx';
 import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx';
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import { initialFiles, initialFolders, initialTags, initialTerritorios } from './data/seed.js';
+import { getSession, logout as endSession } from './services/auth.js';
 import {
   createDriveFolder,
   deleteDriveFolder,
@@ -70,6 +71,7 @@ export default function App() {
       if (result === 'error') setDriveError(message || 'Não foi possível conectar o Google Drive.');
     }
     const timer = window.setTimeout(() => {
+      getSession().then(admin => setIsAdmin(admin)).catch(() => setIsAdmin(false));
       refreshDrive();
     }, 0);
     return () => window.clearTimeout(timer);
@@ -133,8 +135,10 @@ export default function App() {
   };
 
   const logout = () => {
-    setIsAdmin(false);
-    setCurrentView('acervo');
+    endSession().catch(() => {}).finally(() => {
+      setIsAdmin(false);
+      setCurrentView('acervo');
+    });
   };
 
   const activeView = !isAdmin && currentView !== 'acervo' ? 'acervo' : currentView;

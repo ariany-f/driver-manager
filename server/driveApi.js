@@ -23,6 +23,7 @@ import {
   syncArchive,
   uploadDriveFile,
 } from './driveClient.js';
+import { handleAuthRequest, isAdminRequest, requiresAdmin } from './session.js';
 
 const states = new Map();
 const UPLOAD_LIMIT = 200 * 1024 * 1024;
@@ -242,8 +243,17 @@ export function driveApiPlugin(env) {
     name: 'drive-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith('/api/drive')) return next();
+        const pathname = req.url?.split('?')[0] || '';
+        if (!pathname.startsWith('/api/drive') && !pathname.startsWith('/api/auth')) return next();
         try {
+          if (pathname.startsWith('/api/auth')) {
+            await handleAuthRequest(req, res, env);
+            return;
+          }
+          if (requiresAdmin(req.method, pathname) && !isAdminRequest(req)) {
+            sendJson(res, 401, { error: 'Entre como equipe para continuar.' });
+            return;
+          }
           await handleDriveRequest(req, res, { root, env });
         } catch (error) {
           const status = error instanceof DriveError ? error.status : 500;

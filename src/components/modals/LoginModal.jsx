@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, Lock, X } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
-import { credentialsMatch } from '../../auth/adminLogin.js';
+import { login } from '../../services/auth.js';
 
 export default function LoginModal({ isOpen, onClose, onSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const passwordRef = useRef(null);
 
@@ -15,21 +16,25 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
     setEmail('');
     setPassword('');
     setShowPassword(false);
+    setSubmitting(false);
     setError('');
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const typedEmail = String(form.get('email') || '');
-    const typedPassword = String(form.get('password') || '');
-    if (!credentialsMatch(typedEmail, typedPassword)) {
-      setError('E-mail ou senha incorretos.');
-      return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await login(String(form.get('email') || ''), String(form.get('password') || ''));
+      onSuccess();
+    } catch (loginError) {
+      setError(loginError.message);
+    } finally {
+      setSubmitting(false);
     }
-    onSuccess();
   };
 
   const togglePassword = () => {
@@ -92,7 +97,7 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
         </div>
         <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button type="button" onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
-          <ButtonPrimary type="submit" color="bgNavy" className="w-full sm:w-auto">Entrar</ButtonPrimary>
+          <ButtonPrimary type="submit" color="bgNavy" className="w-full sm:w-auto" disabled={submitting}>{submitting ? 'Entrando' : 'Entrar'}</ButtonPrimary>
         </div>
       </form>
     </div>

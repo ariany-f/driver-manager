@@ -4,6 +4,7 @@ const views = [
   { id: 'acervo', lbl: 'Acervo' },
   { id: 'dashboard', lbl: 'Métricas' },
   { id: 'categorias', lbl: 'Identidade' },
+  { id: 'configuracoes', lbl: 'Configurações' },
 ];
 
 export default function Header({ isAdmin, activeView, onNavigate, onLogin, onLogout }) {
@@ -16,7 +17,7 @@ export default function Header({ isAdmin, activeView, onNavigate, onLogin, onLog
             <span className="font-display font-black text-[0.6rem] sm:text-[0.65rem] tracking-[0.2em] sm:tracking-[0.3em] text-[#EAB308]">DO TERRITÓRIO</span>
           </div>
           {isAdmin && (
-            <div className="hidden md:flex gap-4 border-l-4 border-white/10 pl-6">
+            <div className="hidden md:flex flex-wrap gap-3 border-l-4 border-white/10 pl-6">
               {views.map(view => (
                 <button key={view.id} onClick={() => onNavigate(view.id)} className={`font-display font-bold uppercase text-xs tracking-widest px-2 py-1 border-b-4 ${activeView === view.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}>{view.lbl}</button>
               ))}
@@ -33,7 +34,7 @@ export default function Header({ isAdmin, activeView, onNavigate, onLogin, onLog
         </button>
       </div>
       {isAdmin && (
-        <nav className="md:hidden grid grid-cols-3 border-t-2 border-white/10">
+        <nav className="md:hidden grid grid-cols-2 border-t-2 border-white/10">
           {views.map(view => (
             <button key={view.id} onClick={() => onNavigate(view.id)} className={`font-display font-bold uppercase text-[11px] tracking-widest px-2 py-3 border-b-4 ${activeView === view.id ? 'border-[#EAB308] text-[#EAB308] bg-white/5' : 'border-transparent text-white/50'}`}>{view.lbl}</button>
           ))}

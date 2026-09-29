@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree,
   Plus, Search, Tags, Trash2, X,
@@ -11,9 +11,10 @@ import ConfirmModal from '../modals/ConfirmModal.jsx';
 import FileViewer from '../modals/FileViewer.jsx';
 import FolderModal from '../modals/FolderModal.jsx';
 import MoveFileModal from '../modals/MoveFileModal.jsx';
+import DriveBar from '../drive/DriveBar.jsx';
 import { addFolderToTree, deleteFolderFromTree, flattenFolders, getDescendantFolderIds, renameFolderInTree } from '../../lib/folders.js';
 
-export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, territorios, tags }) {
+export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, territorios, tags, drive }) {
   const [editingFile, setEditingFile] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
   const [movingFile, setMovingFile] = useState(null);
@@ -28,6 +29,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const uploadRef = useRef(null);
   const itemsPerPage = 8;
 
   const flatFolders = flattenFolders(folders);
@@ -61,17 +63,36 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage) || 1;
   const currentFiles = filteredFiles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const closeFolderModal = () => setFolderModalConfig({ isOpen: false, mode: 'create', parentId: '', folder: null });
+
   const handleSaveFolder = (name, parentId, mode, folderId) => {
+    if (drive.active) {
+      drive.saveFolder({ mode, name, parentId, folderId });
+      closeFolderModal();
+      return;
+    }
     if (mode === 'create') {
       setFolders(prev => addFolderToTree(prev, parentId, { id: `fd_${Date.now()}`, name, children: [] }));
     } else {
       setFolders(prev => renameFolderInTree(prev, folderId, name));
     }
-    setFolderModalConfig({ isOpen: false, mode: 'create', parentId: '', folder: null });
+    closeFolderModal();
+  };
+
+  const handleUpload = (event) => {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (selected.length && drive.active) drive.upload(selected, activeFolderId);
   };
 
   const handleConfirmDeleteFolder = () => {
     if (!folderToDelete) return;
+    if (drive.active) {
+      drive.deleteFolder(folderToDelete.id);
+      setActiveFolderId('');
+      setFolderToDelete(null);
+      return;
+    }
     const idsToRemove = getDescendantFolderIds(folders, folderToDelete.id);
     setFiles(prev => prev.map(file => idsToRemove.includes(file.folderId) ? { ...file, folderId: '' } : file));
     setFolders(prev => deleteFolderFromTree(prev, folderToDelete.id));
@@ -207,6 +228,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 relative z-10">
         <div className="w-full space-y-6">
+          <DriveBar isAdmin={isAdmin} drive={drive} />
+
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 mb-2 gap-4">
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3 mb-2">
@@ -225,7 +248,12 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
                 Pasta Atual: {getDisplayPath(activeFolderId)}
               </p>
             </div>
-            {isAdmin && <ButtonPrimary icon={Plus} color="bgRust" className="w-full sm:w-auto">Upload</ButtonPrimary>}
+            {isAdmin && (
+              <>
+                <input ref={uploadRef} type="file" multiple className="hidden" onChange={handleUpload} />
+                <ButtonPrimary icon={Plus} color="bgRust" className="w-full sm:w-auto" disabled={!drive.active || drive.busy} title={drive.active ? 'Enviar para a pasta atual do Drive' : 'Conecte o Google Drive para enviar'} onClick={() => uploadRef.current?.click()}>Upload</ButtonPrimary>
+              </>
+            )}
           </div>
 
           <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-4 sm:p-6 mb-8 shadow-[4px_4px_0px_rgba(44,26,20,0.1)] md:shadow-[8px_8px_0px_rgba(44,26,20,0.1)] space-y-4 sm:space-y-6">
@@ -416,14 +444,19 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
       <MoveFileModal
         isOpen={!!movingFile} file={movingFile} flatFolders={flatFolders} onClose={() => setMovingFile(null)}
         onSave={(fileId, newFolderId) => {
-          setFiles(files.map(file => file.id === fileId ? { ...file, folderId: newFolderId } : file));
+          if (drive.active) drive.moveFile(fileId, newFolderId);
+          else setFiles(files.map(file => file.id === fileId ? { ...file, folderId: newFolderId } : file));
           setMovingFile(null);
         }}
       />
 
       {editingFile && (
         <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} onClose={() => setEditingFile(null)}
-          onSave={(id, nextTerritorios, nextTags) => { setFiles(files.map(file => file.id === id ? { ...file, territorios: nextTerritorios, tags: nextTags } : file)); setEditingFile(null); }}
+          onSave={(id, nextTerritorios, nextTags) => {
+            if (drive.active) drive.saveClassificacao(id, nextTerritorios, nextTags);
+            else setFiles(files.map(file => file.id === id ? { ...file, territorios: nextTerritorios, tags: nextTags } : file));
+            setEditingFile(null);
+          }}
         />
       )}
 

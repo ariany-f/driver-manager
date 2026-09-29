@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react';
-import { Lock, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Eye, EyeOff, Lock, X } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { credentialsMatch } from '../../auth/adminLogin.js';
 
 export default function LoginModal({ isOpen, onClose, onSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const passwordRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setEmail('');
     setPassword('');
+    setShowPassword(false);
     setError('');
   }, [isOpen]);
 
@@ -19,11 +22,19 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!credentialsMatch(email, password)) {
+    const form = new FormData(event.currentTarget);
+    const typedEmail = String(form.get('email') || '');
+    const typedPassword = String(form.get('password') || '');
+    if (!credentialsMatch(typedEmail, typedPassword)) {
       setError('E-mail ou senha incorretos.');
       return;
     }
     onSuccess();
+  };
+
+  const togglePassword = () => {
+    if (passwordRef.current) setPassword(passwordRef.current.value);
+    setShowPassword(current => !current);
   };
 
   return (
@@ -42,26 +53,40 @@ export default function LoginModal({ isOpen, onClose, onSuccess }) {
             <label htmlFor="login-email" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">E-mail</label>
             <input
               id="login-email"
+              name="email"
               type="email"
               autoComplete="username"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-base outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
+              className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-base text-[#2C1A14] caret-[#2C1A14] outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white [color-scheme:light]"
               placeholder="admin@acervo.com.br"
               required
             />
           </div>
           <div>
             <label htmlFor="login-password" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Senha</label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-base outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
-              required
-            />
+            <div className="relative transition-all focus-within:-translate-y-1 focus-within:shadow-[4px_4px_0px_#2C1A14]">
+              <input
+                ref={passwordRef}
+                id="login-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-sans font-medium text-base text-[#2C1A14] caret-[#2C1A14] outline-none bg-white [color-scheme:light]"
+                required
+              />
+              <button
+                type="button"
+                onClick={togglePassword}
+                className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
+              </button>
+            </div>
           </div>
           {error && <p role="alert" className="font-display font-bold uppercase text-sm text-[#C13B22]">{error}</p>}
         </div>

@@ -7,7 +7,7 @@ const views = [
   { id: 'configuracoes', lbl: 'Configurações' },
 ];
 
-export default function Header({ isAdmin, activeView, onNavigate, onLogin, onLogout }) {
+export default function Header({ isAdmin, labelsEnabled, activeView, onNavigate, onLogin, onLogout }) {
   return (
     <header className="bg-[#2C1A14] text-[#F4EFE6] border-b-4 border-[#C13B22] z-20 shrink-0 relative">
       <div className="flex items-center justify-between gap-3 px-3 sm:px-6 py-2">
@@ -18,9 +18,21 @@ export default function Header({ isAdmin, activeView, onNavigate, onLogin, onLog
           </div>
           {isAdmin && (
             <div className="hidden md:flex flex-wrap gap-3 border-l-4 border-white/10 pl-6">
-              {views.map(view => (
-                <button key={view.id} onClick={() => onNavigate(view.id)} className={`font-display font-bold uppercase text-xs tracking-widest px-2 py-1 border-b-4 ${activeView === view.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}>{view.lbl}</button>
-              ))}
+              {views.map(view => {
+                const disabled = view.id === 'categorias' && !labelsEnabled;
+                return (
+                  <button
+                    key={view.id}
+                    type="button"
+                    disabled={disabled}
+                    title={disabled ? 'Disponível quando o banco estiver conectado' : view.lbl}
+                    onClick={() => { if (!disabled) onNavigate(view.id); }}
+                    className={`font-display font-bold uppercase text-xs tracking-widest px-2 py-1 border-b-4 ${disabled ? 'border-transparent text-white/25 cursor-not-allowed' : activeView === view.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}
+                  >
+                    {view.lbl}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -35,9 +47,21 @@ export default function Header({ isAdmin, activeView, onNavigate, onLogin, onLog
       </div>
       {isAdmin && (
         <nav className="md:hidden grid grid-cols-2 border-t-2 border-white/10">
-          {views.map(view => (
-            <button key={view.id} onClick={() => onNavigate(view.id)} className={`font-display font-bold uppercase text-[11px] tracking-widest px-2 py-3 border-b-4 ${activeView === view.id ? 'border-[#EAB308] text-[#EAB308] bg-white/5' : 'border-transparent text-white/50'}`}>{view.lbl}</button>
-          ))}
+          {views.map(view => {
+            const disabled = view.id === 'categorias' && !labelsEnabled;
+            return (
+              <button
+                key={view.id}
+                type="button"
+                disabled={disabled}
+                title={disabled ? 'Disponível quando o banco estiver conectado' : view.lbl}
+                onClick={() => { if (!disabled) onNavigate(view.id); }}
+                className={`font-display font-bold uppercase text-[11px] tracking-widest px-2 py-3 border-b-4 ${disabled ? 'border-transparent text-white/25 cursor-not-allowed' : activeView === view.id ? 'border-[#EAB308] text-[#EAB308] bg-white/5' : 'border-transparent text-white/50'}`}
+              >
+                {view.lbl}
+              </button>
+            );
+          })}
         </nav>
       )}
     </header>

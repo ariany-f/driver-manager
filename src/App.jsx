@@ -7,6 +7,7 @@ import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import { initialFiles, initialFolders, initialTags, initialTerritorios } from './data/seed.js';
 import { getSession, logout as endSession } from './services/auth.js';
+import { getDatabaseStatus } from './services/database.js';
 import {
   createDriveFolder,
   deleteDriveFolder,
@@ -32,6 +33,7 @@ export default function App() {
   const [driveBusy, setDriveBusy] = useState(false);
   const [driveMessage, setDriveMessage] = useState('');
   const [driveError, setDriveError] = useState('');
+  const [labelsEnabled, setLabelsEnabled] = useState(false);
 
   const applyArchive = (archive) => {
     setFiles(archive.files);
@@ -72,6 +74,9 @@ export default function App() {
     }
     const timer = window.setTimeout(() => {
       getSession().then(admin => setIsAdmin(admin)).catch(() => setIsAdmin(false));
+      getDatabaseStatus()
+        .then(status => setLabelsEnabled(Boolean(status.connected)))
+        .catch(() => setLabelsEnabled(false));
       refreshDrive();
     }, 0);
     return () => window.clearTimeout(timer);
@@ -141,12 +146,15 @@ export default function App() {
     });
   };
 
-  const activeView = !isAdmin && currentView !== 'acervo' ? 'acervo' : currentView;
+  let activeView = currentView;
+  if (!isAdmin && activeView !== 'acervo') activeView = 'acervo';
+  if (!labelsEnabled && activeView === 'categorias') activeView = 'acervo';
 
   return (
     <div className="h-dvh w-full bg-[#E4CFB2] flex flex-col font-sans text-[#2C1A14] overflow-hidden selection:bg-[#EAB308] selection:text-[#2C1A14]">
       <Header
         isAdmin={isAdmin}
+        labelsEnabled={labelsEnabled}
         activeView={activeView}
         onNavigate={setCurrentView}
         onLogin={() => setLoginOpen(true)}
@@ -163,7 +171,7 @@ export default function App() {
         {!driveReady && (
           <p className="p-8 font-display font-black uppercase tracking-widest text-[#2C1A14]">Carregando acervo...</p>
         )}
-        {driveReady && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} />}
+        {driveReady && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} labelsEnabled={labelsEnabled} />}
         {driveReady && activeView === 'acervo' && (
           <Acervo
             isAdmin={isAdmin}
@@ -174,10 +182,16 @@ export default function App() {
             territorios={territorios}
             tags={tags}
             drive={drive}
+            labelsEnabled={labelsEnabled}
           />
         )}
         {driveReady && activeView === 'categorias' && <GerenciarIdentidade territorios={territorios} setTerritorios={setTerritorios} tags={tags} setTags={setTags} />}
-        {driveReady && activeView === 'configuracoes' && <Configuracoes onSaved={() => refreshDrive()} />}
+        {driveReady && activeView === 'configuracoes' && (
+          <Configuracoes
+            onSaved={() => refreshDrive()}
+            onDatabaseChange={connected => setLabelsEnabled(connected)}
+          />
+        )}
       </main>
     </div>
   );

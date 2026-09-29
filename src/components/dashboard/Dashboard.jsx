@@ -18,7 +18,7 @@ const typeLabels = {
   audio: 'Áudios',
 };
 
-export default function Dashboard({ files, territorios }) {
+export default function Dashboard({ files, territorios, labelsEnabled }) {
   const totalSizeMB = files.reduce((acc, file) => acc + parseSize(file.size), 0);
   const formattedSize = totalSizeMB > 1024 ? `${(totalSizeMB / 1024).toFixed(2)} GB` : `${totalSizeMB.toFixed(2)} MB`;
 
@@ -89,27 +89,31 @@ export default function Dashboard({ files, territorios }) {
 
           <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_rgba(44,26,20,0.15)]">
             <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Territórios Mais Ativos</h3>
-            <div className="space-y-3">
-              {sortedTerritories.map((territorio, index) => {
-                const maxCount = sortedTerritories[0]?.count || 1;
-                const percentage = Math.round((territorio.count / maxCount) * 100);
-                return (
-                  <div key={territorio.id} className="flex items-center gap-3 group">
-                    <span className="font-display font-black text-[#2C1A14]/30 w-6 text-right">{(index + 1).toString().padStart(2, '0')}</span>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-end mb-1">
-                        <span className="text-sm font-display font-bold uppercase truncate pr-2">{territorio.name}</span>
-                        <span className="text-xs font-mono font-bold">{territorio.count} arq</span>
-                      </div>
-                      <div className="w-full bg-[#E4CFB2] h-2">
-                        <div className="h-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: territorio.bgColor }}></div>
+            {labelsEnabled ? (
+              <div className="space-y-3">
+                {sortedTerritories.map((territorio, index) => {
+                  const maxCount = sortedTerritories[0]?.count || 1;
+                  const percentage = Math.round((territorio.count / maxCount) * 100);
+                  return (
+                    <div key={territorio.id} className="flex items-center gap-3 group">
+                      <span className="font-display font-black text-[#2C1A14]/30 w-6 text-right">{(index + 1).toString().padStart(2, '0')}</span>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-end mb-1">
+                          <span className="text-sm font-display font-bold uppercase truncate pr-2">{territorio.name}</span>
+                          <span className="text-xs font-mono font-bold">{territorio.count} arq</span>
+                        </div>
+                        <div className="w-full bg-[#E4CFB2] h-2">
+                          <div className="h-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: territorio.bgColor }}></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-              {sortedTerritories.length === 0 && <p className="text-sm font-mono text-[#2C1A14]/60">Nenhum arquivo classificado ainda.</p>}
-            </div>
+                  );
+                })}
+                {sortedTerritories.length === 0 && <p className="text-sm font-mono text-[#2C1A14]/60">Nenhum arquivo classificado ainda.</p>}
+              </div>
+            ) : (
+              <p className="text-sm font-mono text-[#2C1A14]/70">Desligado até o banco conectar. O acervo mostra só os arquivos.</p>
+            )}
           </div>
         </div>
       </div>

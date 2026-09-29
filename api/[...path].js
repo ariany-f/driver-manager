@@ -21,7 +21,7 @@ function requestUrl(req) {
   if (path.startsWith('/api/')) return path + query;
   const parts = [].concat(req.query?.path || []).filter(Boolean);
   if (parts.length) return `/api/${parts.join('/')}${query}`;
-  if (path.startsWith('/auth') || path.startsWith('/drive')) return `/api${path}${query}`;
+  if (path.startsWith('/auth') || path.startsWith('/drive') || path.startsWith('/database')) return `/api${path}${query}`;
   return path + query;
 }
 

@@ -23,6 +23,7 @@ import {
   syncArchive,
   uploadDriveFile,
 } from './driveClient.js';
+import { databaseStatus, handleDatabaseRequest } from './database.js';
 import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
 
 const OAUTH_COOKIE = 'acervo_oauth';
@@ -82,6 +83,16 @@ function consumeState(req, env, state) {
 
 function clearOauthCookie(res, req) {
   res.setHeader('Set-Cookie', `${OAUTH_COOKIE}=; ${cookieAttributes(req)}; Max-Age=0`);
+}
+
+async function archivePayload(root, config, env) {
+  const archive = await syncArchive(root, config);
+  const database = await databaseStatus(env);
+  if (database.connected) return archive;
+  return {
+    ...archive,
+    files: archive.files.map(file => ({ ...file, territorios: [], tags: [] })),
+  };
 }
 
 async function handleDriveRequest(req, res, { root, env }) {
@@ -168,7 +179,7 @@ async function handleDriveRequest(req, res, { root, env }) {
   }
 
   if (req.method === 'GET' && pathname === '/api/drive/sync') {
-    sendJson(res, 200, await syncArchive(root, config));
+    sendJson(res, 200, await archivePayload(root, config, env));
     return;
   }
 
@@ -199,14 +210,14 @@ async function handleDriveRequest(req, res, { root, env }) {
       folderId: url.searchParams.get('folderId') || '',
       bytes,
     });
-    sendJson(res, 201, await syncArchive(root, config));
+    sendJson(res, 201, await archivePayload(root, config, env));
     return;
   }
 
   if (req.method === 'POST' && pathname === '/api/drive/folders') {
     const body = await readJson(req);
     await createDriveFolder(root, config, body);
-    sendJson(res, 201, await syncArchive(root, config));
+    sendJson(res, 201, await archivePayload(root, config, env));
     return;
   }
 
@@ -214,12 +225,12 @@ async function handleDriveRequest(req, res, { root, env }) {
   if (folder && req.method === 'PATCH') {
     const body = await readJson(req);
     await renameDriveFolder(root, config, folder[1], body.name);
-    sendJson(res, 200, await syncArchive(root, config));
+    sendJson(res, 200, await archivePayload(root, config, env));
     return;
   }
   if (folder && req.method === 'DELETE') {
     await deleteDriveFolder(root, config, folder[1]);
-    sendJson(res, 200, await syncArchive(root, config));
+    sendJson(res, 200, await archivePayload(root, config, env));
     return;
   }
 
@@ -227,12 +238,16 @@ async function handleDriveRequest(req, res, { root, env }) {
   if (file && req.method === 'PATCH') {
     const body = await readJson(req);
     await moveDriveFile(root, config, file[1], body.folderId || '');
-    sendJson(res, 200, await syncArchive(root, config));
+    sendJson(res, 200, await archivePayload(root, config, env));
     return;
   }
 
   const labels = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)\/classificacao$/);
   if (labels && req.method === 'PUT') {
+    const database = await databaseStatus(env);
+    if (!database.connected) {
+      throw new DriveError('Territórios e tags ficam disponíveis quando o banco estiver conectado.', 409);
+    }
     const body = await readJson(req);
     const saved = await saveLabels(root, labels[1], body.territorios, body.tags);
     sendJson(res, 200, saved);
@@ -247,6 +262,14 @@ export async function handleApi(req, res, { root, env }) {
   try {
     if (pathname.startsWith('/api/auth')) {
       await handleAuthRequest(req, res, env);
+      return;
+    }
+    if (pathname.startsWith('/api/database')) {
+      if (pathname !== '/api/database/status' && !isAdminRequest(req, env)) {
+        sendJson(res, 401, { error: 'Entre como equipe para continuar.' });
+        return;
+      }
+      await handleDatabaseRequest(req, res, { root, env });
       return;
     }
     if (!pathname.startsWith('/api/drive')) {
@@ -272,7 +295,7 @@ export function driveApiPlugin(env) {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = req.url?.split('?')[0] || '';
-        if (!pathname.startsWith('/api/drive') && !pathname.startsWith('/api/auth')) return next();
+        if (!pathname.startsWith('/api/drive') && !pathname.startsWith('/api/auth') && !pathname.startsWith('/api/database')) return next();
         await handleApi(req, res, { root, env });
       });
     },

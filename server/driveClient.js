@@ -41,7 +41,7 @@ function formatEnvValue(value) {
   return text;
 }
 
-export async function saveDriveEnv(root, env, updates) {
+export async function saveEnvKeys(root, env, updates, keys) {
   const file = path.join(root, '.env');
   let text = '';
   try {
@@ -51,7 +51,7 @@ export async function saveDriveEnv(root, env, updates) {
   }
   if (text && !text.endsWith('\n')) text += '\n';
 
-  for (const key of DRIVE_ENV_KEYS) {
+  for (const key of keys) {
     if (!Object.prototype.hasOwnProperty.call(updates, key)) continue;
     const value = String(updates[key] ?? '').trim();
     const line = `${key}=${formatEnvValue(value)}`;
@@ -62,6 +62,10 @@ export async function saveDriveEnv(root, env, updates) {
   }
 
   await writeFile(file, text);
+}
+
+export async function saveDriveEnv(root, env, updates) {
+  await saveEnvKeys(root, env, updates, DRIVE_ENV_KEYS);
   return readDriveConfig(env);
 }
 

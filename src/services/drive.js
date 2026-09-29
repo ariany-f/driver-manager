@@ -45,17 +45,36 @@ export function previewDrive() {
   return fetch('/api/drive/novidades').then(readJson);
 }
 
-export function uploadDriveFile(file, folderId) {
+export function uploadDriveFile(file, folderId, onProgress) {
   const params = new URLSearchParams({
     name: file.name,
     folderId: folderId || '',
   });
-  return fetch(`/api/drive/upload?${params.toString()}`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'content-type': file.type || 'application/octet-stream' },
-    body: file,
-  }).then(readJson);
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', `/api/drive/upload?${params.toString()}`);
+    request.withCredentials = true;
+    request.setRequestHeader('content-type', file.type || 'application/octet-stream');
+    request.upload.onprogress = (event) => {
+      if (!onProgress) return;
+      onProgress({
+        loaded: event.loaded,
+        total: event.lengthComputable ? event.total : file.size,
+      });
+    };
+    request.onload = () => {
+      let payload = {};
+      try {
+        payload = JSON.parse(request.responseText || '{}');
+      } catch {
+        payload = {};
+      }
+      if (request.status >= 200 && request.status < 300) resolve(payload);
+      else reject(new Error(payload.error || 'Não foi possível enviar o arquivo.'));
+    };
+    request.onerror = () => reject(new Error('Não foi possível enviar o arquivo.'));
+    request.send(file);
+  });
 }
 
 export function syncDrive() {

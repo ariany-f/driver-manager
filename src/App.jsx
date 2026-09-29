@@ -41,6 +41,7 @@ export default function App() {
   const novidadesDispensadas = useRef(false);
   const escolherPasta = useRef(false);
   const [pickFolder, setPickFolder] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   const goTo = useCallback((view) => {
     setCurrentView(view);
@@ -192,8 +193,20 @@ export default function App() {
       try {
         const novos = [];
         let archive = null;
-        for (const file of selected) {
-          archive = await uploadDriveFile(file, folderId);
+        for (let index = 0; index < selected.length; index += 1) {
+          const file = selected[index];
+          setUploadProgress({ name: file.name, index, count: selected.length, loaded: 0, total: file.size || 0, saving: false });
+          archive = await uploadDriveFile(file, folderId, ({ loaded, total }) => {
+            const size = total || file.size || 0;
+            setUploadProgress({
+              name: file.name,
+              index,
+              count: selected.length,
+              loaded,
+              total: size,
+              saving: size > 0 && loaded >= size,
+            });
+          });
           novos.push(...(archive.novos || []));
         }
         if (archive) applyArchive(archive);
@@ -202,6 +215,7 @@ export default function App() {
       } catch (error) {
         setDriveError(error.message);
       } finally {
+        setUploadProgress(null);
         setDriveBusy(false);
       }
     },

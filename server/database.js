@@ -71,9 +71,16 @@ const CREATE_APLICACAO = `
     logo_largura INT NOT NULL DEFAULT 0,
     logo_altura INT NOT NULL DEFAULT 0,
     logo MEDIUMBLOB NULL,
+    favicon_mime VARCHAR(64) NOT NULL DEFAULT '',
+    favicon MEDIUMBLOB NULL,
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
+
+const APLICACAO_COLUMNS = [
+  ['favicon_mime', "VARCHAR(64) NOT NULL DEFAULT ''"],
+  ['favicon', 'MEDIUMBLOB NULL'],
+];
 
 const CREATE_DRIVE_CONFIG = `
   CREATE TABLE drive_config (
@@ -193,6 +200,27 @@ function tableNameOf(row) {
   return String(value || '').toLowerCase();
 }
 
+function columnNameOf(row) {
+  const named = row.columnName || row.COLUMN_NAME || row.column_name;
+  if (named) return String(named).toLowerCase();
+  const value = Object.values(row)[0];
+  return String(value || '').toLowerCase();
+}
+
+async function ensureAplicacaoColumns(db) {
+  const [rows] = await db.query(
+    `SELECT column_name AS columnName
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'aplicacao'`,
+  );
+  const present = new Set(rows.map(columnNameOf));
+  for (const [name, definition] of APLICACAO_COLUMNS) {
+    if (present.has(name)) continue;
+    await db.query(`ALTER TABLE aplicacao ADD COLUMN ${name} ${definition}`);
+  }
+}
+
 async function existingTables(db) {
   const marks = TABLE_SQL.map(() => '?').join(', ');
   const [rows] = await db.query(
@@ -217,6 +245,7 @@ export async function ensureTables(env) {
     if (present.has(name)) continue;
     await db.query(sql);
   }
+  await ensureAplicacaoColumns(db);
   tablesKey = key;
   return TABLE_SQL.map(([name]) => name);
 }
@@ -421,7 +450,50 @@ export async function saveLogo(env, image) {
 
 export async function clearLogo(env) {
   const db = await withPool(env);
-  await db.query('DELETE FROM aplicacao WHERE id = 1');
+  await db.query("UPDATE aplicacao SET logo_mime = '', logo_largura = 0, logo_altura = 0, logo = NULL WHERE id = 1");
+}
+
+function isIco(bytes) {
+  return bytes.length > 6 && bytes.readUInt16LE(0) === 0 && bytes.readUInt16LE(2) === 1;
+}
+
+function decodeFavicon(value) {
+  const match = String(value || '').match(/^data:[^,]*,([A-Za-z0-9+/=\s]+)$/);
+  if (!match) throw new DriveError('Envie um favicon PNG, JPEG, WEBP, GIF ou ICO.');
+  const bytes = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+  if (!bytes.length || bytes.length > LOGO_LIMIT) throw new DriveError('O favicon precisa ter no máximo 2 MB.');
+  if (isIco(bytes)) return { mime: 'image/x-icon', bytes };
+  const size = imageSize(bytes);
+  if (!size?.width || !size?.height) throw new DriveError('Não foi possível ler este favicon. Use PNG, JPEG, WEBP, GIF ou ICO.');
+  return { mime: size.mime, bytes };
+}
+
+export async function loadFavicon(env) {
+  const status = await databaseStatus(env);
+  if (!status.connected) return null;
+  const db = await withPool(env);
+  const [rows] = await db.query('SELECT favicon_mime, favicon FROM aplicacao WHERE id = 1');
+  const row = rows[0];
+  if (!row?.favicon) return null;
+  const bytes = Buffer.isBuffer(row.favicon) ? row.favicon : Buffer.from(row.favicon);
+  if (!bytes.length) return null;
+  return { mime: row.favicon_mime || 'image/png', bytes };
+}
+
+export async function saveFavicon(env, image) {
+  const favicon = decodeFavicon(image);
+  const db = await withPool(env);
+  await db.query(
+    `INSERT INTO aplicacao (id, favicon_mime, favicon) VALUES (1, ?, ?)
+     ON DUPLICATE KEY UPDATE favicon_mime = ?, favicon = ?`,
+    [favicon.mime, favicon.bytes, favicon.mime, favicon.bytes],
+  );
+  return { mime: favicon.mime };
+}
+
+export async function clearFavicon(env) {
+  const db = await withPool(env);
+  await db.query("UPDATE aplicacao SET favicon_mime = '', favicon = NULL WHERE id = 1");
 }
 
 export async function clearSyncedFiles(env) {
@@ -810,6 +882,32 @@ export async function handleDatabaseRequest(req, res, { root, env }) {
 
   if (req.method === 'DELETE' && url.pathname === '/api/database/logo') {
     await clearLogo(env);
+    sendJson(res, 200, { removed: true });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/database/favicon') {
+    const favicon = await loadFavicon(env);
+    if (!favicon) {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    res.statusCode = 200;
+    res.setHeader('content-type', favicon.mime);
+    res.setHeader('cache-control', 'private, max-age=60');
+    res.end(favicon.bytes);
+    return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/api/database/favicon') {
+    const body = await readBody(req);
+    sendJson(res, 200, await saveFavicon(env, body.image));
+    return;
+  }
+
+  if (req.method === 'DELETE' && url.pathname === '/api/database/favicon') {
+    await clearFavicon(env);
     sendJson(res, 200, { removed: true });
     return;
   }

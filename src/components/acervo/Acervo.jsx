@@ -221,7 +221,13 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 relative z-10">
         <div className="w-full space-y-6">
-          <DriveBar isAdmin={isAdmin} drive={drive} />
+          {!drive.status?.connected && <DriveBar isAdmin={isAdmin} drive={drive} />}
+          {drive.status?.connected && (drive.message || drive.error) && (
+            <div className="space-y-2">
+              {drive.message && <p className="font-sans text-sm font-bold text-[#627933]">{drive.message}</p>}
+              {drive.error && <p className="font-sans text-sm font-bold text-[#C13B22]">{drive.error}</p>}
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 mb-2 gap-4">
             <div className="min-w-0">
@@ -381,10 +387,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <td className="px-5 py-4 min-w-0">
                       <div className="flex items-start gap-4 min-w-0">
                         <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[4px_4px_0px_#2C1A14] group-hover:-translate-y-1 group-hover:shadow-[6px_6px_0px_#C13B22] transition-all overflow-hidden flex items-center justify-center p-0.5">
-                          <FileThumb file={file} iconSize={32} />
-                          <div className="absolute -bottom-1 -right-1 bg-white border-2 border-[#2C1A14] p-0.5">
-                            <FileIcon file={file} size={14} />
-                          </div>
+                          <FileThumb file={file} iconSize={32} badge />
                         </div>
                         <div className="min-w-0">
                           <p className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase break-all group-hover:text-[#C13B22] transition-colors">{file.name}</p>

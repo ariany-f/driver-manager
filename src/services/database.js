@@ -94,6 +94,28 @@ export function removeLogo() {
   return fetch('/api/database/logo', { method: 'DELETE', credentials: 'same-origin' }).then(readJson);
 }
 
+export function getFavicon() {
+  return fetch('/api/database/favicon', { credentials: 'same-origin' }).then(async response => {
+    if (response.status === 204) return '';
+    if (!response.ok) throw new Error('Não foi possível carregar o favicon.');
+    await response.arrayBuffer();
+    return `/api/database/favicon?v=${Date.now()}`;
+  });
+}
+
+export function saveFavicon(image) {
+  return fetch('/api/database/favicon', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ image }),
+  }).then(readJson);
+}
+
+export function removeFavicon() {
+  return fetch('/api/database/favicon', { method: 'DELETE', credentials: 'same-origin' }).then(readJson);
+}
+
 export function moveArquivo(fileId, pastaId) {
   return fetch('/api/database/arquivos', {
     method: 'PUT',

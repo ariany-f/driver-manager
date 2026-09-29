@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Database, Eye, EyeOff, Folder, Image, Pencil, Settings } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
-import { getDatabaseSettings, removeLogo, saveDatabaseSettings, saveLogo } from '../../services/database.js';
+import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, saveFavicon, saveLogo } from '../../services/database.js';
+import DriveBar from '../drive/DriveBar.jsx';
 import { getDriveSettings, saveDriveField } from '../../services/drive.js';
 
 const fields = [
@@ -52,7 +53,9 @@ function measureImage(file) {
   });
 }
 
-export default function Configuracoes({ onSaved, onDatabaseChange, logoUrl, onLogoChange }) {
+const FAVICON_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/x-icon', 'image/vnd.microsoft.icon'];
+
+export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChange, logoUrl, onLogoChange, faviconUrl, onFaviconChange }) {
   const [form, setForm] = useState(emptyForm);
   const [databaseForm, setDatabaseForm] = useState(emptyDatabase);
   const [databaseState, setDatabaseState] = useState({ configured: false, connected: false, error: '', tables: [] });
@@ -63,6 +66,10 @@ export default function Configuracoes({ onSaved, onDatabaseChange, logoUrl, onLo
   const [logoError, setLogoError] = useState('');
   const [logoMessage, setLogoMessage] = useState('');
   const [savingLogo, setSavingLogo] = useState(false);
+  const [pendingFavicon, setPendingFavicon] = useState('');
+  const [faviconError, setFaviconError] = useState('');
+  const [faviconMessage, setFaviconMessage] = useState('');
+  const [savingFavicon, setSavingFavicon] = useState(false);
   const [databaseDraft, setDatabaseDraft] = useState(emptyDatabase);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
@@ -215,6 +222,60 @@ export default function Configuracoes({ onSaved, onDatabaseChange, logoUrl, onLo
     }
   };
 
+  const handleFaviconFile = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    setFaviconError('');
+    setFaviconMessage('');
+    if (!file) return;
+    const ico = /\.ico$/i.test(file.name);
+    if (!FAVICON_TYPES.includes(file.type) && !ico) {
+      setFaviconError('Use PNG, JPEG, WEBP, GIF ou ICO.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setFaviconError('O favicon precisa ter no máximo 2 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPendingFavicon(String(reader.result || ''));
+    reader.onerror = () => setFaviconError('Não foi possível ler este favicon.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleFaviconSave = async () => {
+    if (!pendingFavicon) return;
+    setSavingFavicon(true);
+    setFaviconError('');
+    setFaviconMessage('');
+    try {
+      await saveFavicon(pendingFavicon);
+      setPendingFavicon('');
+      setFaviconMessage('Favicon atualizado.');
+      if (onFaviconChange) await onFaviconChange();
+    } catch (saveError) {
+      setFaviconError(saveError.message);
+    } finally {
+      setSavingFavicon(false);
+    }
+  };
+
+  const handleFaviconRemove = async () => {
+    setSavingFavicon(true);
+    setFaviconError('');
+    setFaviconMessage('');
+    try {
+      await removeFavicon();
+      setPendingFavicon('');
+      setFaviconMessage('Favicon removido. A aba voltou para o ícone atual.');
+      if (onFaviconChange) await onFaviconChange();
+    } catch (saveError) {
+      setFaviconError(saveError.message);
+    } finally {
+      setSavingFavicon(false);
+    }
+  };
+
   const handleDatabaseSubmit = async (event) => {
     event.preventDefault();
     setSavingDatabase(true);
@@ -287,6 +348,43 @@ export default function Configuracoes({ onSaved, onDatabaseChange, logoUrl, onLo
           {logoError && <p className="font-sans font-bold text-sm text-[#C13B22]">{logoError}</p>}
           {logoMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{logoMessage}</p>}
         </section>
+
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
+          <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
+            <Image size={18} strokeWidth={2.5} /> Favicon
+          </div>
+          <p className="font-sans font-bold text-sm text-[#2C1A14]/80">
+            Esse ícone aparece na aba do navegador. Sem favicon, a aba continua com o ícone atual. PNG, JPEG, WEBP, GIF ou ICO.
+          </p>
+          {(pendingFavicon || faviconUrl) && (
+            <div className="inline-flex items-center bg-[#2C1A14] border-4 border-[#2C1A14] p-2">
+              <img src={pendingFavicon || faviconUrl} alt="Prévia do favicon" className="h-10 w-10 object-contain bg-white" />
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+            <label className={`inline-flex items-center justify-center px-4 py-2 border-4 border-[#2C1A14] bg-[#EAB308] font-display font-black uppercase tracking-widest text-xs text-[#2C1A14] ${databaseState.connected ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+              Escolher favicon
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,.ico,image/x-icon" className="hidden" disabled={!databaseState.connected || savingFavicon} onChange={handleFaviconFile} />
+            </label>
+            {pendingFavicon && (
+              <ButtonPrimary type="button" onClick={handleFaviconSave} disabled={savingFavicon}>
+                {savingFavicon ? 'Salvando…' : 'Salvar favicon'}
+              </ButtonPrimary>
+            )}
+            {faviconUrl && !pendingFavicon && (
+              <button type="button" onClick={handleFaviconRemove} disabled={savingFavicon} className="px-4 py-2 border-4 border-[#2C1A14] bg-[#F4EFE6] font-display font-black uppercase tracking-widest text-xs text-[#2C1A14] disabled:opacity-50">
+                Remover favicon
+              </button>
+            )}
+          </div>
+          {!databaseState.connected && (
+            <p className="font-sans font-bold text-sm text-[#2C1A14]/70">Conecte o MySQL para guardar o favicon. Enquanto isso, a aba mostra o ícone atual.</p>
+          )}
+          {faviconError && <p className="font-sans font-bold text-sm text-[#C13B22]">{faviconError}</p>}
+          {faviconMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{faviconMessage}</p>}
+        </section>
+
+        {drive?.status?.connected && <DriveBar isAdmin={isAdmin} drive={drive} />}
 
         <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">

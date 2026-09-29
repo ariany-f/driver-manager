@@ -11,7 +11,7 @@ import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import BancoNecessario from './components/banco/BancoNecessario.jsx';
 import UploadProgress from './components/drive/UploadProgress.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
-import { createPasta, deletePasta, getDatabaseStatus, getIdentidade, getLogo, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
+import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
 import {
   disconnectDrive,
   getDriveStatus,
@@ -27,6 +27,7 @@ export default function App() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [currentView, setCurrentView] = useState(viewFromLocation);
   const [logoUrl, setLogoUrl] = useState('');
+  const [faviconUrl, setFaviconUrl] = useState('');
   const [territorios, setTerritorios] = useState([]);
   const [tags, setTags] = useState([]);
   const [files, setFiles] = useState([]);
@@ -73,6 +74,10 @@ export default function App() {
         });
       })
       .catch(() => setLogoUrl(''));
+  }, []);
+
+  const refreshFavicon = useCallback(() => {
+    getFavicon().then(url => setFaviconUrl(url)).catch(() => setFaviconUrl(''));
   }, []);
 
   const persistTerritorios = async (next) => {
@@ -175,11 +180,13 @@ export default function App() {
           if (!connected) {
             setDriveReady(true);
             setLogoUrl('');
+            setFaviconUrl('');
             return;
           }
           loadIdentidade();
           refreshDrive();
           refreshLogo();
+          refreshFavicon();
         })
         .catch(() => {
           setLabelsEnabled(false);
@@ -187,7 +194,19 @@ export default function App() {
         });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [refreshDrive, loadIdentidade, refreshLogo]);
+  }, [refreshDrive, loadIdentidade, refreshLogo, refreshFavicon]);
+
+  useEffect(() => {
+    const link = document.querySelector('link[rel="icon"]');
+    if (!link) return;
+    if (faviconUrl) {
+      link.href = faviconUrl;
+      link.removeAttribute('type');
+    } else {
+      link.type = 'image/svg+xml';
+      link.href = '/favicon.svg';
+    }
+  }, [faviconUrl]);
 
   useEffect(() => {
     if (isAdmin && driveStatus?.connected && !driveStatus.folderId) setPickFolder(true);
@@ -423,10 +442,14 @@ export default function App() {
         )}
         {driveReady && activeView === 'configuracoes' && (
           <Configuracoes
+            isAdmin={isAdmin}
+            drive={drive}
             onSaved={() => refreshDrive()}
             onDatabaseChange={handleDatabaseChange}
             logoUrl={logoUrl}
             onLogoChange={refreshLogo}
+            faviconUrl={faviconUrl}
+            onFaviconChange={refreshFavicon}
           />
         )}
       </main>

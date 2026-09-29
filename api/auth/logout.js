@@ -1,6 +1,6 @@
-import { attachPath, runApi } from '../../server/vercelHandler.js';
+import { attachPath, runAuth } from '../../server/authHandler.js';
 
 export default function handler(req, res) {
   attachPath(req, '/api/auth/logout');
-  return runApi(req, res);
+  return runAuth(req, res);
 }

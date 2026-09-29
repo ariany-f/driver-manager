@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Database, Eye, EyeOff, Pencil, Settings } from 'lucide-react';
+import { Database, Eye, EyeOff, Folder, Pencil, Settings } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getDatabaseSettings, saveDatabaseSettings } from '../../services/database.js';
 import { getDriveSettings, saveDriveField } from '../../services/drive.js';
@@ -7,11 +7,13 @@ import { getDriveSettings, saveDriveField } from '../../services/drive.js';
 const fields = [
   { key: 'GOOGLE_CLIENT_ID', label: 'Google Client ID', secret: false },
   { key: 'GOOGLE_CLIENT_SECRET', label: 'Google Client Secret', secret: true },
-  { key: 'DRIVE_FOLDER_ID', label: 'ID da pasta do Drive', secret: false },
   { key: 'GOOGLE_REDIRECT_URI', label: 'URL de retorno', secret: false },
 ];
 
-const emptyForm = () => Object.fromEntries(fields.map(field => [field.key, '']));
+const emptyForm = () => ({
+  ...Object.fromEntries(fields.map(field => [field.key, ''])),
+  DRIVE_FOLDER_ID: '',
+});
 
 const databaseFields = [
   { key: 'DATABASE_HOST', label: 'Servidor', secret: false, placeholder: 'srv123.hstgr.io' },
@@ -40,6 +42,9 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
   const [showDraft, setShowDraft] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingFolder, setSavingFolder] = useState(false);
+  const [folderMessage, setFolderMessage] = useState('');
+  const [folderError, setFolderError] = useState('');
   const [savingDatabase, setSavingDatabase] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -103,6 +108,23 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
       setError(saveError.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveFolder = async (event) => {
+    event.preventDefault();
+    setSavingFolder(true);
+    setFolderMessage('');
+    setFolderError('');
+    try {
+      const saved = await saveDriveField('DRIVE_FOLDER_ID', form.DRIVE_FOLDER_ID.trim());
+      setForm(current => ({ ...current, ...saved, redirectFromApp: Boolean(saved.redirectFromApp) }));
+      setFolderMessage('ID da pasta salvo.');
+      if (onSaved) await onSaved();
+    } catch (saveError) {
+      setFolderError(saveError.message);
+    } finally {
+      setSavingFolder(false);
     }
   };
 
@@ -197,6 +219,31 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
           {message && <p className="font-sans text-sm font-bold text-[#627933]">{message}</p>}
           {error && !editing && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
         </section>
+
+        <form onSubmit={saveFolder} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
+          <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
+            <Folder size={18} strokeWidth={2.5} /> Pasta do acervo
+          </div>
+          <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
+            O ID também pode ser escolhido ao conectar a conta. Aqui dá para colar ou trocar direto.
+          </p>
+          <div>
+            <label htmlFor="DRIVE_FOLDER_ID" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">ID da pasta do Drive</label>
+            <input
+              id="DRIVE_FOLDER_ID"
+              name="DRIVE_FOLDER_ID"
+              value={form.DRIVE_FOLDER_ID}
+              onChange={(event) => setForm(current => ({ ...current, DRIVE_FOLDER_ID: event.target.value }))}
+              disabled={loading}
+              className="w-full border-4 border-[#2C1A14] p-3 font-mono text-sm text-[#2C1A14] outline-none bg-white [color-scheme:light] disabled:opacity-50"
+            />
+          </div>
+          {folderMessage && <p className="font-sans text-sm font-bold text-[#627933]">{folderMessage}</p>}
+          {folderError && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{folderError}</p>}
+          <ButtonPrimary type="submit" color="bgOlive" disabled={loading || savingFolder} className="w-full sm:w-auto">
+            {savingFolder ? 'Salvando' : 'Salvar pasta'}
+          </ButtonPrimary>
+        </form>
 
         {editing && (
           <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4">

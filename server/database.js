@@ -6,7 +6,7 @@ const ITEM_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 const COLOR = /^#[0-9A-Fa-f]{6}$/;
 
 const CREATE_TERRITORIOS = `
-  CREATE TABLE IF NOT EXISTS territorios (
+  CREATE TABLE territorios (
     id VARCHAR(64) NOT NULL,
     name VARCHAR(160) NOT NULL,
     bg_color VARCHAR(7) NOT NULL,
@@ -16,7 +16,7 @@ const CREATE_TERRITORIOS = `
 `;
 
 const CREATE_TAGS = `
-  CREATE TABLE IF NOT EXISTS tags (
+  CREATE TABLE tags (
     id VARCHAR(64) NOT NULL,
     name VARCHAR(160) NOT NULL,
     bg_color VARCHAR(7) NOT NULL,
@@ -26,7 +26,7 @@ const CREATE_TAGS = `
 `;
 
 const CREATE_CLASSIFICACAO = `
-  CREATE TABLE IF NOT EXISTS arquivo_classificacao (
+  CREATE TABLE arquivo_classificacao (
     file_id VARCHAR(128) NOT NULL,
     territorios LONGTEXT NOT NULL,
     tags LONGTEXT NOT NULL,
@@ -123,18 +123,44 @@ async function rememberPool(config, ssl) {
   return pool;
 }
 
+const TABLE_SQL = [
+  ['territorios', CREATE_TERRITORIOS],
+  ['tags', CREATE_TAGS],
+  ['arquivo_classificacao', CREATE_CLASSIFICACAO],
+];
+
+function tableNameOf(row) {
+  const named = row.tableName || row.TABLE_NAME || row.table_name || row.tablename;
+  if (named) return String(named).toLowerCase();
+  const value = Object.values(row)[0];
+  return String(value || '').toLowerCase();
+}
+
+async function existingTables(db) {
+  const [rows] = await db.query(
+    `SELECT table_name AS tableName
+     FROM information_schema.tables
+     WHERE table_schema = DATABASE()
+       AND table_name IN (?, ?, ?)`,
+    TABLE_SQL.map(([name]) => name),
+  );
+  return new Set(rows.map(tableNameOf));
+}
+
 export async function ensureTables(env) {
   const settings = readDatabaseSettings(env);
   if (!isConfigured(settings)) throw new DriveError('Preencha o MySQL da Hostinger.', 503);
   const config = connectionConfig(settings);
   const key = configKey(config);
-  if (tablesKey === key && pool) return ['territorios', 'tags', 'arquivo_classificacao'];
+  if (tablesKey === key && pool) return TABLE_SQL.map(([name]) => name);
   const db = pool && poolKey.startsWith(key) ? pool : await rememberPool(config, undefined);
-  await db.query(CREATE_TERRITORIOS);
-  await db.query(CREATE_TAGS);
-  await db.query(CREATE_CLASSIFICACAO);
+  const present = await existingTables(db);
+  for (const [name, sql] of TABLE_SQL) {
+    if (present.has(name)) continue;
+    await db.query(sql);
+  }
   tablesKey = key;
-  return ['territorios', 'tags', 'arquivo_classificacao'];
+  return TABLE_SQL.map(([name]) => name);
 }
 
 async function ping(settings) {

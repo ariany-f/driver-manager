@@ -16,9 +16,13 @@ export default function DriveBar({ isAdmin, drive }) {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="min-w-0">
           <p className="font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">Google Drive</p>
-          {status.connected ? (
+          {status.connected && status.folderId ? (
             <p className="font-sans font-bold text-sm text-[#2C1A14] break-words">
               Sincronizado com {folder}{account}. Enviar grava no Drive, depois da confirmação. Pastas, tags e territórios ficam no MySQL.
+            </p>
+          ) : status.connected ? (
+            <p className="font-sans font-bold text-sm text-[#2C1A14]">
+              Conta autorizada{account}. Escolha a pasta do acervo.
             </p>
           ) : (
             <p className="font-sans font-bold text-sm text-[#2C1A14]">
@@ -30,10 +34,19 @@ export default function DriveBar({ isAdmin, drive }) {
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
-            {status.connected ? (
+            {status.connected && status.folderId ? (
               <>
                 <button type="button" onClick={drive.sync} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-[#EAB308] font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2 disabled:opacity-50">
                   <RefreshCw size={16} strokeWidth={3} /> {drive.busy ? 'Sincronizando' : 'Sincronizar'}
+                </button>
+                <button type="button" onClick={() => setConfirmDisconnect(true)} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-white font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2 disabled:opacity-50">
+                  <Unplug size={16} strokeWidth={3} /> Desconectar
+                </button>
+              </>
+            ) : status.connected ? (
+              <>
+                <button type="button" onClick={drive.chooseFolder} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-[#1E3A5F] text-white font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] disabled:opacity-50">
+                  Escolher pasta
                 </button>
                 <button type="button" onClick={() => setConfirmDisconnect(true)} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-white font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2 disabled:opacity-50">
                   <Unplug size={16} strokeWidth={3} /> Desconectar

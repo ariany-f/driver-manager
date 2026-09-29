@@ -126,7 +126,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             Configurações
           </h1>
           <p className="mt-3 font-sans font-bold text-sm text-[#2C1A14]/80">
-            As chaves do Google ficam no MySQL quando o banco já tem essa conexão. Se não tiver, o servidor usa o .env. A autorização do Drive continua no banco. Sem o MySQL, a aplicação não abre.
+            As chaves do Google ficam no MySQL quando o banco já tem essa conexão. Se não tiver, o servidor usa o .env. Ao conectar, a pessoa escolhe a pasta do acervo. Sem o MySQL, a aplicação não abre.
           </p>
         </div>
 

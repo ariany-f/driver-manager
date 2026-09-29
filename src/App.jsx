@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import EscolherPastaModal from './components/modals/EscolherPastaModal.jsx';
 import Header from './components/layout/Header.jsx';
 import LoginModal from './components/modals/LoginModal.jsx';
 import NovidadesModal from './components/modals/NovidadesModal.jsx';
@@ -37,6 +38,8 @@ export default function App() {
   const [classificarNovos, setClassificarNovos] = useState([]);
   const [classificando, setClassificando] = useState(false);
   const novidadesDispensadas = useRef(false);
+  const escolherPasta = useRef(false);
+  const [pickFolder, setPickFolder] = useState(false);
 
   const applyArchive = (archive) => {
     setFiles(archive.files);
@@ -130,7 +133,11 @@ export default function App() {
       params.delete('message');
       const next = params.toString();
       window.history.replaceState({}, '', next ? `?${next}` : window.location.pathname);
-      if (result === 'connected') setDriveMessage('Google Drive conectado. Os arquivos desta pasta passaram a ser o acervo.');
+      if (result === 'choose') {
+        escolherPasta.current = true;
+        setPickFolder(true);
+        setDriveMessage('Conta autorizada. Escolha a pasta do acervo.');
+      }
       if (result === 'error') setDriveError(message || 'Não foi possível conectar o Google Drive.');
     }
     const timer = window.setTimeout(() => {
@@ -154,12 +161,17 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [refreshDrive, loadIdentidade]);
 
+  useEffect(() => {
+    if (isAdmin && driveStatus?.connected && !driveStatus.folderId) setPickFolder(true);
+  }, [isAdmin, driveStatus]);
+
   const drive = {
     status: driveStatus,
     busy: driveBusy,
     message: driveMessage,
     error: driveError,
     active: Boolean(driveStatus?.connected && driveStatus?.folderId),
+    chooseFolder: () => setPickFolder(true),
     sync: () => refreshDrive({ commit: true, announce: true }),
     upload: async (selected, folderId) => {
       setDriveBusy(true);
@@ -285,6 +297,20 @@ export default function App() {
         onNavigate={setCurrentView}
         onLogin={() => setLoginOpen(true)}
         onLogout={logout}
+      />
+
+      <EscolherPastaModal
+        isOpen={isAdmin && pickFolder}
+        onClose={() => {
+          escolherPasta.current = false;
+          setPickFolder(false);
+        }}
+        onChosen={() => {
+          escolherPasta.current = false;
+          setPickFolder(false);
+          setDriveMessage('Pasta escolhida. Os arquivos dela passam a ser o acervo.');
+          refreshDrive({ commit: true, announce: true });
+        }}
       />
 
       <LoginModal

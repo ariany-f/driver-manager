@@ -313,9 +313,59 @@ function toFolderTree(folders, rootId) {
   return walk(rootId);
 }
 
+async function listFolderPage(token, query) {
+  const items = [];
+  let pageToken = '';
+  do {
+    const url = new URL(`${DRIVE_API}/files`);
+    url.searchParams.set('q', query);
+    url.searchParams.set('fields', 'nextPageToken, files(id, name)');
+    url.searchParams.set('pageSize', '100');
+    url.searchParams.set('orderBy', 'name');
+    url.searchParams.set('supportsAllDrives', 'true');
+    url.searchParams.set('includeItemsFromAllDrives', 'true');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+    const page = await driveJson(url, token);
+    items.push(...(page.files || []));
+    pageToken = page.nextPageToken || '';
+  } while (pageToken && items.length < 300);
+  return items;
+}
+
+export async function listChoosableFolders(env, config, parentId) {
+  const token = await getAccessToken(env, config);
+  if (parentId) {
+    assertDriveId(parentId, 'pasta');
+    const children = await listFolderPage(token, `mimeType = '${FOLDER_MIME}' and '${parentId}' in parents and trashed = false`);
+    return children.map(folder => ({ id: folder.id, name: folder.name || 'Pasta', kind: 'folder' }));
+  }
+
+  const mine = await listFolderPage(token, `mimeType = '${FOLDER_MIME}' and 'root' in parents and trashed = false`);
+  const shared = await listFolderPage(token, `mimeType = '${FOLDER_MIME}' and sharedWithMe = true and trashed = false`);
+  const folders = [
+    ...mine.map(folder => ({ id: folder.id, name: folder.name || 'Pasta', kind: 'folder', onde: 'Meu Drive' })),
+    ...shared.map(folder => ({ id: folder.id, name: folder.name || 'Pasta', kind: 'folder', onde: 'Compartilhada' })),
+  ];
+  try {
+    const url = new URL(`${DRIVE_API}/drives`);
+    url.searchParams.set('pageSize', '100');
+    url.searchParams.set('fields', 'drives(id, name)');
+    const page = await driveJson(url, token);
+    folders.push(...(page.drives || []).map(drive => ({ id: drive.id, name: drive.name || 'Drive', kind: 'drive', onde: 'Drive compartilhado' })));
+  } catch {
+    // a conta pode não ter drives compartilhados
+  }
+  const seen = new Set();
+  return folders.filter(folder => {
+    if (seen.has(folder.id)) return false;
+    seen.add(folder.id);
+    return true;
+  });
+}
+
 export async function syncArchive(env, config) {
   if (!config.folderId) {
-    throw new DriveError('Preencha DRIVE_FOLDER_ID no .env com o id da pasta do acervo.', 503);
+    throw new DriveError('Escolha a pasta do acervo ao conectar o Google Drive.', 503);
   }
   const rootId = assertDriveId(config.folderId, 'DRIVE_FOLDER_ID');
   const token = await getAccessToken(env, config);

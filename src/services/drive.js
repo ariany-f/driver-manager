@@ -22,6 +22,20 @@ export function saveDriveSettings(settings) {
   }).then(readJson);
 }
 
+export function listDriveFolders(parentId) {
+  const params = parentId ? `?parent=${encodeURIComponent(parentId)}` : '';
+  return fetch(`/api/drive/pastas${params}`, { credentials: 'same-origin' }).then(readJson);
+}
+
+export function saveDriveFolder(folderId) {
+  return fetch('/api/drive/pasta', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ folderId }),
+  }).then(readJson);
+}
+
 export function previewDrive() {
   return fetch('/api/drive/novidades').then(readJson);
 }

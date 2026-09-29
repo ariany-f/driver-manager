@@ -7,6 +7,7 @@ import {
   exchangeCode,
   getAccount,
   getFolderName,
+  listChoosableFolders,
   missingDriveKeys,
   openDriveMedia,
   uploadDriveFile,
@@ -131,7 +132,7 @@ async function handleDriveRequest(req, res, { root, env }) {
   if (req.method === 'GET' && pathname === '/api/drive/status') {
     const database = await databaseStatus(env);
     const token = database.connected ? await loadDriveConnection(env) : null;
-    const missing = missingDriveKeys(config);
+    const missing = missingDriveKeys(config).filter(key => key !== 'DRIVE_FOLDER_ID');
     const status = {
       configured: missing.length === 0,
       missing,
@@ -211,7 +212,7 @@ async function handleDriveRequest(req, res, { root, env }) {
     }
     const token = await exchangeCode(config, redirectUri, url.searchParams.get('code'));
     await saveDriveConnection(env, token);
-    redirect(res, '/?drive=connected');
+    redirect(res, '/?drive=choose');
     return;
   }
 
@@ -219,6 +220,27 @@ async function handleDriveRequest(req, res, { root, env }) {
     await clearDriveConnection(env);
     const kept = await clearSyncedFiles(env);
     sendJson(res, 200, { connected: false, folders: kept.folders });
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/drive/pastas') {
+    const parentId = url.searchParams.get('parent') || '';
+    sendJson(res, 200, { folders: await listChoosableFolders(env, config, parentId) });
+    return;
+  }
+
+  if (req.method === 'PUT' && pathname === '/api/drive/pasta') {
+    const body = await readJson(req);
+    const folderId = String(body.folderId || '').trim();
+    const saved = await saveDriveEnv(root, env, {
+      GOOGLE_CLIENT_ID: config.clientId,
+      GOOGLE_CLIENT_SECRET: config.clientSecret,
+      DRIVE_FOLDER_ID: folderId,
+      GOOGLE_REDIRECT_URI: config.redirectUri,
+    });
+    await saveDriveConfig(env, saved);
+    const folderName = await getFolderName(env, saved);
+    sendJson(res, 200, { folderId: saved.folderId, folderName });
     return;
   }
 

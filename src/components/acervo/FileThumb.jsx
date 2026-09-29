@@ -8,7 +8,7 @@ export default function FileThumb({ file, iconSize = 28 }) {
   if (isPdf(file)) return <PdfThumb file={file} iconSize={iconSize} />;
   return (
     <div className="w-full h-full bg-[#E4CFB2]/30 flex items-center justify-center">
-      <FileIcon type={file.type} className="opacity-40" size={iconSize} />
+      <FileIcon file={file} className="opacity-40" size={iconSize} />
     </div>
   );
 }

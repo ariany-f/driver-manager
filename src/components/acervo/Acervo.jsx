@@ -383,7 +383,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[4px_4px_0px_#2C1A14] group-hover:-translate-y-1 group-hover:shadow-[6px_6px_0px_#C13B22] transition-all overflow-hidden flex items-center justify-center p-0.5">
                           <FileThumb file={file} iconSize={32} />
                           <div className="absolute -bottom-1 -right-1 bg-white border-2 border-[#2C1A14] p-0.5">
-                            <FileIcon type={file.type} size={14} />
+                            <FileIcon file={file} size={14} />
                           </div>
                         </div>
                         <div className="min-w-0">

@@ -492,10 +492,10 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
           <span className="truncate flex-1" title={folder.name}>{folder.name}</span>
 
           {isAdmin && (
-             <div className="flex lg:hidden lg:group-hover:flex items-center gap-1.5 shrink-0 bg-[#F4EFE6]/90 p-1 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] ml-2">
-               <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'create', parentId: folder.id }); }} className="text-[#849B55] hover:scale-110" title="Subpasta"><Plus size={14} strokeWidth={3}/></button>
-               <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'edit', folder }); }} className="text-[#EAB308] hover:scale-110" title="Renomear"><Edit size={14} strokeWidth={3}/></button>
-               <button onClick={(e) => { e.stopPropagation(); setFolderToDelete(folder); }} className="text-[#C13B22] hover:scale-110" title="Excluir"><Trash2 size={14} strokeWidth={3}/></button>
+             <div className="flex lg:hidden lg:group-hover:flex items-center gap-1 shrink-0 bg-[#F4EFE6]/90 p-0.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] ml-2">
+               <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'create', parentId: folder.id }); }} className="min-h-11 min-w-9 lg:min-h-0 lg:min-w-0 lg:p-0.5 text-[#849B55] inline-flex items-center justify-center" title="Subpasta" aria-label="Nova subpasta"><Plus size={16} strokeWidth={3}/></button>
+               <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'edit', folder }); }} className="min-h-11 min-w-9 lg:min-h-0 lg:min-w-0 lg:p-0.5 text-[#EAB308] inline-flex items-center justify-center" title="Renomear" aria-label="Renomear pasta"><Edit size={16} strokeWidth={3}/></button>
+               <button onClick={(e) => { e.stopPropagation(); setFolderToDelete(folder); }} className="min-h-11 min-w-9 lg:min-h-0 lg:min-w-0 lg:p-0.5 text-[#C13B22] inline-flex items-center justify-center" title="Excluir" aria-label="Excluir pasta"><Trash2 size={16} strokeWidth={3}/></button>
              </div>
           )}
         </div>
@@ -554,8 +554,8 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
     <div className="bg-[#2C1A14] p-3 flex justify-between items-center gap-3 text-white font-display text-xs uppercase">
       <span>Página {currentPage} de {totalPages}</span>
       <div className="flex gap-2">
-        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Anterior</button>
-        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Próxima</button>
+        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="min-h-11 px-4 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Anterior</button>
+        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="min-h-11 px-4 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Próxima</button>
       </div>
     </div>
   ) : null;
@@ -607,7 +607,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
                 <button
                   type="button"
                   onClick={() => setFoldersOpen(true)}
-                  className="lg:hidden shrink-0 bg-[#EAB308] text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2"
+                  className="lg:hidden shrink-0 min-h-11 bg-[#EAB308] text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2"
                 >
                   <FolderTree size={18} strokeWidth={3} /> Pastas
                 </button>
@@ -632,7 +632,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
              <button
                type="button"
                onClick={() => setFiltersOpen(open => !open)}
-               className="md:hidden w-full bg-white border-2 border-[#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-widest shadow-[3px_3px_0px_#2C1A14]"
+               className="md:hidden w-full min-h-11 bg-white border-2 border-[#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-widest shadow-[3px_3px_0px_#2C1A14]"
              >
                {filtersOpen ? 'Ocultar filtros' : 'Filtros'}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
              </button>
@@ -667,7 +667,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
                    <div className="flex flex-wrap gap-2">
                       {['document', 'image', 'video', 'audio'].map(type => (
                          <button key={type} onClick={() => handleFilterToggle(type, selectedTypes, setSelectedTypes)}
-                          className={`p-2 border-2 border-[#2C1A14] transition-all ${selectedTypes.includes(type) ? 'bg-[#2C1A14] text-white shadow-[3px_3px_0px_#EAB308] -translate-y-0.5' : 'bg-white hover:bg-black/5 hover:-translate-y-0.5'}`}
+                          className={`min-h-11 min-w-11 inline-flex items-center justify-center border-2 border-[#2C1A14] transition-all ${selectedTypes.includes(type) ? 'bg-[#2C1A14] text-white shadow-[3px_3px_0px_#EAB308] -translate-y-0.5' : 'bg-white hover:bg-black/5 hover:-translate-y-0.5'}`}
                           title={`Filtrar ${type}`}
                          ><FileIcon type={type} size={20} /></button>
                       ))}
@@ -682,7 +682,7 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
 
           <div className="lg:hidden space-y-3">
             {currentFiles.map(file => (
-              <article key={file.id} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3">
+              <article key={file.id} onClick={() => setViewingFile(file)} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3 cursor-pointer active:translate-x-0.5 active:translate-y-0.5">
                 <div className="flex gap-3">
                   <div className="relative w-16 h-16 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[3px_3px_0px_#2C1A14] overflow-hidden flex items-center justify-center">
                     {file.type === 'image' ? (
@@ -709,7 +709,17 @@ const Acervo = ({ isAdmin, files, setFiles, folders, setFolders, territorios, ta
                   {file.territorios.map(id => <Badge key={id} item={territorios.find(t => t.id === id)} isTerritory />)}
                   {file.tags.map(id => <Badge key={id} item={tags.find(t => t.id === id)} />)}
                 </div>
-                <div className="mt-2">{renderFileActions(file)}</div>
+                <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  {isAdmin && (
+                    <>
+                      <button onClick={() => setMovingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Mover">Mover</button>
+                      <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
+                    </>
+                  )}
+                  <button onClick={() => setViewingFile(file)} className={`${isAdmin ? 'flex-1' : 'w-full'} min-h-11 bg-[#1E3A5F] text-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center gap-2`} aria-label="Abrir arquivo">
+                    <Eye size={16} strokeWidth={2.5} /> Abrir
+                  </button>
+                </div>
               </article>
             ))}
             {currentFiles.length === 0 && (
@@ -1154,7 +1164,7 @@ export default function App() {
   const activeView = !isAdmin && currentView !== 'acervo' ? 'acervo' : currentView;
 
   return (
-    <div className="h-screen w-full bg-[#E4CFB2] flex flex-col font-sans text-[#2C1A14] overflow-hidden selection:bg-[#EAB308] selection:text-[#2C1A14]">
+    <div className="h-dvh w-full bg-[#E4CFB2] flex flex-col font-sans text-[#2C1A14] overflow-hidden selection:bg-[#EAB308] selection:text-[#2C1A14]">
       
       <header className="bg-[#2C1A14] text-[#F4EFE6] border-b-4 border-[#C13B22] z-20 shrink-0 relative">
         <div className="flex items-center justify-between gap-3 px-3 sm:px-6 py-2">
@@ -1173,9 +1183,10 @@ export default function App() {
           </div>
           <button onClick={() => { setIsAdmin(!isAdmin); if(isAdmin) setCurrentView('acervo'); }}
             title={isAdmin ? 'Admin' : 'Acesso Público'}
-            className={`flex items-center gap-2 px-2.5 sm:px-3 py-2 font-display font-bold uppercase text-xs border-2 transition-all shrink-0 ${isAdmin ? 'bg-[#C13B22] border-[#C13B22] text-white' : 'border-[#EAB308] text-[#EAB308] hover:bg-[#EAB308] hover:text-[#2C1A14]'}`}
+            className={`flex items-center gap-2 min-h-11 px-3 py-2 font-display font-bold uppercase text-xs border-2 transition-all shrink-0 ${isAdmin ? 'bg-[#C13B22] border-[#C13B22] text-white' : 'border-[#EAB308] text-[#EAB308] hover:bg-[#EAB308] hover:text-[#2C1A14]'}`}
           >
-            {isAdmin ? <Unlock size={14} strokeWidth={3}/> : <Lock size={14} strokeWidth={3}/>}
+            {isAdmin ? <Unlock size={16} strokeWidth={3}/> : <Lock size={16} strokeWidth={3}/>}
+            <span className="sm:hidden">{isAdmin ? 'Admin' : 'Público'}</span>
             <span className="hidden sm:inline">{isAdmin ? 'Admin' : 'Acesso Público'}</span>
           </button>
         </div>

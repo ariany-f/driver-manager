@@ -16,6 +16,7 @@ import {
 } from './driveClient.js';
 import {
   clearDriveConnection,
+  clearSyncedFiles,
   databaseStatus,
   handleDatabaseRequest,
   loadDriveConnection,
@@ -216,7 +217,8 @@ async function handleDriveRequest(req, res, { root, env }) {
 
   if (req.method === 'POST' && pathname === '/api/drive/disconnect') {
     await clearDriveConnection(env);
-    sendJson(res, 200, { connected: false });
+    const kept = await clearSyncedFiles(env);
+    sendJson(res, 200, { connected: false, folders: kept.folders });
     return;
   }
 

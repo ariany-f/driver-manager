@@ -186,11 +186,13 @@ export default function App() {
       setDriveError('');
       setDriveMessage('');
       try {
-        await disconnectDrive();
+        const saved = await disconnectDrive();
         setFiles([]);
-        setFolders([]);
+        setFolders(saved.folders || []);
+        setNovidades(null);
+        setClassificarNovos([]);
         setDriveStatus(await getDriveStatus());
-        setDriveMessage('Drive desconectado. Nenhum arquivo da pasta do cliente permanece na tela.');
+        setDriveMessage('Drive desconectado. Os arquivos e os caminhos saíram do banco. Pastas, tags e territórios continuam.');
       } catch (error) {
         setDriveError(error.message);
       } finally {

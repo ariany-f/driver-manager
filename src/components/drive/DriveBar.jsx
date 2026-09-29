@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { RefreshCw, Unplug } from 'lucide-react';
+import ConfirmModal from '../modals/ConfirmModal.jsx';
 
 export default function DriveBar({ isAdmin, drive }) {
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const status = drive.status;
   if (!status) return null;
   if (!isAdmin && !status.connected) return null;
@@ -32,7 +35,7 @@ export default function DriveBar({ isAdmin, drive }) {
                 <button type="button" onClick={drive.sync} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-[#EAB308] font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2 disabled:opacity-50">
                   <RefreshCw size={16} strokeWidth={3} /> {drive.busy ? 'Sincronizando' : 'Sincronizar'}
                 </button>
-                <button type="button" onClick={drive.disconnect} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-white font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2 disabled:opacity-50">
+                <button type="button" onClick={() => setConfirmDisconnect(true)} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-white font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2 disabled:opacity-50">
                   <Unplug size={16} strokeWidth={3} /> Desconectar
                 </button>
               </>
@@ -62,6 +65,17 @@ export default function DriveBar({ isAdmin, drive }) {
       )}
       {drive.message && <p className="font-sans text-sm font-bold text-[#627933]">{drive.message}</p>}
       {(drive.error || status.error) && <p className="font-sans text-sm font-bold text-[#C13B22]">{drive.error || status.error}</p>}
+      <ConfirmModal
+        isOpen={confirmDisconnect}
+        title="Desconectar o Drive?"
+        text="A autorização sai. No banco, os arquivos e o caminho de cada um são apagados. Pastas, tags e territórios ficam. Nada é apagado no Google Drive."
+        confirmLabel="Desconectar"
+        onCancel={() => setConfirmDisconnect(false)}
+        onConfirm={() => {
+          setConfirmDisconnect(false);
+          drive.disconnect();
+        }}
+      />
     </section>
   );
 }

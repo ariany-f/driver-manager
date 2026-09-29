@@ -317,6 +317,12 @@ export async function clearDriveConnection(env) {
   await db.query('DELETE FROM drive_conexao WHERE id = 1');
 }
 
+export async function clearSyncedFiles(env) {
+  const db = await withPool(env);
+  await db.query('DELETE FROM arquivos');
+  return { folders: await loadFolderTree(env) };
+}
+
 async function withPool(env) {
   const status = await databaseStatus(env);
   if (!status.connected) throw new DriveError(status.error || 'O MySQL ainda não está conectado.', 409);

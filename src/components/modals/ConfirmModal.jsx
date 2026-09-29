@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 
-export default function ConfirmModal({ isOpen, title, text, onConfirm, onCancel }) {
+export default function ConfirmModal({ isOpen, title, text, confirmLabel = 'Sim, Excluir', onConfirm, onCancel }) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in zoom-in duration-200">
@@ -13,7 +13,7 @@ export default function ConfirmModal({ isOpen, title, text, onConfirm, onCancel 
         <p className="font-sans font-medium text-lg text-[#2C1A14] mb-8">{text}</p>
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button onClick={onCancel} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 w-full sm:w-auto">Cancelar</button>
-          <ButtonPrimary onClick={onConfirm} color="bgRust" className="w-full sm:w-auto">Sim, Excluir</ButtonPrimary>
+          <ButtonPrimary onClick={onConfirm} color="bgRust" className="w-full sm:w-auto">{confirmLabel}</ButtonPrimary>
         </div>
       </div>
     </div>

@@ -73,6 +73,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   };
 
   const handleUploadPick = (event) => {
+    if (!isAdmin) return;
     const picked = Array.from(event.target.files || []);
     event.target.value = '';
     if (picked.length) setUploadQueue(picked);
@@ -229,16 +230,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   Busca & <span className="text-[#1E3A5F]">Acervo</span>
                 </h1>
                 <div className="flex shrink-0 gap-2">
-                  {isAdmin && drive.active && (
-                    <button
-                      type="button"
-                      onClick={() => uploadRef.current?.click()}
-                      disabled={drive.busy}
-                      className="min-h-11 bg-[#C13B22] text-white border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
-                    >
-                      <Upload size={18} strokeWidth={3} /> Enviar
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => setFoldersOpen(true)}
@@ -314,8 +305,20 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             </div>
           </div>
 
-          <div className="bg-[#2C1A14] text-[#F4EFE6] px-4 py-2 font-display font-bold uppercase text-xs shadow-[4px_4px_0px_#C13B22] inline-block">
-            {filteredFiles.length} registros encontrados
+          <div className="flex items-center justify-between gap-3">
+            <div className="bg-[#2C1A14] text-[#F4EFE6] px-4 py-2 font-display font-bold uppercase text-xs shadow-[4px_4px_0px_#C13B22]">
+              {filteredFiles.length} registros encontrados
+            </div>
+            {isAdmin && drive.active && (
+              <button
+                type="button"
+                onClick={() => uploadRef.current?.click()}
+                disabled={drive.busy}
+                className="min-h-11 shrink-0 bg-[#C13B22] text-white border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
+              >
+                <Upload size={18} strokeWidth={3} /> Enviar
+              </button>
+            )}
           </div>
 
           <div className="lg:hidden space-y-3">

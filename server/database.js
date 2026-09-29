@@ -64,6 +64,17 @@ const CREATE_DRIVE = `
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
 
+const CREATE_APLICACAO = `
+  CREATE TABLE aplicacao (
+    id TINYINT NOT NULL,
+    logo_mime VARCHAR(64) NOT NULL DEFAULT '',
+    logo_largura INT NOT NULL DEFAULT 0,
+    logo_altura INT NOT NULL DEFAULT 0,
+    logo MEDIUMBLOB NULL,
+    PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+
 const CREATE_DRIVE_CONFIG = `
   CREATE TABLE drive_config (
     id TINYINT NOT NULL,
@@ -172,6 +183,7 @@ const TABLE_SQL = [
   ['arquivos', CREATE_ARQUIVOS],
   ['drive_conexao', CREATE_DRIVE],
   ['drive_config', CREATE_DRIVE_CONFIG],
+  ['aplicacao', CREATE_APLICACAO],
 ];
 
 function tableNameOf(row) {
@@ -318,6 +330,98 @@ export async function saveDriveConnection(env, token) {
 export async function clearDriveConnection(env) {
   const db = await withPool(env);
   await db.query('DELETE FROM drive_conexao WHERE id = 1');
+}
+
+const LOGO_LIMIT = 2 * 1024 * 1024;
+
+function jpegSize(buf) {
+  if (buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 8 < buf.length) {
+    if (buf[offset] !== 0xff) return null;
+    const marker = buf[offset + 1];
+    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      return { width: buf.readUInt16BE(offset + 7), height: buf.readUInt16BE(offset + 5) };
+    }
+    if (marker === 0xd9 || marker === 0xda) return null;
+    const size = buf.readUInt16BE(offset + 2);
+    if (!size) return null;
+    offset += 2 + size;
+  }
+  return null;
+}
+
+function webpSize(buf) {
+  if (buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WEBP') return null;
+  const kind = buf.toString('ascii', 12, 16);
+  if (kind === 'VP8X' && buf.length >= 30) {
+    return { width: 1 + buf.readUIntLE(24, 3), height: 1 + buf.readUIntLE(27, 3) };
+  }
+  if (kind === 'VP8 ' && buf.length >= 30) {
+    return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+  }
+  if (kind === 'VP8L' && buf.length >= 25) {
+    const bits = buf.readUInt32LE(21);
+    return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+  }
+  return null;
+}
+
+function imageSize(bytes) {
+  if (bytes.length >= 24 && bytes[0] === 0x89 && bytes.toString('ascii', 1, 4) === 'PNG') {
+    return { mime: 'image/png', width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+  }
+  if (bytes.length >= 10 && bytes.toString('ascii', 0, 3) === 'GIF') {
+    return { mime: 'image/gif', width: bytes.readUInt16LE(6), height: bytes.readUInt16LE(8) };
+  }
+  if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF') {
+    const size = webpSize(bytes);
+    return size ? { mime: 'image/webp', ...size } : null;
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    const size = jpegSize(bytes);
+    return size ? { mime: 'image/jpeg', ...size } : null;
+  }
+  return null;
+}
+
+function decodeLogo(value) {
+  const match = String(value || '').match(/^data:image\/[a-zA-Z0-9.+-]+;base64,([A-Za-z0-9+/=\s]+)$/);
+  if (!match) throw new DriveError('Envie uma imagem PNG, JPEG, WEBP ou GIF.');
+  const bytes = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+  if (!bytes.length || bytes.length > LOGO_LIMIT) throw new DriveError('A imagem precisa ter no máximo 2 MB.');
+  const size = imageSize(bytes);
+  if (!size?.width || !size?.height) throw new DriveError('Não foi possível ler esta imagem. Use PNG, JPEG, WEBP ou GIF.');
+  if (size.width <= size.height) throw new DriveError('A logo precisa ser horizontal: mais larga do que alta.');
+  return { ...size, bytes };
+}
+
+export async function loadLogo(env) {
+  const status = await databaseStatus(env);
+  if (!status.connected) return null;
+  const db = await withPool(env);
+  const [rows] = await db.query('SELECT logo_mime, logo FROM aplicacao WHERE id = 1');
+  const row = rows[0];
+  if (!row?.logo) return null;
+  const bytes = Buffer.isBuffer(row.logo) ? row.logo : Buffer.from(row.logo);
+  if (!bytes.length) return null;
+  return { mime: row.logo_mime || 'image/png', bytes };
+}
+
+export async function saveLogo(env, image) {
+  const logo = decodeLogo(image);
+  const db = await withPool(env);
+  await db.query(
+    `INSERT INTO aplicacao (id, logo_mime, logo_largura, logo_altura, logo) VALUES (1, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE logo_mime = ?, logo_largura = ?, logo_altura = ?, logo = ?`,
+    [logo.mime, logo.width, logo.height, logo.bytes, logo.mime, logo.width, logo.height, logo.bytes],
+  );
+  return { width: logo.width, height: logo.height };
+}
+
+export async function clearLogo(env) {
+  const db = await withPool(env);
+  await db.query('DELETE FROM aplicacao WHERE id = 1');
 }
 
 export async function clearSyncedFiles(env) {
@@ -681,6 +785,32 @@ export async function handleDatabaseRequest(req, res, { root, env }) {
   if (req.method === 'PUT' && url.pathname === '/api/database/settings') {
     const body = await readBody(req);
     sendJson(res, 200, await saveDatabaseSettings(root, env, body));
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/database/logo') {
+    const logo = await loadLogo(env);
+    if (!logo) {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    res.statusCode = 200;
+    res.setHeader('content-type', logo.mime);
+    res.setHeader('cache-control', 'private, max-age=60');
+    res.end(logo.bytes);
+    return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/api/database/logo') {
+    const body = await readBody(req);
+    sendJson(res, 200, await saveLogo(env, body.image));
+    return;
+  }
+
+  if (req.method === 'DELETE' && url.pathname === '/api/database/logo') {
+    await clearLogo(env);
+    sendJson(res, 200, { removed: true });
     return;
   }
 

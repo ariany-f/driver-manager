@@ -11,7 +11,7 @@ import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import BancoNecessario from './components/banco/BancoNecessario.jsx';
 import UploadProgress from './components/drive/UploadProgress.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
-import { createPasta, deletePasta, getDatabaseStatus, getIdentidade, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
+import { createPasta, deletePasta, getDatabaseStatus, getIdentidade, getLogo, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
 import {
   disconnectDrive,
   getDriveStatus,
@@ -26,6 +26,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [currentView, setCurrentView] = useState(viewFromLocation);
+  const [logoUrl, setLogoUrl] = useState('');
   const [territorios, setTerritorios] = useState([]);
   const [tags, setTags] = useState([]);
   const [files, setFiles] = useState([]);
@@ -61,6 +62,17 @@ export default function App() {
         setTags(data.tags || []);
       })
       .catch(() => {});
+  }, []);
+
+  const refreshLogo = useCallback(() => {
+    getLogo()
+      .then(url => {
+        setLogoUrl(current => {
+          if (current.startsWith('blob:')) URL.revokeObjectURL(current);
+          return url;
+        });
+      })
+      .catch(() => setLogoUrl(''));
   }, []);
 
   const persistTerritorios = async (next) => {
@@ -162,10 +174,12 @@ export default function App() {
           setLabelsEnabled(connected);
           if (!connected) {
             setDriveReady(true);
+            setLogoUrl('');
             return;
           }
           loadIdentidade();
           refreshDrive();
+          refreshLogo();
         })
         .catch(() => {
           setLabelsEnabled(false);
@@ -173,7 +187,7 @@ export default function App() {
         });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [refreshDrive, loadIdentidade]);
+  }, [refreshDrive, loadIdentidade, refreshLogo]);
 
   useEffect(() => {
     if (isAdmin && driveStatus?.connected && !driveStatus.folderId) setPickFolder(true);
@@ -320,6 +334,7 @@ export default function App() {
       <Header
         isAdmin={isAdmin}
         labelsEnabled={labelsEnabled}
+        logoUrl={logoUrl}
         activeView={activeView}
         onNavigate={goTo}
         onLogin={() => setLoginOpen(true)}
@@ -410,6 +425,8 @@ export default function App() {
           <Configuracoes
             onSaved={() => refreshDrive()}
             onDatabaseChange={handleDatabaseChange}
+            logoUrl={logoUrl}
+            onLogoChange={refreshLogo}
           />
         )}
       </main>

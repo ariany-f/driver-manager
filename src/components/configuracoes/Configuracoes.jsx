@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Database, Eye, EyeOff, Folder, Pencil, Settings } from 'lucide-react';
+import { Database, Eye, EyeOff, Folder, Image, Pencil, Settings } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
-import { getDatabaseSettings, saveDatabaseSettings } from '../../services/database.js';
+import { getDatabaseSettings, removeLogo, saveDatabaseSettings, saveLogo } from '../../services/database.js';
 import { getDriveSettings, saveDriveField } from '../../services/drive.js';
 
 const fields = [
@@ -31,13 +31,38 @@ const emptyDatabase = () => ({
   DATABASE_NAME: '',
 });
 
-export default function Configuracoes({ onSaved, onDatabaseChange }) {
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
+function measureImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const width = image.naturalWidth;
+      const height = image.naturalHeight;
+      URL.revokeObjectURL(url);
+      if (width <= height) reject(new Error('A logo precisa ser horizontal: mais larga do que alta.'));
+      else resolve({ width, height });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Não foi possível ler esta imagem. Use PNG, JPEG, WEBP ou GIF.'));
+    };
+    image.src = url;
+  });
+}
+
+export default function Configuracoes({ onSaved, onDatabaseChange, logoUrl, onLogoChange }) {
   const [form, setForm] = useState(emptyForm);
   const [databaseForm, setDatabaseForm] = useState(emptyDatabase);
   const [databaseState, setDatabaseState] = useState({ configured: false, connected: false, error: '', tables: [] });
   const [showSecret, setShowSecret] = useState(false);
   const [showDatabase, setShowDatabase] = useState(false);
   const [databaseOpen, setDatabaseOpen] = useState(false);
+  const [pendingLogo, setPendingLogo] = useState('');
+  const [logoError, setLogoError] = useState('');
+  const [logoMessage, setLogoMessage] = useState('');
+  const [savingLogo, setSavingLogo] = useState(false);
   const [databaseDraft, setDatabaseDraft] = useState(emptyDatabase);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
@@ -130,6 +155,66 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
     }
   };
 
+  const handleLogoFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    setLogoError('');
+    setLogoMessage('');
+    if (!file) return;
+    if (!LOGO_TYPES.includes(file.type)) {
+      setLogoError('Use PNG, JPEG, WEBP ou GIF.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('A imagem precisa ter no máximo 2 MB.');
+      return;
+    }
+    try {
+      await measureImage(file);
+    } catch (error) {
+      setPendingLogo('');
+      setLogoError(error.message);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPendingLogo(String(reader.result || ''));
+    reader.onerror = () => setLogoError('Não foi possível ler esta imagem.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoSave = async () => {
+    if (!pendingLogo) return;
+    setSavingLogo(true);
+    setLogoError('');
+    setLogoMessage('');
+    try {
+      await saveLogo(pendingLogo);
+      setPendingLogo('');
+      setLogoMessage('Logo atualizada.');
+      if (onLogoChange) await onLogoChange();
+    } catch (saveError) {
+      setLogoError(saveError.message);
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    setSavingLogo(true);
+    setLogoError('');
+    setLogoMessage('');
+    try {
+      await removeLogo();
+      setPendingLogo('');
+      setLogoMessage('Logo removida. O cabeçalho voltou para Diário do Território.');
+      if (onLogoChange) await onLogoChange();
+    } catch (saveError) {
+      setLogoError(saveError.message);
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+
   const handleDatabaseSubmit = async (event) => {
     event.preventDefault();
     setSavingDatabase(true);
@@ -167,6 +252,41 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             As chaves do Google ficam no MySQL quando o banco já tem essa conexão. Se não tiver, o servidor usa o .env. A URL de retorno segue o endereço desta aplicação e não entra no banco. Sem o MySQL, a aplicação não abre.
           </p>
         </div>
+
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
+          <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
+            <Image size={18} strokeWidth={2.5} /> Logo
+          </div>
+          <p className="font-sans font-bold text-sm text-[#2C1A14]/80">
+            Use uma imagem horizontal, mais larga do que alta. Sem logo, o cabeçalho continua com Diário do Território.
+          </p>
+          {(pendingLogo || logoUrl) && (
+            <div className="inline-flex items-center bg-[#2C1A14] border-4 border-[#2C1A14] px-3 py-2">
+              <img src={pendingLogo || logoUrl} alt="Prévia da logo" className="h-12 w-auto max-w-[14rem] object-contain" />
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+            <label className={`inline-flex items-center justify-center px-4 py-2 border-4 border-[#2C1A14] bg-[#EAB308] font-display font-black uppercase tracking-widest text-xs text-[#2C1A14] ${databaseState.connected ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+              Escolher imagem
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" disabled={!databaseState.connected || savingLogo} onChange={handleLogoFile} />
+            </label>
+            {pendingLogo && (
+              <ButtonPrimary type="button" onClick={handleLogoSave} disabled={savingLogo}>
+                {savingLogo ? 'Salvando…' : 'Salvar logo'}
+              </ButtonPrimary>
+            )}
+            {logoUrl && !pendingLogo && (
+              <button type="button" onClick={handleLogoRemove} disabled={savingLogo} className="px-4 py-2 border-4 border-[#2C1A14] bg-[#F4EFE6] font-display font-black uppercase tracking-widest text-xs text-[#2C1A14] disabled:opacity-50">
+                Remover logo
+              </button>
+            )}
+          </div>
+          {!databaseState.connected && (
+            <p className="font-sans font-bold text-sm text-[#2C1A14]/70">Conecte o MySQL para guardar a logo. Enquanto isso, o cabeçalho mostra Diário do Território.</p>
+          )}
+          {logoError && <p className="font-sans font-bold text-sm text-[#C13B22]">{logoError}</p>}
+          {logoMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{logoMessage}</p>}
+        </section>
 
         <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">

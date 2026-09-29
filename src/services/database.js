@@ -72,6 +72,28 @@ export function deletePasta(id) {
   }).then(readJson);
 }
 
+export function getLogo() {
+  return fetch('/api/database/logo', { credentials: 'same-origin' }).then(async response => {
+    if (response.status === 204) return '';
+    if (!response.ok) throw new Error('Não foi possível carregar a logo.');
+    const blob = await response.blob();
+    return blob.size ? URL.createObjectURL(blob) : '';
+  });
+}
+
+export function saveLogo(image) {
+  return fetch('/api/database/logo', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ image }),
+  }).then(readJson);
+}
+
+export function removeLogo() {
+  return fetch('/api/database/logo', { method: 'DELETE', credentials: 'same-origin' }).then(readJson);
+}
+
 export function moveArquivo(fileId, pastaId) {
   return fetch('/api/database/arquivos', {
     method: 'PUT',

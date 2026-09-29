@@ -7,14 +7,20 @@ const views = [
   { id: 'configuracoes', lbl: 'Configurações' },
 ];
 
-export default function Header({ isAdmin, labelsEnabled, activeView, onNavigate, onLogin, onLogout }) {
+export default function Header({ isAdmin, labelsEnabled, logoUrl, activeView, onNavigate, onLogin, onLogout }) {
   return (
     <header className="bg-[#2C1A14] text-[#F4EFE6] border-b-4 border-[#C13B22] z-20 shrink-0 relative">
       <div className="flex items-center justify-between gap-3 px-3 sm:px-6 py-2">
         <div className="flex items-center gap-4 sm:gap-6 min-w-0">
-          <div className="flex flex-col leading-none -rotate-2 cursor-pointer hover:scale-105 transition-transform shrink-0" onClick={() => onNavigate('acervo')}>
-            <span className="font-display font-black text-xl sm:text-2xl tracking-tighter text-[#F4EFE6]">DIÁRIO</span>
-            <span className="font-display font-black text-[0.6rem] sm:text-[0.65rem] tracking-[0.2em] sm:tracking-[0.3em] text-[#EAB308]">DO TERRITÓRIO</span>
+          <div className="cursor-pointer hover:scale-105 transition-transform shrink-0" onClick={() => onNavigate('acervo')}>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Diário do Território" className="h-10 sm:h-12 w-auto max-w-[9.5rem] sm:max-w-[12rem] object-contain object-left" />
+            ) : (
+              <div className="flex flex-col leading-none -rotate-2">
+                <span className="font-display font-black text-xl sm:text-2xl tracking-tighter text-[#F4EFE6]">DIÁRIO</span>
+                <span className="font-display font-black text-[0.6rem] sm:text-[0.65rem] tracking-[0.2em] sm:tracking-[0.3em] text-[#EAB308]">DO TERRITÓRIO</span>
+              </div>
+            )}
           </div>
           {isAdmin && (
             <div className="hidden md:flex flex-wrap gap-3 border-l-4 border-white/10 pl-6">

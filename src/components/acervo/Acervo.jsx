@@ -14,7 +14,7 @@ import MoveFileModal from '../modals/MoveFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import { addFolderToTree, deleteFolderFromTree, flattenFolders, getDescendantFolderIds, renameFolderInTree } from '../../lib/folders.js';
 
-export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, territorios, tags, drive }) {
+export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, territorios, tags, drive, labelsEnabled }) {
   const [editingFile, setEditingFile] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
   const [movingFile, setMovingFile] = useState(null);
@@ -53,8 +53,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
 
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTerritorio = selectedTerritorios.length === 0 || selectedTerritorios.some(id => file.territorios.includes(id));
-    const matchesTag = selectedTags.length === 0 || selectedTags.some(id => file.tags.includes(id));
+    const matchesTerritorio = !labelsEnabled || selectedTerritorios.length === 0 || selectedTerritorios.some(id => (file.territorios || []).includes(id));
+    const matchesTag = !labelsEnabled || selectedTags.length === 0 || selectedTags.some(id => (file.tags || []).includes(id));
     const matchesType = selectedTypes.length === 0 || selectedTypes.includes(file.type);
     const matchesFolder = activeFolderId === '' ? true : file.folderId === activeFolderId;
     return matchesSearch && matchesTerritorio && matchesTag && matchesType && matchesFolder;
@@ -144,7 +144,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
     );
   };
 
-  const activeFilterCount = selectedTerritorios.length + selectedTags.length + selectedTypes.length;
+  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length : 0) + selectedTypes.length;
 
   const newFolderButton = isAdmin ? (
     <button onClick={() => setFolderModalConfig({ isOpen: true, mode: 'create', parentId: '' })} className="bg-white p-1.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] hover:-translate-y-0.5 hover:bg-[#849B55] hover:text-white transition-all shrink-0" title="Nova Pasta na Raiz" aria-label="Nova pasta na raiz">
@@ -173,9 +173,11 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
           <button onClick={() => setMovingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Mover" aria-label="Mover">
             <CornerDownRight size={18} strokeWidth={2.5} />
           </button>
-          <button onClick={() => setEditingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#849B55] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Classificar" aria-label="Classificar">
-            <Tags size={18} strokeWidth={2.5} />
-          </button>
+          {labelsEnabled && (
+            <button onClick={() => setEditingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#849B55] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Classificar" aria-label="Classificar">
+              <Tags size={18} strokeWidth={2.5} />
+            </button>
+          )}
         </>
       )}
       <button onClick={() => setViewingFile(file)} className="bg-[#1E3A5F] border-2 border-[#2C1A14] p-2.5 hover:bg-[#C13B22] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14] text-white" title="Ver arquivo" aria-label="Ver arquivo">
@@ -274,31 +276,35 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
             </button>
 
             <div className={`${filtersOpen ? 'grid' : 'hidden'} md:grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t-2 border-dashed border-[#2C1A14]/20`}>
-              <div className="md:col-span-5">
-                <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#1E3A5F]">Filtrar por Territórios</span>
-                <div className="flex flex-wrap gap-2">
-                  {territorios.map(territorio => (
-                    <button key={territorio.id} onClick={() => handleFilterToggle(territorio.id, setSelectedTerritorios)}
-                      className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-[#2C1A14] transition-all ${selectedTerritorios.includes(territorio.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
-                      style={selectedTerritorios.includes(territorio.id) ? { backgroundColor: territorio.bgColor, color: territorio.textColor } : {}}
-                    >{territorio.name}</button>
-                  ))}
+              {labelsEnabled && (
+                <div className="md:col-span-5">
+                  <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#1E3A5F]">Filtrar por Territórios</span>
+                  <div className="flex flex-wrap gap-2">
+                    {territorios.map(territorio => (
+                      <button key={territorio.id} onClick={() => handleFilterToggle(territorio.id, setSelectedTerritorios)}
+                        className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-[#2C1A14] transition-all ${selectedTerritorios.includes(territorio.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                        style={selectedTerritorios.includes(territorio.id) ? { backgroundColor: territorio.bgColor, color: territorio.textColor } : {}}
+                      >{territorio.name}</button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="md:col-span-5 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6">
-                <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#C13B22]">Filtrar por Tags</span>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map(tag => (
-                    <button key={tag.id} onClick={() => handleFilterToggle(tag.id, setSelectedTags)}
-                      className={`px-3 py-1 text-xs font-display font-bold uppercase border-2 border-[#2C1A14] rounded-full transition-all ${selectedTags.includes(tag.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
-                      style={selectedTags.includes(tag.id) ? { backgroundColor: tag.bgColor, color: tag.textColor } : {}}
-                    >{tag.name}</button>
-                  ))}
+              {labelsEnabled && (
+                <div className="md:col-span-5 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6">
+                  <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#C13B22]">Filtrar por Tags</span>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map(tag => (
+                      <button key={tag.id} onClick={() => handleFilterToggle(tag.id, setSelectedTags)}
+                        className={`px-3 py-1 text-xs font-display font-bold uppercase border-2 border-[#2C1A14] rounded-full transition-all ${selectedTags.includes(tag.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                        style={selectedTags.includes(tag.id) ? { backgroundColor: tag.bgColor, color: tag.textColor } : {}}
+                      >{tag.name}</button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="md:col-span-2 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6">
+              <div className={`${labelsEnabled ? 'md:col-span-2 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6' : 'md:col-span-12'}`}>
                 <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#849B55]">Mídia</span>
                 <div className="flex flex-wrap gap-2">
                   {['document', 'image', 'video', 'audio'].map(type => (
@@ -341,15 +347,19 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap">
-                  {file.territorios.map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
-                  {file.tags.map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
-                </div>
+                {labelsEnabled && (
+                  <div className="mt-3 flex flex-wrap">
+                    {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
+                    {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
+                  </div>
+                )}
                 <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
                   {isAdmin && (
                     <>
                       <button onClick={() => setMovingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Mover">Mover</button>
-                      <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
+                      {labelsEnabled && (
+                        <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
+                      )}
                     </>
                   )}
                   <button onClick={() => setViewingFile(file)} className={`${isAdmin ? 'flex-1' : 'w-full'} min-h-11 bg-[#1E3A5F] text-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center gap-2`} aria-label="Abrir arquivo">
@@ -370,7 +380,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
                 <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
                   <th className="px-5 py-4 font-black w-2/5">Arquivo</th>
                   <th className="px-5 py-4 font-black">Localização</th>
-                  <th className="px-5 py-4 font-black w-1/3">Classificação</th>
+                  {labelsEnabled && <th className="px-5 py-4 font-black w-1/3">Classificação</th>}
                   <th className="px-5 py-4 font-black text-right">Ações</th>
                 </tr>
               </thead>
@@ -405,23 +415,25 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
                         <Folder size={12} className="shrink-0 text-[#EAB308]" /> {getDisplayPath(file.folderId)}
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex flex-wrap gap-1">
-                          {file.territorios.map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
+                    {labelsEnabled && (
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex flex-wrap gap-1">
+                            {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                          {file.tags.map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
-                        </div>
-                      </div>
-                    </td>
+                      </td>
+                    )}
                     <td className="px-5 py-4">
                       {renderFileActions(file)}
                     </td>
                   </tr>
                 ))}
                 {currentFiles.length === 0 && (
-                  <tr><td colSpan="4" className="px-5 py-12 text-center font-display font-bold uppercase text-[#2C1A14]/50">Nenhum arquivo encontrado com estes filtros.</td></tr>
+                  <tr><td colSpan={labelsEnabled ? 4 : 3} className="px-5 py-12 text-center font-display font-bold uppercase text-[#2C1A14]/50">Nenhum arquivo encontrado com estes filtros.</td></tr>
                 )}
               </tbody>
             </table>
@@ -450,7 +462,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
         }}
       />
 
-      {editingFile && (
+      {labelsEnabled && editingFile && (
         <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} onClose={() => setEditingFile(null)}
           onSave={(id, nextTerritorios, nextTags) => {
             if (drive.active) drive.saveClassificacao(id, nextTerritorios, nextTags);

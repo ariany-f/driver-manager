@@ -40,6 +40,10 @@ export default function App() {
     setFolders(archive.folders);
   };
 
+  const handleDatabaseChange = useCallback((connected) => {
+    setLabelsEnabled(Boolean(connected));
+  }, []);
+
   const refreshDrive = useCallback(async ({ announce = false } = {}) => {
     setDriveBusy(true);
     setDriveError('');
@@ -189,7 +193,7 @@ export default function App() {
         {driveReady && activeView === 'configuracoes' && (
           <Configuracoes
             onSaved={() => refreshDrive()}
-            onDatabaseChange={connected => setLabelsEnabled(connected)}
+            onDatabaseChange={handleDatabaseChange}
           />
         )}
       </main>

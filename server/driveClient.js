@@ -270,6 +270,15 @@ export async function getAccount(env, config) {
   return about.user || null;
 }
 
+export async function resolveChosenFolder(env, config, folderId) {
+  const id = String(folderId || '').trim();
+  if (id !== 'root') return assertDriveId(id, 'pasta');
+  const token = await getAccessToken(env, config);
+  const folder = await driveJson(`${DRIVE_API}/files/root?fields=id,name,mimeType&supportsAllDrives=true`, token);
+  if (!folder.id || folder.mimeType !== FOLDER_MIME) throw new DriveError('Não foi possível usar a raiz do Drive.');
+  return folder.id;
+}
+
 export async function getFolderName(env, config) {
   if (!config.folderId) return '';
   assertDriveId(config.folderId, 'DRIVE_FOLDER_ID');

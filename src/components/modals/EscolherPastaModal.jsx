@@ -54,11 +54,23 @@ export default function EscolherPastaModal({ isOpen, onClose, onChosen }) {
             <FolderTree size={24} strokeWidth={2.5} /> Escolha a pasta
           </h3>
           <p className="font-sans font-bold text-sm text-[#2C1A14]/80 mt-2">
-            Esta pasta do Google Drive vira o acervo. Abra uma pasta para ver o que tem dentro, ou use a pasta que já está na lista.
+            Esta pasta do Google Drive vira o acervo. Use o Meu Drive inteiro, ou abra uma pasta e use só ela.
           </p>
           <p className="font-mono text-xs mt-3 break-all">{stack.length ? stack.map(item => item.name).join(' / ') : 'Meu Drive e pastas compartilhadas'}</p>
         </div>
         <div className="overflow-y-auto p-4 space-y-2 flex-1">
+          {!parent && (
+            <div className="flex gap-2">
+              <div className="min-h-11 flex-1 text-left px-3 border-2 border-[#2C1A14] bg-white font-sans font-bold text-sm inline-flex items-center gap-2">
+                <Folder size={16} strokeWidth={2.5} />
+                <span className="truncate">Meu Drive</span>
+                <span className="ml-auto shrink-0 font-mono text-[10px] uppercase">Raiz</span>
+              </div>
+              <ButtonPrimary onClick={() => choose({ id: 'root' })} disabled={saving} color="bgNavy" className="shrink-0">
+                Usar
+              </ButtonPrimary>
+            </div>
+          )}
           {stack.length > 0 && (
             <button type="button" onClick={() => setStack(current => current.slice(0, -1))} className="min-h-11 w-full text-left px-3 border-2 border-[#2C1A14] bg-white font-display font-bold uppercase text-xs">
               Voltar

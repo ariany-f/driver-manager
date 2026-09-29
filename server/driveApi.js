@@ -8,6 +8,7 @@ import {
   getAccount,
   getFolderName,
   listChoosableFolders,
+  resolveChosenFolder,
   missingDriveKeys,
   openDriveMedia,
   uploadDriveFile,
@@ -240,7 +241,7 @@ async function handleDriveRequest(req, res, { root, env }) {
 
   if (req.method === 'PUT' && pathname === '/api/drive/pasta') {
     const body = await readJson(req);
-    const folderId = String(body.folderId || '').trim();
+    const folderId = await resolveChosenFolder(env, config, body.folderId);
     const saved = await saveDriveEnv(root, env, {
       GOOGLE_CLIENT_ID: config.clientId,
       GOOGLE_CLIENT_SECRET: config.clientSecret,

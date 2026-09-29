@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
-  Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree,
-  Plus, Search, Tags, Trash2, X,
+  Archive, ChevronDown, ChevronRight, Eye, Folder, FolderTree,
+  Search, Tags, X,
 } from 'lucide-react';
 import Badge from '../ui/Badge.jsx';
-import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import FileIcon from '../ui/FileIcon.jsx';
 import ClassificacaoModal from '../modals/ClassificacaoModal.jsx';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
@@ -21,7 +20,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
   const [activeFolderId, setActiveFolderId] = useState('');
   const [folderModalConfig, setFolderModalConfig] = useState({ isOpen: false, mode: 'create', parentId: '', folder: null });
   const [folderToDelete, setFolderToDelete] = useState(null);
-  const [expandedFolders, setExpandedFolders] = useState(['pesq', 'proj']);
+  const [expandedFolders, setExpandedFolders] = useState([]);
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,7 +28,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const uploadRef = useRef(null);
   const itemsPerPage = 8;
 
   const flatFolders = flattenFolders(folders);
@@ -79,12 +77,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
     closeFolderModal();
   };
 
-  const handleUpload = (event) => {
-    const selected = Array.from(event.target.files || []);
-    event.target.value = '';
-    if (selected.length && drive.active) drive.upload(selected, activeFolderId);
-  };
-
   const handleConfirmDeleteFolder = () => {
     if (!folderToDelete) return;
     if (drive.active) {
@@ -124,14 +116,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
 
           <Folder size={20} fill={isActive ? 'currentColor' : (hasChildren ? 'currentColor' : 'none')} strokeWidth={2} className="shrink-0" />
           <span className="truncate flex-1" title={folder.name}>{folder.name}</span>
-
-          {isAdmin && (
-            <div className="flex lg:hidden lg:group-hover:flex items-center gap-1 shrink-0 bg-[#F4EFE6]/90 p-0.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] ml-2">
-              <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'create', parentId: folder.id }); }} className="min-h-11 min-w-9 lg:min-h-0 lg:min-w-0 lg:p-0.5 text-[#849B55] inline-flex items-center justify-center" title="Subpasta" aria-label="Nova subpasta"><Plus size={16} strokeWidth={3} /></button>
-              <button onClick={(e) => { e.stopPropagation(); setFolderModalConfig({ isOpen: true, mode: 'edit', folder }); }} className="min-h-11 min-w-9 lg:min-h-0 lg:min-w-0 lg:p-0.5 text-[#EAB308] inline-flex items-center justify-center" title="Renomear" aria-label="Renomear pasta"><Edit size={16} strokeWidth={3} /></button>
-              <button onClick={(e) => { e.stopPropagation(); setFolderToDelete(folder); }} className="min-h-11 min-w-9 lg:min-h-0 lg:min-w-0 lg:p-0.5 text-[#C13B22] inline-flex items-center justify-center" title="Excluir" aria-label="Excluir pasta"><Trash2 size={16} strokeWidth={3} /></button>
-            </div>
-          )}
         </div>
 
         {isExpanded && hasChildren && (
@@ -145,12 +129,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
   };
 
   const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length : 0) + selectedTypes.length;
-
-  const newFolderButton = isAdmin ? (
-    <button onClick={() => setFolderModalConfig({ isOpen: true, mode: 'create', parentId: '' })} className="bg-white p-1.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] hover:-translate-y-0.5 hover:bg-[#849B55] hover:text-white transition-all shrink-0" title="Nova Pasta na Raiz" aria-label="Nova pasta na raiz">
-      <Plus size={20} strokeWidth={3} />
-    </button>
-  ) : null;
 
   const renderDirectoryList = () => (
     <div className="flex-1 overflow-y-auto py-2 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pb-20">
@@ -168,17 +146,10 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
 
   const renderFileActions = (file) => (
     <div className="flex items-center justify-end gap-2">
-      {isAdmin && (
-        <>
-          <button onClick={() => setMovingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Mover" aria-label="Mover">
-            <CornerDownRight size={18} strokeWidth={2.5} />
-          </button>
-          {labelsEnabled && (
-            <button onClick={() => setEditingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#849B55] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Classificar" aria-label="Classificar">
-              <Tags size={18} strokeWidth={2.5} />
-            </button>
-          )}
-        </>
+      {isAdmin && labelsEnabled && (
+        <button onClick={() => setEditingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#849B55] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Classificar" aria-label="Classificar">
+          <Tags size={18} strokeWidth={2.5} />
+        </button>
       )}
       <button onClick={() => setViewingFile(file)} className="bg-[#1E3A5F] border-2 border-[#2C1A14] p-2.5 hover:bg-[#C13B22] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14] text-white" title="Ver arquivo" aria-label="Ver arquivo">
         <Eye size={18} strokeWidth={2.5} />
@@ -203,7 +174,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
           <h2 className="text-xl font-display font-black text-[#2C1A14] uppercase tracking-tighter flex items-center gap-2">
             <FolderTree size={24} strokeWidth={3} /> Diretórios
           </h2>
-          {newFolderButton}
         </div>
         {renderDirectoryList()}
       </div>
@@ -216,7 +186,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
                 <FolderTree size={22} strokeWidth={3} /> Diretórios
               </h2>
               <div className="flex items-center gap-2">
-                {newFolderButton}
                 <button onClick={() => setFoldersOpen(false)} className="bg-white p-1.5 border-2 border-[#2C1A14] shadow-[2px_2px_0px_#2C1A14]" aria-label="Fechar diretórios">
                   <X size={20} strokeWidth={3} />
                 </button>
@@ -250,12 +219,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
                 Pasta Atual: {getDisplayPath(activeFolderId)}
               </p>
             </div>
-            {isAdmin && (
-              <>
-                <input ref={uploadRef} type="file" multiple className="hidden" onChange={handleUpload} />
-                <ButtonPrimary icon={Plus} color="bgRust" className="w-full sm:w-auto" disabled={!drive.active || drive.busy} title={drive.active ? 'Enviar para a pasta atual do Drive' : 'Conecte o Google Drive para enviar'} onClick={() => uploadRef.current?.click()}>Upload</ButtonPrimary>
-              </>
-            )}
           </div>
 
           <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-4 sm:p-6 mb-8 shadow-[4px_4px_0px_rgba(44,26,20,0.1)] md:shadow-[8px_8px_0px_rgba(44,26,20,0.1)] space-y-4 sm:space-y-6">
@@ -354,13 +317,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, setFolders, 
                   </div>
                 )}
                 <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  {isAdmin && (
-                    <>
-                      <button onClick={() => setMovingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Mover">Mover</button>
-                      {labelsEnabled && (
-                        <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
-                      )}
-                    </>
+                  {isAdmin && labelsEnabled && (
+                    <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
                   )}
                   <button onClick={() => setViewingFile(file)} className={`${isAdmin ? 'flex-1' : 'w-full'} min-h-11 bg-[#1E3A5F] text-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center gap-2`} aria-label="Abrir arquivo">
                     <Eye size={16} strokeWidth={2.5} /> Abrir

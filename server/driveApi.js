@@ -5,28 +5,22 @@ import {
   DriveError,
   buildAuthUrl,
   clearToken,
-  createDriveFolder,
-  deleteDriveFolder,
   exchangeCode,
   getAccount,
   getFolderName,
   loadToken,
   missingDriveKeys,
-  moveDriveFile,
   openDriveMedia,
   readDriveConfig,
-  renameDriveFolder,
   resolveRedirectUri,
   saveDriveEnv,
   saveToken,
   syncArchive,
-  uploadDriveFile,
 } from './driveClient.js';
 import { databaseStatus, handleDatabaseRequest, loadFileLabels, saveFileLabels } from './database.js';
 import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
 
 const OAUTH_COOKIE = 'acervo_oauth';
-const UPLOAD_LIMIT = 200 * 1024 * 1024;
 
 function sendJson(res, status, body) {
   res.statusCode = status;
@@ -213,47 +207,20 @@ async function handleDriveRequest(req, res, { root, env }) {
 
   if (req.method === 'POST' && pathname === '/api/drive/upload') {
     throw new DriveError('A pasta do cliente só é lida. Nada é enviado para o Drive.', 403);
-    const bytes = await readBody(req, UPLOAD_LIMIT);
-    await uploadDriveFile(root, config, {
-      name: url.searchParams.get('name'),
-      mimeType: req.headers['content-type'] || 'application/octet-stream',
-      folderId: url.searchParams.get('folderId') || '',
-      bytes,
-    });
-    sendJson(res, 201, await archivePayload(root, config, env));
-    return;
   }
 
   if (req.method === 'POST' && pathname === '/api/drive/folders') {
     throw new DriveError('A pasta do cliente só é lida. Nenhuma pasta é criada no Drive.', 403);
-    const body = await readJson(req);
-    await createDriveFolder(root, config, body);
-    sendJson(res, 201, await archivePayload(root, config, env));
-    return;
   }
 
   const folder = pathname.match(/^\/api\/drive\/folders\/([a-zA-Z0-9_-]+)$/);
-  if (folder && req.method === 'PATCH') {
-    throw new DriveError('A pasta do cliente só é lida. Nenhuma pasta é renomeada no Drive.', 403);
-    const body = await readJson(req);
-    await renameDriveFolder(root, config, folder[1], body.name);
-    sendJson(res, 200, await archivePayload(root, config, env));
-    return;
-  }
-  if (folder && req.method === 'DELETE') {
-    throw new DriveError('A pasta do cliente só é lida. Nenhuma pasta é apagada no Drive.', 403);
-    await deleteDriveFolder(root, config, folder[1]);
-    sendJson(res, 200, await archivePayload(root, config, env));
-    return;
+  if (folder && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    throw new DriveError('A pasta do cliente só é lida. Nenhuma pasta é renomeada ou apagada no Drive.', 403);
   }
 
   const file = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)$/);
   if (file && req.method === 'PATCH') {
     throw new DriveError('A pasta do cliente só é lida. Nenhum arquivo é movido no Drive.', 403);
-    const body = await readJson(req);
-    await moveDriveFile(root, config, file[1], body.folderId || '');
-    sendJson(res, 200, await archivePayload(root, config, env));
-    return;
   }
 
   const labels = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)\/classificacao$/);

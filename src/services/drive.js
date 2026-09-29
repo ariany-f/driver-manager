@@ -22,12 +22,8 @@ export function saveDriveSettings(settings) {
   }).then(readJson);
 }
 
-export function syncDrive() {
-  return fetch('/api/drive/sync').then(readJson);
-}
-
-export function disconnectDrive() {
-  return fetch('/api/drive/disconnect', { method: 'POST' }).then(readJson);
+export function previewDrive() {
+  return fetch('/api/drive/novidades').then(readJson);
 }
 
 export function uploadDriveFile(file, folderId) {
@@ -37,37 +33,18 @@ export function uploadDriveFile(file, folderId) {
   });
   return fetch(`/api/drive/upload?${params.toString()}`, {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'content-type': file.type || 'application/octet-stream' },
     body: file,
   }).then(readJson);
 }
 
-export function createDriveFolder(name, parentId) {
-  return fetch('/api/drive/folders', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name, parentId: parentId || '' }),
-  }).then(readJson);
+export function syncDrive() {
+  return fetch('/api/drive/sync', { credentials: 'same-origin' }).then(readJson);
 }
 
-export function renameDriveFolder(folderId, name) {
-  return fetch(`/api/drive/folders/${folderId}`, {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name }),
-  }).then(readJson);
-}
-
-export function deleteDriveFolder(folderId) {
-  return fetch(`/api/drive/folders/${folderId}`, { method: 'DELETE' }).then(readJson);
-}
-
-export function moveDriveFile(fileId, folderId) {
-  return fetch(`/api/drive/files/${fileId}`, {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ folderId: folderId || '' }),
-  }).then(readJson);
+export function disconnectDrive() {
+  return fetch('/api/drive/disconnect', { method: 'POST' }).then(readJson);
 }
 
 export function saveDriveClassificacao(fileId, territorios, tags) {

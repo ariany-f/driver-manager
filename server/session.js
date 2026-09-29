@@ -141,7 +141,7 @@ export async function handleAuthRequest(req, res, env) {
 
 export function requiresAdmin(method, pathname) {
   if (pathname === '/api/drive/settings') return true;
-  if (pathname === '/api/drive/connect' || pathname === '/api/drive/disconnect') return true;
+  if (pathname === '/api/drive/connect' || pathname === '/api/drive/disconnect' || pathname === '/api/drive/sync') return true;
   if (pathname === '/api/drive/upload' || pathname === '/api/drive/folders') return true;
   if (pathname.startsWith('/api/drive/folders/')) return true;
   if (pathname.startsWith('/api/drive/files/') && method !== 'GET') return true;

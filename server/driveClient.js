@@ -1,4 +1,4 @@
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const DRIVE_ENV_KEYS = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'DRIVE_FOLDER_ID', 'GOOGLE_REDIRECT_URI'];
@@ -7,7 +7,7 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
-const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+const SCOPE = 'https://www.googleapis.com/auth/drive';
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const ITEM_LIMIT = 5000;
 
@@ -86,10 +86,6 @@ export function resolveRedirectUri(config, requestHost, forwardedProto) {
   return `${secure ? 'https' : 'http'}://${host}/api/drive/callback`;
 }
 
-function tokenPath(root) {
-  return path.join(root, 'data', 'drive-token.json');
-}
-
 function labelsPath(root) {
   return path.join(root, 'data', 'classificacao.json');
 }
@@ -107,20 +103,8 @@ async function writeJsonFile(file, value) {
   await writeFile(file, JSON.stringify(value, null, 2));
 }
 
-export function loadToken(root) {
-  return readJsonFile(tokenPath(root), null);
-}
-
-export async function saveToken(root, token) {
-  await writeJsonFile(tokenPath(root), token);
-}
-
-export async function clearToken(root) {
-  try {
-    await unlink(tokenPath(root));
-  } catch {
-    // já desconectado
-  }
+async function driveConnection() {
+  return import('./database.js');
 }
 
 async function loadLabels(root) {
@@ -210,9 +194,12 @@ export async function exchangeCode(config, redirectUri, code) {
   };
 }
 
-export async function getAccessToken(root, config) {
+export async function getAccessToken(env, config) {
   requireConfig(config);
-  const current = await loadToken(root);
+  const { databaseStatus, clearDriveConnection, loadDriveConnection, saveDriveConnection } = await driveConnection();
+  const status = await databaseStatus(env);
+  if (!status.connected) throw new DriveError('Conecte um banco MySQL para usar a aplicação.', 409);
+  const current = await loadDriveConnection(env);
   if (!current?.refresh_token) {
     throw new DriveError('O Google Drive ainda não foi conectado.', 401);
   }
@@ -231,11 +218,11 @@ export async function getAccessToken(root, config) {
       access_token: payload.access_token,
       expires_at: Date.now() + (Number(payload.expires_in) || 3600) * 1000,
     };
-    await saveToken(root, next);
+    await saveDriveConnection(env, next);
     return next.access_token;
   } catch (error) {
     if (String(error.message).includes('Conecte o Google Drive de novo')) {
-      await clearToken(root);
+      await clearDriveConnection(env);
     }
     throw error;
   }
@@ -258,16 +245,16 @@ async function driveJson(url, token, options = {}) {
   return payload;
 }
 
-export async function getAccount(root, config) {
-  const token = await getAccessToken(root, config);
+export async function getAccount(env, config) {
+  const token = await getAccessToken(env, config);
   const about = await driveJson(`${DRIVE_API}/about?fields=user(emailAddress,displayName)`, token);
   return about.user || null;
 }
 
-export async function getFolderName(root, config) {
+export async function getFolderName(env, config) {
   if (!config.folderId) return '';
   assertDriveId(config.folderId, 'DRIVE_FOLDER_ID');
-  const token = await getAccessToken(root, config);
+  const token = await getAccessToken(env, config);
   const folder = await driveJson(`${DRIVE_API}/files/${config.folderId}?fields=id,name,mimeType&supportsAllDrives=true`, token);
   if (folder.mimeType !== FOLDER_MIME) {
     throw new DriveError('DRIVE_FOLDER_ID não é uma pasta.');
@@ -326,13 +313,13 @@ function toFolderTree(folders, rootId) {
   return walk(rootId);
 }
 
-export async function syncArchive(root, config) {
+export async function syncArchive(env, config) {
   if (!config.folderId) {
     throw new DriveError('Preencha DRIVE_FOLDER_ID no .env com o id da pasta do acervo.', 503);
   }
   const rootId = assertDriveId(config.folderId, 'DRIVE_FOLDER_ID');
-  const token = await getAccessToken(root, config);
-  const labels = await loadLabels(root);
+  const token = await getAccessToken(env, config);
+  const labels = {};
   const folders = [];
   const files = [];
   const queue = [rootId];
@@ -384,10 +371,10 @@ function parentOf(config, folderId) {
   return assertDriveId(folderId, 'pasta');
 }
 
-export async function createDriveFolder(root, config, { name, parentId }) {
+export async function createDriveFolder(env, config, { name, parentId }) {
   const cleanName = String(name || '').trim();
   if (!cleanName) throw new DriveError('Dê um nome para a pasta.');
-  const token = await getAccessToken(root, config);
+  const token = await getAccessToken(env, config);
   return driveJson(`${DRIVE_API}/files?supportsAllDrives=true&fields=id,name`, token, {
     method: 'POST',
     body: JSON.stringify({
@@ -398,10 +385,10 @@ export async function createDriveFolder(root, config, { name, parentId }) {
   });
 }
 
-export async function renameDriveFolder(root, config, folderId, name) {
+export async function renameDriveFolder(env, config, folderId, name) {
   const cleanName = String(name || '').trim();
   if (!cleanName) throw new DriveError('Dê um nome para a pasta.');
-  const token = await getAccessToken(root, config);
+  const token = await getAccessToken(env, config);
   return driveJson(`${DRIVE_API}/files/${assertDriveId(folderId, 'pasta')}?supportsAllDrives=true&fields=id,name`, token, {
     method: 'PATCH',
     body: JSON.stringify({ name: cleanName }),
@@ -418,8 +405,8 @@ async function moveItem(token, fileId, fromParent, toParent) {
   await driveJson(url, token, { method: 'PATCH' });
 }
 
-export async function moveDriveFile(root, config, fileId, folderId) {
-  const token = await getAccessToken(root, config);
+export async function moveDriveFile(env, config, fileId, folderId) {
+  const token = await getAccessToken(env, config);
   const id = assertDriveId(fileId, 'arquivo');
   const meta = await driveJson(`${DRIVE_API}/files/${id}?fields=parents&supportsAllDrives=true`, token);
   const fromParent = meta.parents?.[0];
@@ -428,11 +415,11 @@ export async function moveDriveFile(root, config, fileId, folderId) {
   await moveItem(token, id, fromParent, toParent);
 }
 
-export async function deleteDriveFolder(root, config, folderId) {
+export async function deleteDriveFolder(env, config, folderId) {
   const rootId = assertDriveId(config.folderId, 'DRIVE_FOLDER_ID');
   const targetId = assertDriveId(folderId, 'pasta');
   if (targetId === rootId) throw new DriveError('A pasta raiz do acervo não pode ser excluída.');
-  const token = await getAccessToken(root, config);
+  const token = await getAccessToken(env, config);
   const folderIds = [];
   const fileMoves = [];
   const queue = [targetId];
@@ -464,11 +451,11 @@ export async function deleteDriveFolder(root, config, folderId) {
   }
 }
 
-export async function uploadDriveFile(root, config, { name, mimeType, folderId, bytes }) {
+export async function uploadDriveFile(env, config, { name, mimeType, folderId, bytes }) {
   const cleanName = String(name || '').trim();
   if (!cleanName) throw new DriveError('O arquivo precisa de um nome.');
   if (!bytes?.length) throw new DriveError('O arquivo está vazio.');
-  const token = await getAccessToken(root, config);
+  const token = await getAccessToken(env, config);
   const boundary = `acervo_${Math.random().toString(16).slice(2)}`;
   const meta = JSON.stringify({
     name: cleanName,
@@ -489,13 +476,17 @@ export async function uploadDriveFile(root, config, { name, mimeType, folderId, 
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new DriveError(payload.error?.message || 'Não foi possível enviar o arquivo.');
+    const reason = String(payload.error?.message || '');
+    if (response.status === 403 || /insufficient permissions/i.test(reason)) {
+      throw new DriveError('Esta conexão só lê o Drive. Conecte de novo para autorizar a gravação.');
+    }
+    throw new DriveError(reason || 'Não foi possível enviar o arquivo.');
   }
   return payload;
 }
 
-export async function openDriveMedia(root, config, fileId, rangeHeader) {
-  const token = await getAccessToken(root, config);
+export async function openDriveMedia(env, config, fileId, rangeHeader) {
+  const token = await getAccessToken(env, config);
   const id = assertDriveId(fileId, 'arquivo');
   const meta = await driveJson(`${DRIVE_API}/files/${id}?fields=name,mimeType&supportsAllDrives=true`, token);
   const isDoc = String(meta.mimeType || '').startsWith('application/vnd.google-apps.');

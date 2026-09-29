@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree,
-  Plus, Search, Tags, Trash2, X,
+  Plus, Search, Tags, Trash2, Upload, X,
 } from 'lucide-react';
 import Badge from '../ui/Badge.jsx';
 import FileIcon from '../ui/FileIcon.jsx';
@@ -9,6 +9,7 @@ import ClassificacaoModal from '../modals/ClassificacaoModal.jsx';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
 import FileViewer from '../modals/FileViewer.jsx';
 import FolderModal from '../modals/FolderModal.jsx';
+import UploadConfirmModal from '../modals/UploadConfirmModal.jsx';
 import MoveFileModal from '../modals/MoveFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import { flattenFolders } from '../../lib/folders.js';
@@ -28,6 +29,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [uploadQueue, setUploadQueue] = useState([]);
+  const uploadRef = useRef(null);
   const itemsPerPage = 8;
 
   const flatFolders = flattenFolders(folders);
@@ -66,6 +69,18 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const handleSaveFolder = (name, parentId, mode, folderId) => {
     drive.saveFolder({ mode, name, parentId, folderId });
     closeFolderModal();
+  };
+
+  const handleUploadPick = (event) => {
+    const picked = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (picked.length) setUploadQueue(picked);
+  };
+
+  const handleConfirmUpload = () => {
+    const queue = uploadQueue;
+    setUploadQueue([]);
+    drive.upload(queue, activeFolderId);
   };
 
   const handleConfirmDeleteFolder = () => {
@@ -212,13 +227,25 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                 <h1 className="min-w-0 text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">
                   Busca & <span className="text-[#1E3A5F]">Acervo</span>
                 </h1>
-                <button
-                  type="button"
-                  onClick={() => setFoldersOpen(true)}
-                  className="lg:hidden shrink-0 min-h-11 bg-[#EAB308] text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2"
-                >
-                  <FolderTree size={18} strokeWidth={3} /> Pastas
-                </button>
+                <div className="flex shrink-0 gap-2">
+                  {isAdmin && drive.active && (
+                    <button
+                      type="button"
+                      onClick={() => uploadRef.current?.click()}
+                      disabled={drive.busy}
+                      className="min-h-11 bg-[#C13B22] text-white border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <Upload size={18} strokeWidth={3} /> Enviar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setFoldersOpen(true)}
+                    className="lg:hidden min-h-11 bg-[#EAB308] text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2"
+                  >
+                    <FolderTree size={18} strokeWidth={3} /> Pastas
+                  </button>
+                </div>
               </div>
               <p className="font-mono text-xs sm:text-sm font-bold text-[#2C1A14]/70 tracking-tight bg-white border-2 border-[#2C1A14] inline-block max-w-full px-3 py-1 shadow-[2px_2px_0px_#2C1A14] break-all">
                 Pasta Atual: {getDisplayPath(activeFolderId)}
@@ -407,6 +434,15 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
           </div>
         </div>
       </div>
+
+      <input ref={uploadRef} type="file" multiple className="hidden" onChange={handleUploadPick} />
+      <UploadConfirmModal
+        files={uploadQueue}
+        folderPath={getDisplayPath(activeFolderId)}
+        busy={drive.busy}
+        onCancel={() => setUploadQueue([])}
+        onConfirm={handleConfirmUpload}
+      />
 
       <FolderModal
         config={folderModalConfig} flatFolders={flatFolders} onClose={() => setFolderModalConfig({ isOpen: false, mode: 'create' })}

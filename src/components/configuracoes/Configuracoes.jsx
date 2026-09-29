@@ -108,7 +108,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
         tables: saved.tables || [],
       });
       if (onDatabaseChange) onDatabaseChange(Boolean(saved.connected));
-      if (saved.connected) setDatabaseMessage('MySQL conectado. As tabelas de pastas, arquivos, tags e territórios estão criadas.');
+      if (saved.connected) setDatabaseMessage('MySQL conectado. A aplicação já pode guardar a conexão do Drive, as pastas, os arquivos, as tags e os territórios.');
       else if (saved.DATABASE_HOST) setDatabaseError(saved.error || 'Os dados foram salvos no .env, mas o MySQL não conectou.');
       else setDatabaseMessage('Banco desconectado. O acervo mostra só os arquivos.');
     } catch (saveError) {
@@ -126,7 +126,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             Configurações
           </h1>
           <p className="mt-3 font-sans font-bold text-sm text-[#2C1A14]/80">
-            O Google Drive e o MySQL ficam no arquivo .env deste servidor. Sem o banco conectado, o acervo mostra só os arquivos.
+            As chaves do Google ficam no MySQL quando o banco já tem essa conexão. Se não tiver, o servidor usa o .env. A autorização do Drive continua no banco. Sem o MySQL, a aplicação não abre.
           </p>
         </div>
 
@@ -180,7 +180,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             <Database size={18} strokeWidth={2.5} /> Banco de dados
           </div>
           <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
-            MySQL da Hostinger. Ao salvar, o servidor cria as tabelas. Pastas, o lugar de cada arquivo, tags e territórios ficam só aqui. Nada disso vai para o Drive. No hPanel, libere este computador em MySQL remoto. Enquanto não conectar, criar pasta, Classificar e Identidade ficam desligados.
+            MySQL da Hostinger. Sem este banco a aplicação não abre. Ao salvar, o servidor cria as tabelas, inclusive a autorização do Google Drive. Pastas, arquivos, tags e territórios também ficam aqui. No hPanel, libere este computador em MySQL remoto.
           </p>
           {databaseFields.map(field => (
             <div key={field.key}>

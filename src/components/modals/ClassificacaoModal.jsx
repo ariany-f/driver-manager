@@ -27,7 +27,7 @@ export default function ClassificacaoModal({ file, territorios, tags, onClose, o
             <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Territórios</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {territorios.map(territorio => (
-                <label key={territorio.id} className="flex items-center gap-3 p-3 border-2 border-[#2C1A14] bg-white cursor-pointer hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_#2C1A14] transition-all">
+                <label key={territorio.id} onClick={() => toggleSelection(territorio.id, setSelectedTerritorios)} className="flex items-center gap-3 p-3 border-2 border-[#2C1A14] bg-white cursor-pointer hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_#2C1A14] transition-all">
                   <div className="relative flex items-center justify-center w-6 h-6 border-2 border-[#2C1A14] bg-[#F4EFE6] shrink-0">
                     {selectedTerritorios.includes(territorio.id) && <div className="absolute w-3.5 h-3.5 bg-[#C13B22]"></div>}
                   </div>

@@ -19,13 +19,13 @@ export default function Header({ isAdmin, labelsEnabled, activeView, onNavigate,
           {isAdmin && (
             <div className="hidden md:flex flex-wrap gap-3 border-l-4 border-white/10 pl-6">
               {views.map(view => {
-                const disabled = view.id === 'categorias' && !labelsEnabled;
+                const disabled = !labelsEnabled && view.id !== 'configuracoes';
                 return (
                   <button
                     key={view.id}
                     type="button"
                     disabled={disabled}
-                    title={disabled ? 'Disponível quando o banco estiver conectado' : view.lbl}
+                    title={disabled ? 'Conecte o banco MySQL' : view.lbl}
                     onClick={() => { if (!disabled) onNavigate(view.id); }}
                     className={`font-display font-bold uppercase text-xs tracking-widest px-2 py-1 border-b-4 ${disabled ? 'border-transparent text-white/25 cursor-not-allowed' : activeView === view.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}
                   >
@@ -48,13 +48,13 @@ export default function Header({ isAdmin, labelsEnabled, activeView, onNavigate,
       {isAdmin && (
         <nav className="md:hidden grid grid-cols-2 border-t-2 border-white/10">
           {views.map(view => {
-            const disabled = view.id === 'categorias' && !labelsEnabled;
+            const disabled = !labelsEnabled && view.id !== 'configuracoes';
             return (
               <button
                 key={view.id}
                 type="button"
                 disabled={disabled}
-                title={disabled ? 'Disponível quando o banco estiver conectado' : view.lbl}
+                title={disabled ? 'Conecte o banco MySQL' : view.lbl}
                 onClick={() => { if (!disabled) onNavigate(view.id); }}
                 className={`font-display font-bold uppercase text-[11px] tracking-widest px-2 py-3 border-b-4 ${disabled ? 'border-transparent text-white/25 cursor-not-allowed' : activeView === view.id ? 'border-[#EAB308] text-[#EAB308] bg-white/5' : 'border-transparent text-white/50'}`}
               >

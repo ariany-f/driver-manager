@@ -4,20 +4,31 @@ import crypto from 'node:crypto';
 import {
   DriveError,
   buildAuthUrl,
-  clearToken,
   exchangeCode,
   getAccount,
   getFolderName,
-  loadToken,
   missingDriveKeys,
   openDriveMedia,
-  readDriveConfig,
+  uploadDriveFile,
   resolveRedirectUri,
   saveDriveEnv,
-  saveToken,
   syncArchive,
 } from './driveClient.js';
-import { databaseStatus, handleDatabaseRequest, loadFileLabels, rememberDriveLayout, saveFileLabels } from './database.js';
+import {
+  clearDriveConnection,
+  databaseStatus,
+  handleDatabaseRequest,
+  loadDriveConnection,
+  loadFileLabels,
+  moveArquivo,
+  previewDriveLayout,
+  rememberDriveLayout,
+  resolveDriveConfig,
+  resolveUploadFolder,
+  saveDriveConfig,
+  saveDriveConnection,
+  saveFileLabels,
+} from './database.js';
 import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
 
 const OAUTH_COOKIE = 'acervo_oauth';
@@ -78,17 +89,7 @@ function clearOauthCookie(res, req) {
   res.setHeader('Set-Cookie', `${OAUTH_COOKIE}=; ${cookieAttributes(req)}; Max-Age=0`);
 }
 
-async function archivePayload(root, config, env) {
-  const archive = await syncArchive(root, config);
-  const database = await databaseStatus(env);
-  if (!database.connected) {
-    return {
-      ...archive,
-      files: archive.files.map(file => ({ ...file, territorios: [], tags: [] })),
-    };
-  }
-  const placed = await rememberDriveLayout(env, archive);
-  const labels = await loadFileLabels(env);
+function withLabels(placed, labels) {
   return {
     folders: placed.folders,
     files: placed.files.map(file => ({
@@ -96,22 +97,45 @@ async function archivePayload(root, config, env) {
       territorios: labels[file.id]?.territorios || [],
       tags: labels[file.id]?.tags || [],
     })),
+    novos: placed.novos || [],
+    novasPastas: placed.novasPastas || [],
   };
+}
+
+async function readDriveArchive(config, env) {
+  const database = await databaseStatus(env);
+  if (!database.connected) throw new DriveError('Conecte um banco MySQL para usar a aplicação.', 409);
+  if (!config.folderId) throw new DriveError('Preencha o ID da pasta do Drive.', 503);
+  return syncArchive(env, config);
+}
+
+async function archivePayload(config, env) {
+  const archive = await readDriveArchive(config, env);
+  const placed = await rememberDriveLayout(env, archive);
+  return withLabels(placed, await loadFileLabels(env));
+}
+
+async function previewPayload(config, env) {
+  const archive = await readDriveArchive(config, env);
+  const placed = await previewDriveLayout(env, archive);
+  return withLabels(placed, await loadFileLabels(env));
 }
 
 async function handleDriveRequest(req, res, { root, env }) {
   const url = new URL(req.url, 'http://localhost');
   const pathname = url.pathname;
-  const config = readDriveConfig(env);
+  const config = await resolveDriveConfig(env);
   const redirectUri = resolveRedirectUri(config, req.headers.host || 'localhost', req.headers['x-forwarded-proto']);
 
   if (req.method === 'GET' && pathname === '/api/drive/status') {
-    const token = await loadToken(root);
+    const database = await databaseStatus(env);
+    const token = database.connected ? await loadDriveConnection(env) : null;
     const missing = missingDriveKeys(config);
     const status = {
       configured: missing.length === 0,
       missing,
-      connected: Boolean(token?.refresh_token),
+      databaseConnected: database.connected,
+      connected: Boolean(database.connected && token?.refresh_token),
       redirectUri,
       folderId: config.folderId,
       account: '',
@@ -119,9 +143,9 @@ async function handleDriveRequest(req, res, { root, env }) {
     };
     if (status.connected) {
       try {
-        const account = await getAccount(root, config);
+        const account = await getAccount(env, config);
         status.account = account?.emailAddress || account?.displayName || '';
-        if (config.folderId) status.folderName = await getFolderName(root, config);
+        if (config.folderId) status.folderName = await getFolderName(env, config);
       } catch (error) {
         status.error = error.message;
         if (String(error.message).includes('Conecte o Google Drive de novo')) status.connected = false;
@@ -137,6 +161,7 @@ async function handleDriveRequest(req, res, { root, env }) {
       GOOGLE_CLIENT_SECRET: config.clientSecret,
       DRIVE_FOLDER_ID: config.folderId,
       GOOGLE_REDIRECT_URI: config.redirectUri,
+      source: config.source,
     });
     return;
   }
@@ -144,16 +169,24 @@ async function handleDriveRequest(req, res, { root, env }) {
   if (req.method === 'PUT' && pathname === '/api/drive/settings') {
     const body = await readJson(req);
     const saved = await saveDriveEnv(root, env, body);
+    await saveDriveConfig(env, saved);
+    const stored = await resolveDriveConfig(env);
     sendJson(res, 200, {
-      GOOGLE_CLIENT_ID: saved.clientId,
-      GOOGLE_CLIENT_SECRET: saved.clientSecret,
-      DRIVE_FOLDER_ID: saved.folderId,
-      GOOGLE_REDIRECT_URI: saved.redirectUri,
+      GOOGLE_CLIENT_ID: stored.clientId,
+      GOOGLE_CLIENT_SECRET: stored.clientSecret,
+      DRIVE_FOLDER_ID: stored.folderId,
+      GOOGLE_REDIRECT_URI: stored.redirectUri,
+      source: stored.source,
     });
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/drive/connect') {
+    const database = await databaseStatus(env);
+    if (!database.connected) {
+      redirect(res, `/?drive=error&message=${encodeURIComponent('Conecte um banco MySQL antes de autorizar o Google Drive.')}`);
+      return;
+    }
     const state = rememberState(req, res, env);
     redirect(res, buildAuthUrl(config, redirectUri, state));
     return;
@@ -170,26 +203,36 @@ async function handleDriveRequest(req, res, { root, env }) {
       redirect(res, `/?drive=error&message=${encodeURIComponent('A autorização expirou. Tente conectar de novo.')}`);
       return;
     }
+    const database = await databaseStatus(env);
+    if (!database.connected) {
+      redirect(res, `/?drive=error&message=${encodeURIComponent('Conecte um banco MySQL antes de autorizar o Google Drive.')}`);
+      return;
+    }
     const token = await exchangeCode(config, redirectUri, url.searchParams.get('code'));
-    await saveToken(root, token);
+    await saveDriveConnection(env, token);
     redirect(res, '/?drive=connected');
     return;
   }
 
   if (req.method === 'POST' && pathname === '/api/drive/disconnect') {
-    await clearToken(root);
+    await clearDriveConnection(env);
     sendJson(res, 200, { connected: false });
     return;
   }
 
+  if (req.method === 'GET' && pathname === '/api/drive/novidades') {
+    sendJson(res, 200, await previewPayload(config, env));
+    return;
+  }
+
   if (req.method === 'GET' && pathname === '/api/drive/sync') {
-    sendJson(res, 200, await archivePayload(root, config, env));
+    sendJson(res, 200, await archivePayload(config, env));
     return;
   }
 
   const media = pathname.match(/^\/api\/drive\/media\/([a-zA-Z0-9_-]+)$/);
   if (req.method === 'GET' && media) {
-    const opened = await openDriveMedia(root, config, media[1], req.headers.range);
+    const opened = await openDriveMedia(env, config, media[1], req.headers.range);
     res.statusCode = opened.response.status;
     res.setHeader('content-type', opened.contentType);
     res.setHeader('content-disposition', 'inline');
@@ -207,7 +250,20 @@ async function handleDriveRequest(req, res, { root, env }) {
   }
 
   if (req.method === 'POST' && pathname === '/api/drive/upload') {
-    throw new DriveError('A pasta do cliente só é lida. Nada é enviado para o Drive.', 403);
+    const target = await resolveUploadFolder(env, url.searchParams.get('folderId') || '');
+    const uploaded = await uploadDriveFile(env, config, {
+      name: url.searchParams.get('name') || '',
+      mimeType: req.headers['content-type'],
+      folderId: target.driveParentId,
+      bytes: await readBody(req, 200 * 1024 * 1024),
+    });
+    const archive = await archivePayload(config, env);
+    if (target.pastaId && target.pastaId !== target.driveParentId) {
+      await moveArquivo(env, uploaded.id, target.pastaId);
+      archive.files = archive.files.map(file => (file.id === uploaded.id ? { ...file, folderId: target.pastaId } : file));
+    }
+    sendJson(res, 201, archive);
+    return;
   }
 
   if (req.method === 'POST' && pathname === '/api/drive/folders') {

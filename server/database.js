@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise';
-import { DriveError, saveEnvKeys } from './driveClient.js';
+import { DriveError, readDriveConfig, saveEnvKeys } from './driveClient.js';
 
 const DATABASE_ENV_KEYS = ['DATABASE_HOST', 'DATABASE_PORT', 'DATABASE_USER', 'DATABASE_PASSWORD', 'DATABASE_NAME'];
 const ITEM_ID = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -51,6 +51,27 @@ const CREATE_ARQUIVOS = `
     file_id VARCHAR(128) NOT NULL,
     pasta_id VARCHAR(128) NULL,
     PRIMARY KEY (file_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+
+const CREATE_DRIVE = `
+  CREATE TABLE drive_conexao (
+    id TINYINT NOT NULL,
+    refresh_token TEXT NOT NULL,
+    access_token TEXT NULL,
+    expires_at BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+
+const CREATE_DRIVE_CONFIG = `
+  CREATE TABLE drive_config (
+    id TINYINT NOT NULL,
+    client_id VARCHAR(255) NOT NULL DEFAULT '',
+    client_secret VARCHAR(255) NOT NULL DEFAULT '',
+    folder_id VARCHAR(128) NOT NULL DEFAULT '',
+    redirect_uri VARCHAR(255) NOT NULL DEFAULT '',
+    PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
 
@@ -149,6 +170,8 @@ const TABLE_SQL = [
   ['arquivo_classificacao', CREATE_CLASSIFICACAO],
   ['pastas', CREATE_PASTAS],
   ['arquivos', CREATE_ARQUIVOS],
+  ['drive_conexao', CREATE_DRIVE],
+  ['drive_config', CREATE_DRIVE_CONFIG],
 ];
 
 function tableNameOf(row) {
@@ -225,6 +248,73 @@ export async function saveDatabaseSettings(root, env, updates) {
   }
   const status = await databaseStatus(env, { force: true });
   return { ...readDatabaseSettings(env), ...publicStatus(status) };
+}
+
+function configFromRow(row) {
+  return {
+    clientId: String(row.client_id || '').trim(),
+    clientSecret: String(row.client_secret || '').trim(),
+    folderId: String(row.folder_id || '').trim(),
+    redirectUri: String(row.redirect_uri || '').trim(),
+    source: 'banco',
+  };
+}
+
+export async function resolveDriveConfig(env) {
+  const fromEnv = { ...readDriveConfig(env), source: 'env' };
+  const status = await databaseStatus(env);
+  if (!status.connected) return fromEnv;
+  const db = await withPool(env);
+  const [rows] = await db.query('SELECT client_id, client_secret, folder_id, redirect_uri FROM drive_config WHERE id = 1');
+  const row = rows[0];
+  if (!row || !(row.client_id || row.client_secret || row.folder_id || row.redirect_uri)) return fromEnv;
+  return configFromRow(row);
+}
+
+export async function saveDriveConfig(env, config) {
+  const status = await databaseStatus(env);
+  if (!status.connected) return;
+  const db = await withPool(env);
+  const values = [
+    config.clientId || '',
+    config.clientSecret || '',
+    config.folderId || '',
+    config.redirectUri || '',
+  ];
+  await db.query(
+    `INSERT INTO drive_config (id, client_id, client_secret, folder_id, redirect_uri) VALUES (1, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE client_id = ?, client_secret = ?, folder_id = ?, redirect_uri = ?`,
+    [...values, ...values],
+  );
+}
+
+export async function loadDriveConnection(env) {
+  const db = await withPool(env);
+  const [rows] = await db.query('SELECT refresh_token, access_token, expires_at FROM drive_conexao WHERE id = 1');
+  if (!rows.length || !rows[0].refresh_token) return null;
+  return {
+    refresh_token: rows[0].refresh_token,
+    access_token: rows[0].access_token || '',
+    expires_at: Number(rows[0].expires_at) || 0,
+  };
+}
+
+export async function saveDriveConnection(env, token) {
+  const refreshToken = String(token?.refresh_token || '');
+  if (!refreshToken) throw new DriveError('O Google não devolveu a autorização.');
+  const accessToken = token.access_token || null;
+  const expiresAt = Number(token.expires_at) || 0;
+  const db = await withPool(env);
+  await db.query(
+    `INSERT INTO drive_conexao (id, refresh_token, access_token, expires_at) VALUES (1, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE refresh_token = ?, access_token = ?, expires_at = ?`,
+    [refreshToken, accessToken, expiresAt, refreshToken, accessToken, expiresAt],
+  );
+}
+
+export async function clearDriveConnection(env) {
+  const db = await withPool(env);
+  await db.query('DELETE FROM drive_conexao WHERE id = 1');
 }
 
 async function withPool(env) {
@@ -368,10 +458,52 @@ async function loadPlacements(env) {
   return rows.map(row => ({ id: row.file_id, folderId: row.pasta_id || '' }));
 }
 
-export async function rememberDriveLayout(env, archive) {
+async function knownDriveIds(env) {
   const db = await withPool(env);
   const [knownFolders] = await db.query('SELECT id FROM pastas');
-  const folderIds = new Set(knownFolders.map(row => row.id));
+  const [knownFiles] = await db.query('SELECT file_id FROM arquivos');
+  return {
+    folderIds: new Set(knownFolders.map(row => row.id)),
+    fileIds: new Set(knownFiles.map(row => row.file_id)),
+  };
+}
+
+function describeNewFile(file) {
+  return {
+    id: file.id,
+    name: file.name,
+    folderId: file.folderId || '',
+    type: file.type || 'document',
+  };
+}
+
+export async function previewDriveLayout(env, archive) {
+  const { folderIds, fileIds } = await knownDriveIds(env);
+  const novasPastas = flattenDriveFolders(archive.folders)
+    .filter(folder => RECORD_ID.test(folder.id) && !folderIds.has(folder.id))
+    .map(folder => ({ id: folder.id, name: folder.name }));
+  const novos = (archive.files || [])
+    .filter(file => RECORD_ID.test(String(file.id)) && !fileIds.has(file.id))
+    .map(describeNewFile);
+  const placements = new Map((await loadPlacements(env)).map(item => [item.id, item.folderId]));
+  return {
+    folders: await loadFolderTree(env),
+    files: (archive.files || [])
+      .filter(file => fileIds.has(file.id))
+      .map(file => ({
+        ...file,
+        folderId: placements.has(file.id) ? placements.get(file.id) : (file.folderId || ''),
+      })),
+    novos,
+    novasPastas,
+  };
+}
+
+export async function rememberDriveLayout(env, archive) {
+  const db = await withPool(env);
+  const known = await knownDriveIds(env);
+  const folderIds = known.folderIds;
+  const novasPastas = [];
   for (const folder of flattenDriveFolders(archive.folders)) {
     if (!RECORD_ID.test(folder.id) || folderIds.has(folder.id)) continue;
     await db.query(
@@ -379,15 +511,17 @@ export async function rememberDriveLayout(env, archive) {
       [folder.id, folder.name || 'Pasta', folder.parentId || null, 'drive'],
     );
     folderIds.add(folder.id);
+    novasPastas.push({ id: folder.id, name: folder.name });
   }
 
-  const [knownFiles] = await db.query('SELECT file_id FROM arquivos');
-  const fileIds = new Set(knownFiles.map(row => row.file_id));
+  const fileIds = known.fileIds;
+  const novos = [];
   for (const file of archive.files || []) {
     if (!RECORD_ID.test(String(file.id)) || fileIds.has(file.id)) continue;
     const pastaId = file.folderId && folderIds.has(file.folderId) ? file.folderId : null;
     await db.query('INSERT INTO arquivos (file_id, pasta_id) VALUES (?, ?)', [file.id, pastaId]);
     fileIds.add(file.id);
+    novos.push({ ...describeNewFile(file), folderId: pastaId || '' });
   }
 
   const placements = new Map((await loadPlacements(env)).map(item => [item.id, item.folderId]));
@@ -397,7 +531,19 @@ export async function rememberDriveLayout(env, archive) {
       ...file,
       folderId: placements.has(file.id) ? placements.get(file.id) : (file.folderId || ''),
     })),
+    novos,
+    novasPastas,
   };
+}
+
+export async function resolveUploadFolder(env, pastaId) {
+  if (!pastaId) return { driveParentId: '', pastaId: '' };
+  const id = assertRecordId(pastaId, 'pasta');
+  const db = await withPool(env);
+  const [rows] = await db.query('SELECT origem FROM pastas WHERE id = ? AND oculto = 0', [id]);
+  if (!rows.length) throw new DriveError('A pasta de destino não existe.');
+  if (rows[0].origem === 'drive') return { driveParentId: id, pastaId: id };
+  return { driveParentId: '', pastaId: id };
 }
 
 export async function createPasta(env, { name, parentId }) {

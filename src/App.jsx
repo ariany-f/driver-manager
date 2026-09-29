@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Header from './components/layout/Header.jsx';
 import LoginModal from './components/modals/LoginModal.jsx';
+import NovidadesModal from './components/modals/NovidadesModal.jsx';
+import ClassificarNovosModal from './components/modals/ClassificarNovosModal.jsx';
 import Acervo from './components/acervo/Acervo.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
 import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx';
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
+import BancoNecessario from './components/banco/BancoNecessario.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
 import { createPasta, deletePasta, getDatabaseStatus, getIdentidade, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
 import {
   disconnectDrive,
   getDriveStatus,
+  previewDrive,
   saveDriveClassificacao,
   syncDrive,
+  uploadDriveFile,
 } from './services/drive.js';
 
 export default function App() {
@@ -28,6 +33,10 @@ export default function App() {
   const [driveMessage, setDriveMessage] = useState('');
   const [driveError, setDriveError] = useState('');
   const [labelsEnabled, setLabelsEnabled] = useState(false);
+  const [novidades, setNovidades] = useState(null);
+  const [classificarNovos, setClassificarNovos] = useState([]);
+  const [classificando, setClassificando] = useState(false);
+  const novidadesDispensadas = useRef(false);
 
   const applyArchive = (archive) => {
     setFiles(archive.files);
@@ -42,15 +51,6 @@ export default function App() {
       })
       .catch(() => {});
   }, []);
-
-  const handleDatabaseChange = useCallback((connected) => {
-    setLabelsEnabled(Boolean(connected));
-    if (connected) loadIdentidade();
-    else {
-      setTerritorios([]);
-      setTags([]);
-    }
-  }, [loadIdentidade]);
 
   const persistTerritorios = async (next) => {
     setTerritorios(next);
@@ -72,15 +72,28 @@ export default function App() {
     }
   };
 
-  const refreshDrive = useCallback(async ({ announce = false } = {}) => {
+  const refreshDrive = useCallback(async ({ commit = false, announce = false } = {}) => {
     setDriveBusy(true);
     setDriveError('');
     try {
       const status = await getDriveStatus();
       setDriveStatus(status);
       if (status.connected && status.folderId) {
-        applyArchive(await syncDrive());
-        if (announce) setDriveMessage('Arquivos atualizados a partir do Google Drive.');
+        const archive = commit ? await syncDrive() : await previewDrive();
+        applyArchive(archive);
+        const arquivos = archive.novos || [];
+        const pastas = archive.novasPastas || [];
+        if (commit) {
+          setNovidades(null);
+          if (arquivos.length) setClassificarNovos(arquivos);
+          if (announce && !arquivos.length) {
+            setDriveMessage(pastas.length ? 'Pastas novas gravadas no banco.' : 'Nada de novo no Drive.');
+          }
+        } else if ((arquivos.length || pastas.length) && !novidadesDispensadas.current) {
+          setNovidades({ arquivos, pastas });
+        } else {
+          setNovidades(null);
+        }
       }
       return status;
     } catch (error) {
@@ -91,6 +104,22 @@ export default function App() {
       setDriveReady(true);
     }
   }, []);
+
+  const handleDatabaseChange = useCallback((connected) => {
+    const ready = Boolean(connected);
+    setLabelsEnabled(ready);
+    if (ready) {
+      loadIdentidade();
+      refreshDrive();
+      return;
+    }
+    setTerritorios([]);
+    setTags([]);
+    setFiles([]);
+    setFolders([]);
+    setDriveStatus(null);
+    setDriveMessage('');
+  }, [loadIdentidade, refreshDrive]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -110,10 +139,17 @@ export default function App() {
         .then(status => {
           const connected = Boolean(status.connected);
           setLabelsEnabled(connected);
-          if (connected) loadIdentidade();
+          if (!connected) {
+            setDriveReady(true);
+            return;
+          }
+          loadIdentidade();
+          refreshDrive();
         })
-        .catch(() => setLabelsEnabled(false));
-      refreshDrive();
+        .catch(() => {
+          setLabelsEnabled(false);
+          setDriveReady(true);
+        });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [refreshDrive, loadIdentidade]);
@@ -124,7 +160,27 @@ export default function App() {
     message: driveMessage,
     error: driveError,
     active: Boolean(driveStatus?.connected && driveStatus?.folderId),
-    sync: () => refreshDrive({ announce: true }),
+    sync: () => refreshDrive({ commit: true, announce: true }),
+    upload: async (selected, folderId) => {
+      setDriveBusy(true);
+      setDriveError('');
+      setDriveMessage('');
+      try {
+        const novos = [];
+        let archive = null;
+        for (const file of selected) {
+          archive = await uploadDriveFile(file, folderId);
+          novos.push(...(archive.novos || []));
+        }
+        if (archive) applyArchive(archive);
+        if (novos.length) setClassificarNovos(novos);
+        setDriveMessage(selected.length === 1 ? 'Arquivo enviado para o Google Drive.' : 'Arquivos enviados para o Google Drive.');
+      } catch (error) {
+        setDriveError(error.message);
+      } finally {
+        setDriveBusy(false);
+      }
+    },
     disconnect: async () => {
       setDriveBusy(true);
       setDriveError('');
@@ -183,6 +239,29 @@ export default function App() {
     },
   };
 
+  const salvarClassificacaoNovos = async (choices) => {
+    setClassificando(true);
+    setDriveError('');
+    try {
+      const saved = [];
+      for (const file of classificarNovos) {
+        const choice = choices[file.id] || { territorios: [], tags: [] };
+        if (!choice.territorios.length && !choice.tags.length) continue;
+        await saveDriveClassificacao(file.id, choice.territorios, choice.tags);
+        saved.push({ id: file.id, ...choice });
+      }
+      if (saved.length) {
+        const byId = new Map(saved.map(item => [item.id, item]));
+        setFiles(current => current.map(file => (byId.has(file.id) ? { ...file, territorios: byId.get(file.id).territorios, tags: byId.get(file.id).tags } : file)));
+      }
+      setClassificarNovos([]);
+    } catch (error) {
+      setDriveError(error.message);
+    } finally {
+      setClassificando(false);
+    }
+  };
+
   const logout = () => {
     endSession().catch(() => {}).finally(() => {
       setIsAdmin(false);
@@ -192,7 +271,8 @@ export default function App() {
 
   let activeView = currentView;
   if (!isAdmin && activeView !== 'acervo') activeView = 'acervo';
-  if (!labelsEnabled && activeView === 'categorias') activeView = 'acervo';
+  if (!labelsEnabled && activeView !== 'configuracoes') activeView = 'acervo';
+  const showGate = driveReady && !labelsEnabled && activeView !== 'configuracoes';
 
   return (
     <div className="h-dvh w-full bg-[#E4CFB2] flex flex-col font-sans text-[#2C1A14] overflow-hidden selection:bg-[#EAB308] selection:text-[#2C1A14]">
@@ -211,12 +291,46 @@ export default function App() {
         onSuccess={() => { setIsAdmin(true); setLoginOpen(false); }}
       />
 
+      {isAdmin && labelsEnabled && novidades && !classificarNovos.length && (
+        <NovidadesModal
+          arquivos={novidades.arquivos}
+          pastas={novidades.pastas}
+          busy={driveBusy}
+          error={driveError}
+          onClose={() => {
+            novidadesDispensadas.current = true;
+            setNovidades(null);
+          }}
+          onSync={() => refreshDrive({ commit: true, announce: true })}
+        />
+      )}
+      {isAdmin && labelsEnabled && classificarNovos.length > 0 && (
+        <ClassificarNovosModal
+          files={classificarNovos}
+          territorios={territorios}
+          tags={tags}
+          busy={classificando}
+          error={driveError}
+          onClose={() => setClassificarNovos([])}
+          onOpenIdentidade={() => { setClassificarNovos([]); setCurrentView('categorias'); }}
+          onSave={salvarClassificacaoNovos}
+        />
+      )}
+
       <main className="flex-1 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
         {!driveReady && (
           <p className="p-8 font-display font-black uppercase tracking-widest text-[#2C1A14]">Carregando acervo...</p>
         )}
-        {driveReady && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} labelsEnabled={labelsEnabled} />}
-        {driveReady && activeView === 'acervo' && (
+        {showGate && (
+          <BancoNecessario
+            isAdmin={isAdmin}
+            error={driveError}
+            onOpenSettings={() => setCurrentView('configuracoes')}
+            onLogin={() => setLoginOpen(true)}
+          />
+        )}
+        {driveReady && labelsEnabled && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} labelsEnabled={labelsEnabled} />}
+        {driveReady && labelsEnabled && activeView === 'acervo' && (
           <Acervo
             isAdmin={isAdmin}
             files={files}
@@ -229,7 +343,7 @@ export default function App() {
             labelsEnabled={labelsEnabled}
           />
         )}
-        {driveReady && activeView === 'categorias' && (
+        {driveReady && labelsEnabled && activeView === 'categorias' && (
           <GerenciarIdentidade
             territorios={territorios}
             tags={tags}

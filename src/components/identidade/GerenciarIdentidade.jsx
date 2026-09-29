@@ -3,7 +3,7 @@ import { Edit, Plus, Trash2 } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getContrastTextColor, PREDEFINED_COLORS } from '../../lib/colors.js';
 
-export default function GerenciarIdentidade({ territorios, setTerritorios, tags, setTags }) {
+export default function GerenciarIdentidade({ territorios, tags, onTerritorios, onTags }) {
   const [activeTab, setActiveTab] = useState('territorios');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -37,20 +37,15 @@ export default function GerenciarIdentidade({ territorios, setTerritorios, tags,
       textColor: getContrastTextColor(color),
     };
 
-    if (activeTab === 'territorios') {
-      if (editingItem) setTerritorios(prev => prev.map(territorio => territorio.id === editingItem.id ? newItem : territorio));
-      else setTerritorios(prev => [...prev, newItem]);
-    } else if (editingItem) {
-      setTags(prev => prev.map(tag => tag.id === editingItem.id ? newItem : tag));
-    } else {
-      setTags(prev => [...prev, newItem]);
-    }
+    const apply = (list) => (editingItem ? list.map(item => item.id === editingItem.id ? newItem : item) : [...list, newItem]);
+    if (activeTab === 'territorios') onTerritorios(apply(territorios));
+    else onTags(apply(tags));
     closeModal();
   };
 
   const handleDelete = (id) => {
-    if (activeTab === 'territorios') setTerritorios(prev => prev.filter(territorio => territorio.id !== id));
-    else setTags(prev => prev.filter(tag => tag.id !== id));
+    if (activeTab === 'territorios') onTerritorios(territorios.filter(territorio => territorio.id !== id));
+    else onTags(tags.filter(tag => tag.id !== id));
   };
 
   const currentList = activeTab === 'territorios' ? territorios : tags;

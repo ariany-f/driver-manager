@@ -5,9 +5,9 @@ import Acervo from './components/acervo/Acervo.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
 import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx';
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
-import { initialFiles, initialFolders, initialTags, initialTerritorios } from './data/seed.js';
+import { initialFiles, initialFolders } from './data/seed.js';
 import { getSession, logout as endSession } from './services/auth.js';
-import { getDatabaseStatus } from './services/database.js';
+import { getDatabaseStatus, getIdentidade, saveTags, saveTerritorios } from './services/database.js';
 import {
   createDriveFolder,
   deleteDriveFolder,
@@ -24,8 +24,8 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [currentView, setCurrentView] = useState('acervo');
-  const [territorios, setTerritorios] = useState(initialTerritorios);
-  const [tags, setTags] = useState(initialTags);
+  const [territorios, setTerritorios] = useState([]);
+  const [tags, setTags] = useState([]);
   const [files, setFiles] = useState(initialFiles);
   const [folders, setFolders] = useState(initialFolders);
   const [driveReady, setDriveReady] = useState(false);
@@ -40,9 +40,43 @@ export default function App() {
     setFolders(archive.folders);
   };
 
+  const loadIdentidade = useCallback(() => {
+    getIdentidade()
+      .then(data => {
+        setTerritorios(data.territorios || []);
+        setTags(data.tags || []);
+      })
+      .catch(() => {});
+  }, []);
+
   const handleDatabaseChange = useCallback((connected) => {
     setLabelsEnabled(Boolean(connected));
-  }, []);
+    if (connected) loadIdentidade();
+    else {
+      setTerritorios([]);
+      setTags([]);
+    }
+  }, [loadIdentidade]);
+
+  const persistTerritorios = async (next) => {
+    setTerritorios(next);
+    try {
+      const saved = await saveTerritorios(next);
+      setTerritorios(saved.territorios || next);
+    } catch (error) {
+      setDriveError(error.message);
+    }
+  };
+
+  const persistTags = async (next) => {
+    setTags(next);
+    try {
+      const saved = await saveTags(next);
+      setTags(saved.tags || next);
+    } catch (error) {
+      setDriveError(error.message);
+    }
+  };
 
   const refreshDrive = useCallback(async ({ announce = false } = {}) => {
     setDriveBusy(true);
@@ -79,12 +113,16 @@ export default function App() {
     const timer = window.setTimeout(() => {
       getSession().then(admin => setIsAdmin(admin)).catch(() => setIsAdmin(false));
       getDatabaseStatus()
-        .then(status => setLabelsEnabled(Boolean(status.connected)))
+        .then(status => {
+          const connected = Boolean(status.connected);
+          setLabelsEnabled(connected);
+          if (connected) loadIdentidade();
+        })
         .catch(() => setLabelsEnabled(false));
       refreshDrive();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [refreshDrive]);
+  }, [refreshDrive, loadIdentidade]);
 
   const runDriveAction = async (action) => {
     setDriveBusy(true);
@@ -189,7 +227,14 @@ export default function App() {
             labelsEnabled={labelsEnabled}
           />
         )}
-        {driveReady && activeView === 'categorias' && <GerenciarIdentidade territorios={territorios} setTerritorios={setTerritorios} tags={tags} setTags={setTags} />}
+        {driveReady && activeView === 'categorias' && (
+          <GerenciarIdentidade
+            territorios={territorios}
+            tags={tags}
+            onTerritorios={persistTerritorios}
+            onTags={persistTags}
+          />
+        )}
         {driveReady && activeView === 'configuracoes' && (
           <Configuracoes
             onSaved={() => refreshDrive()}

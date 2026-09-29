@@ -13,10 +13,26 @@ const fields = [
 
 const emptyForm = () => Object.fromEntries(fields.map(field => [field.key, '']));
 
+const databaseFields = [
+  { key: 'DATABASE_HOST', label: 'Servidor', secret: false, placeholder: 'srv123.hstgr.io' },
+  { key: 'DATABASE_PORT', label: 'Porta', secret: false, placeholder: '3306' },
+  { key: 'DATABASE_NAME', label: 'Nome do banco', secret: false, placeholder: 'u123456789_acervo' },
+  { key: 'DATABASE_USER', label: 'Usuário', secret: false, placeholder: 'u123456789_acervo' },
+  { key: 'DATABASE_PASSWORD', label: 'Senha', secret: true, placeholder: '' },
+];
+
+const emptyDatabase = () => ({
+  DATABASE_HOST: '',
+  DATABASE_PORT: '3306',
+  DATABASE_USER: '',
+  DATABASE_PASSWORD: '',
+  DATABASE_NAME: '',
+});
+
 export default function Configuracoes({ onSaved, onDatabaseChange }) {
   const [form, setForm] = useState(emptyForm);
-  const [databaseUrl, setDatabaseUrl] = useState('');
-  const [databaseState, setDatabaseState] = useState({ configured: false, connected: false, error: '' });
+  const [databaseForm, setDatabaseForm] = useState(emptyDatabase);
+  const [databaseState, setDatabaseState] = useState({ configured: false, connected: false, error: '', tables: [] });
   const [showSecret, setShowSecret] = useState(false);
   const [showDatabase, setShowDatabase] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,15 +52,16 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
       .then(([settings, database]) => {
         if (!active) return;
         setForm({ ...emptyForm(), ...settings });
-        if (database.error && !database.DATABASE_URL) {
+        if (database.error && !database.DATABASE_HOST) {
           setDatabaseError(database.error);
           return;
         }
-        setDatabaseUrl(database.DATABASE_URL || '');
+        setDatabaseForm({ ...emptyDatabase(), ...database, DATABASE_PORT: database.DATABASE_PORT || '3306' });
         setDatabaseState({
           configured: Boolean(database.configured),
           connected: Boolean(database.connected),
           error: database.error || '',
+          tables: database.tables || [],
         });
         if (onDatabaseChange) onDatabaseChange(Boolean(database.connected));
       })
@@ -82,16 +99,17 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
     setDatabaseMessage('');
     setDatabaseError('');
     try {
-      const saved = await saveDatabaseSettings({ DATABASE_URL: databaseUrl });
-      setDatabaseUrl(saved.DATABASE_URL || '');
+      const saved = await saveDatabaseSettings(databaseForm);
+      setDatabaseForm({ ...emptyDatabase(), ...saved, DATABASE_PORT: saved.DATABASE_PORT || '3306' });
       setDatabaseState({
         configured: Boolean(saved.configured),
         connected: Boolean(saved.connected),
         error: saved.error || '',
+        tables: saved.tables || [],
       });
       if (onDatabaseChange) onDatabaseChange(Boolean(saved.connected));
-      if (saved.connected) setDatabaseMessage('Banco conectado. A URL ficou no .env e territórios e tags foram liberados.');
-      else if (saved.DATABASE_URL) setDatabaseError(saved.error || 'A URL foi salva no .env, mas o banco não conectou.');
+      if (saved.connected) setDatabaseMessage('MySQL conectado. As tabelas territorios, tags e arquivo_classificacao estão criadas.');
+      else if (saved.DATABASE_HOST) setDatabaseError(saved.error || 'Os dados foram salvos no .env, mas o MySQL não conectou.');
       else setDatabaseMessage('Banco desconectado. O acervo mostra só os arquivos.');
     } catch (saveError) {
       setDatabaseError(saveError.message);
@@ -108,7 +126,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             Configurações
           </h1>
           <p className="mt-3 font-sans font-bold text-sm text-[#2C1A14]/80">
-            O Google Drive e a URL do banco ficam no arquivo .env deste servidor. Sem o banco conectado, o acervo mostra só os arquivos.
+            O Google Drive e o MySQL ficam no arquivo .env deste servidor. Sem o banco conectado, o acervo mostra só os arquivos.
           </p>
         </div>
 
@@ -162,32 +180,36 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             <Database size={18} strokeWidth={2.5} /> Banco de dados
           </div>
           <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
-            PostgreSQL. Enquanto não conectar, Classificar, Identidade, tags e territórios ficam desligados.
+            MySQL da Hostinger. Ao salvar, o servidor cria as tabelas. No hPanel, libere este computador em MySQL remoto. Enquanto não conectar, Classificar, Identidade, tags e territórios ficam desligados.
           </p>
-          <div>
-            <label htmlFor="DATABASE_URL" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">URL do banco</label>
-            <div className="relative">
-              <input
-                id="DATABASE_URL"
-                name="DATABASE_URL"
-                type={showDatabase ? 'text' : 'password'}
-                autoComplete="off"
-                placeholder="postgresql://usuario:senha@servidor:5432/acervo"
-                value={databaseUrl}
-                onChange={(event) => setDatabaseUrl(event.target.value)}
-                className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-mono text-sm text-[#2C1A14] caret-[#2C1A14] outline-none bg-white [color-scheme:light]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowDatabase(current => !current)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
-                aria-label={showDatabase ? 'Ocultar URL' : 'Mostrar URL'}
-                aria-pressed={showDatabase}
-              >
-                {showDatabase ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
-              </button>
+          {databaseFields.map(field => (
+            <div key={field.key}>
+              <label htmlFor={field.key} className="block font-display font-bold text-sm uppercase tracking-wider mb-2">{field.label}</label>
+              <div className="relative">
+                <input
+                  id={field.key}
+                  name={field.key}
+                  type={field.secret && !showDatabase ? 'password' : 'text'}
+                  autoComplete="off"
+                  placeholder={field.placeholder}
+                  value={databaseForm[field.key]}
+                  onChange={(event) => setDatabaseForm(current => ({ ...current, [field.key]: event.target.value }))}
+                  className="w-full border-4 border-[#2C1A14] p-3 pr-14 font-mono text-sm text-[#2C1A14] caret-[#2C1A14] outline-none bg-white [color-scheme:light]"
+                />
+                {field.secret && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDatabase(current => !current)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center text-[#2C1A14]"
+                    aria-label={showDatabase ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-pressed={showDatabase}
+                  >
+                    {showDatabase ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          ))}
           <p className={`font-sans text-sm font-bold ${databaseState.connected ? 'text-[#627933]' : 'text-[#C13B22]'}`}>
             {databaseState.connected ? 'Banco conectado.' : 'Banco desconectado.'}
           </p>

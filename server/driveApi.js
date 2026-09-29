@@ -18,12 +18,11 @@ import {
   renameDriveFolder,
   resolveRedirectUri,
   saveDriveEnv,
-  saveLabels,
   saveToken,
   syncArchive,
   uploadDriveFile,
 } from './driveClient.js';
-import { databaseStatus, handleDatabaseRequest } from './database.js';
+import { databaseStatus, handleDatabaseRequest, loadFileLabels, saveFileLabels } from './database.js';
 import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
 
 const OAUTH_COOKIE = 'acervo_oauth';
@@ -88,10 +87,20 @@ function clearOauthCookie(res, req) {
 async function archivePayload(root, config, env) {
   const archive = await syncArchive(root, config);
   const database = await databaseStatus(env);
-  if (database.connected) return archive;
+  if (!database.connected) {
+    return {
+      ...archive,
+      files: archive.files.map(file => ({ ...file, territorios: [], tags: [] })),
+    };
+  }
+  const labels = await loadFileLabels(env);
   return {
     ...archive,
-    files: archive.files.map(file => ({ ...file, territorios: [], tags: [] })),
+    files: archive.files.map(file => ({
+      ...file,
+      territorios: labels[file.id]?.territorios || [],
+      tags: labels[file.id]?.tags || [],
+    })),
   };
 }
 
@@ -249,7 +258,7 @@ async function handleDriveRequest(req, res, { root, env }) {
       throw new DriveError('Territórios e tags ficam disponíveis quando o banco estiver conectado.', 409);
     }
     const body = await readJson(req);
-    const saved = await saveLabels(root, labels[1], body.territorios, body.tags);
+    const saved = await saveFileLabels(env, labels[1], body.territorios, body.tags);
     sendJson(res, 200, saved);
     return;
   }
@@ -265,7 +274,8 @@ export async function handleApi(req, res, { root, env }) {
       return;
     }
     if (pathname.startsWith('/api/database')) {
-      if (pathname !== '/api/database/status' && !isAdminRequest(req, env)) {
+      const databaseOpen = req.method === 'GET' && (pathname === '/api/database/status' || pathname === '/api/database/identidade');
+      if (!databaseOpen && !isAdminRequest(req, env)) {
         sendJson(res, 401, { error: 'Entre como equipe para continuar.' });
         return;
       }

@@ -549,11 +549,18 @@ export async function openDriveMedia(env, config, fileId, rangeHeader) {
   const token = await getAccessToken(env, config);
   const id = assertDriveId(fileId, 'arquivo');
   const meta = await driveJson(`${DRIVE_API}/files/${id}?fields=name,mimeType&supportsAllDrives=true`, token);
-  const isDoc = String(meta.mimeType || '').startsWith('application/vnd.google-apps.');
+  const mime = String(meta.mimeType || '');
+  const isSheet = mime === 'application/vnd.google-apps.spreadsheet';
+  const isDoc = mime.startsWith('application/vnd.google-apps.');
   const headers = { Authorization: `Bearer ${token}` };
   let url = `${DRIVE_API}/files/${id}?alt=media&supportsAllDrives=true`;
-  if (isDoc) {
-    url = `${DRIVE_API}/files/${id}/export?mimeType=${encodeURIComponent('application/pdf')}&supportsAllDrives=true`;
+  let contentType = mime || 'application/octet-stream';
+  if (isSheet) {
+    contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    url = `${DRIVE_API}/files/${id}/export?mimeType=${encodeURIComponent(contentType)}&supportsAllDrives=true`;
+  } else if (isDoc) {
+    contentType = 'application/pdf';
+    url = `${DRIVE_API}/files/${id}/export?mimeType=${encodeURIComponent(contentType)}&supportsAllDrives=true`;
   } else if (rangeHeader) {
     headers.Range = rangeHeader;
   }
@@ -563,7 +570,7 @@ export async function openDriveMedia(env, config, fileId, rangeHeader) {
   }
   return {
     response,
-    contentType: isDoc ? 'application/pdf' : (response.headers.get('content-type') || meta.mimeType || 'application/octet-stream'),
+    contentType: isDoc ? contentType : (response.headers.get('content-type') || contentType),
     name: meta.name,
   };
 }

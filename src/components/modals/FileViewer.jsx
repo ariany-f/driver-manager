@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Music, X, ZoomIn, ZoomOut } from 'lucide-react';
 import FileIcon from '../ui/FileIcon.jsx';
+import SpreadsheetPreview, { isSpreadsheet } from './SpreadsheetPreview.jsx';
 
 export default function FileViewer({ file, onClose }) {
   const [scale, setScale] = useState(1);
@@ -41,7 +42,8 @@ export default function FileViewer({ file, onClose }) {
               </div>
             </div>
           )}
-          {file.type === 'document' && (
+          {isSpreadsheet(file) && <SpreadsheetPreview file={file} />}
+          {file.type === 'document' && !isSpreadsheet(file) && (
             <iframe src={file.url} className="w-full h-full border-none bg-white" title="Documento" />
           )}
         </div>

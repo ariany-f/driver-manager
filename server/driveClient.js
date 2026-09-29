@@ -7,7 +7,7 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
-const SCOPE = 'https://www.googleapis.com/auth/drive';
+const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const ITEM_LIMIT = 5000;
 

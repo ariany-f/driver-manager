@@ -5,7 +5,6 @@ import Acervo from './components/acervo/Acervo.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
 import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx';
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
-import { initialFiles, initialFolders } from './data/seed.js';
 import { getSession, logout as endSession } from './services/auth.js';
 import { getDatabaseStatus, getIdentidade, saveTags, saveTerritorios } from './services/database.js';
 import {
@@ -26,8 +25,8 @@ export default function App() {
   const [currentView, setCurrentView] = useState('acervo');
   const [territorios, setTerritorios] = useState([]);
   const [tags, setTags] = useState([]);
-  const [files, setFiles] = useState(initialFiles);
-  const [folders, setFolders] = useState(initialFolders);
+  const [files, setFiles] = useState([]);
+  const [folders, setFolders] = useState([]);
   const [driveReady, setDriveReady] = useState(false);
   const [driveStatus, setDriveStatus] = useState(null);
   const [driveBusy, setDriveBusy] = useState(false);
@@ -150,10 +149,10 @@ export default function App() {
       setDriveMessage('');
       try {
         await disconnectDrive();
-        setFiles(initialFiles);
-        setFolders(initialFolders);
+        setFiles([]);
+        setFolders([]);
         setDriveStatus(await getDriveStatus());
-        setDriveMessage('Drive desconectado. O acervo voltou aos arquivos de exemplo.');
+        setDriveMessage('Drive desconectado. Nenhum arquivo da pasta do cliente permanece na tela.');
       } catch (error) {
         setDriveError(error.message);
       } finally {

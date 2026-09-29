@@ -15,7 +15,7 @@ export default function DriveBar({ isAdmin, drive }) {
           <p className="font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">Google Drive</p>
           {status.connected ? (
             <p className="font-sans font-bold text-sm text-[#2C1A14] break-words">
-              Sincronizado com {folder}{account}
+              Sincronizado com {folder}{account}. A pasta só é lida: nada é enviado, movido ou apagado.
             </p>
           ) : (
             <p className="font-sans font-bold text-sm text-[#2C1A14]">

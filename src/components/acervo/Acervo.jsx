@@ -329,7 +329,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <FileThumb file={file} iconSize={28} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight break-words">{file.name}</p>
+                    <p className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight break-all">{file.name}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
                       <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{file.date}</span>
@@ -365,8 +365,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             {pagination}
           </div>
 
-          <div className="hidden lg:block bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)] overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
+          <div className="hidden lg:block bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)] overflow-hidden">
+            <table className="w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
                   <th className="px-5 py-4 font-black w-2/5">Arquivo</th>
@@ -378,8 +378,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
               <tbody className="divide-y-2 divide-dashed divide-[#2C1A14]/20 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
                 {currentFiles.map(file => (
                   <tr key={file.id} className="hover:bg-white/60 transition-colors group">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-4">
+                    <td className="px-5 py-4 min-w-0">
+                      <div className="flex items-start gap-4 min-w-0">
                         <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[4px_4px_0px_#2C1A14] group-hover:-translate-y-1 group-hover:shadow-[6px_6px_0px_#C13B22] transition-all overflow-hidden flex items-center justify-center p-0.5">
                           <FileThumb file={file} iconSize={32} />
                           <div className="absolute -bottom-1 -right-1 bg-white border-2 border-[#2C1A14] p-0.5">
@@ -387,7 +387,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           </div>
                         </div>
                         <div className="min-w-0">
-                          <p className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase truncate pr-4 group-hover:text-[#C13B22] transition-colors">{file.name}</p>
+                          <p className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase break-all group-hover:text-[#C13B22] transition-colors">{file.name}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
                             <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{file.date}</span>

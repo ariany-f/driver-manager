@@ -350,8 +350,9 @@ async function listFolderPage(token, query) {
     url.searchParams.set('fields', 'nextPageToken, files(id, name)');
     url.searchParams.set('pageSize', '100');
     url.searchParams.set('orderBy', 'name');
-    url.searchParams.set('supportsAllDrives', 'true');
-    url.searchParams.set('includeItemsFromAllDrives', 'true');
+    url.searchParams.set('corpora', 'user');
+    url.searchParams.set('supportsAllDrives', 'false');
+    url.searchParams.set('includeItemsFromAllDrives', 'false');
     if (pageToken) url.searchParams.set('pageToken', pageToken);
     const page = await driveJson(url, token);
     items.push(...(page.files || []));
@@ -369,26 +370,7 @@ export async function listChoosableFolders(env, config, parentId) {
   }
 
   const mine = await listFolderPage(token, `mimeType = '${FOLDER_MIME}' and 'root' in parents and trashed = false`);
-  const shared = await listFolderPage(token, `mimeType = '${FOLDER_MIME}' and sharedWithMe = true and trashed = false`);
-  const folders = [
-    ...mine.map(folder => ({ id: folder.id, name: folder.name || 'Pasta', kind: 'folder', onde: 'Meu Drive' })),
-    ...shared.map(folder => ({ id: folder.id, name: folder.name || 'Pasta', kind: 'folder', onde: 'Compartilhada' })),
-  ];
-  try {
-    const url = new URL(`${DRIVE_API}/drives`);
-    url.searchParams.set('pageSize', '100');
-    url.searchParams.set('fields', 'drives(id, name)');
-    const page = await driveJson(url, token);
-    folders.push(...(page.drives || []).map(drive => ({ id: drive.id, name: drive.name || 'Drive', kind: 'drive', onde: 'Drive compartilhado' })));
-  } catch {
-    // a conta pode não ter drives compartilhados
-  }
-  const seen = new Set();
-  return folders.filter(folder => {
-    if (seen.has(folder.id)) return false;
-    seen.add(folder.id);
-    return true;
-  });
+  return mine.map(folder => ({ id: folder.id, name: folder.name || 'Pasta', kind: 'folder' }));
 }
 
 export async function syncArchive(env, config) {

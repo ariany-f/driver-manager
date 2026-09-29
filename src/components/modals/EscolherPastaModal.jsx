@@ -56,7 +56,7 @@ export default function EscolherPastaModal({ isOpen, onClose, onChosen }) {
           <p className="font-sans font-bold text-sm text-[#2C1A14]/80 mt-2">
             Esta pasta do Google Drive vira o acervo. Use o Meu Drive inteiro, ou abra uma pasta e use só ela.
           </p>
-          <p className="font-mono text-xs mt-3 break-all">{stack.length ? stack.map(item => item.name).join(' / ') : 'Meu Drive e pastas compartilhadas'}</p>
+          <p className="font-mono text-xs mt-3 break-all">{stack.length ? `Meu Drive / ${stack.map(item => item.name).join(' / ')}` : 'Meu Drive'}</p>
         </div>
         <div className="overflow-y-auto p-4 space-y-2 flex-1">
           {!parent && (

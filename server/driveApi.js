@@ -17,7 +17,7 @@ import {
   saveToken,
   syncArchive,
 } from './driveClient.js';
-import { databaseStatus, handleDatabaseRequest, loadFileLabels, saveFileLabels } from './database.js';
+import { databaseStatus, handleDatabaseRequest, loadFileLabels, rememberDriveLayout, saveFileLabels } from './database.js';
 import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
 
 const OAUTH_COOKIE = 'acervo_oauth';
@@ -87,10 +87,11 @@ async function archivePayload(root, config, env) {
       files: archive.files.map(file => ({ ...file, territorios: [], tags: [] })),
     };
   }
+  const placed = await rememberDriveLayout(env, archive);
   const labels = await loadFileLabels(env);
   return {
-    ...archive,
-    files: archive.files.map(file => ({
+    folders: placed.folders,
+    files: placed.files.map(file => ({
       ...file,
       territorios: labels[file.id]?.territorios || [],
       tags: labels[file.id]?.tags || [],

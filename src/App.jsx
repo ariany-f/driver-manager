@@ -6,17 +6,12 @@ import Dashboard from './components/dashboard/Dashboard.jsx';
 import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx';
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
-import { getDatabaseStatus, getIdentidade, saveTags, saveTerritorios } from './services/database.js';
+import { createPasta, deletePasta, getDatabaseStatus, getIdentidade, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
 import {
-  createDriveFolder,
-  deleteDriveFolder,
   disconnectDrive,
   getDriveStatus,
-  moveDriveFile,
-  renameDriveFolder,
   saveDriveClassificacao,
   syncDrive,
-  uploadDriveFile,
 } from './services/drive.js';
 
 export default function App() {
@@ -123,19 +118,6 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [refreshDrive, loadIdentidade]);
 
-  const runDriveAction = async (action) => {
-    setDriveBusy(true);
-    setDriveError('');
-    setDriveMessage('');
-    try {
-      applyArchive(await action());
-    } catch (error) {
-      setDriveError(error.message);
-    } finally {
-      setDriveBusy(false);
-    }
-  };
-
   const drive = {
     status: driveStatus,
     busy: driveBusy,
@@ -159,16 +141,37 @@ export default function App() {
         setDriveBusy(false);
       }
     },
-    upload: (selected, folderId) => runDriveAction(async () => {
-      let archive = null;
-      for (const file of selected) archive = await uploadDriveFile(file, folderId);
-      return archive;
-    }),
-    saveFolder: ({ mode, name, parentId, folderId }) => runDriveAction(() => (
-      mode === 'create' ? createDriveFolder(name, parentId) : renameDriveFolder(folderId, name)
-    )),
-    deleteFolder: (folderId) => runDriveAction(() => deleteDriveFolder(folderId)),
-    moveFile: (fileId, folderId) => runDriveAction(() => moveDriveFile(fileId, folderId)),
+    saveFolder: async ({ mode, name, parentId, folderId }) => {
+      setDriveError('');
+      try {
+        const saved = mode === 'create'
+          ? await createPasta({ name, parentId })
+          : await renamePasta({ id: folderId, name });
+        setFolders(saved.folders || []);
+      } catch (error) {
+        setDriveError(error.message);
+      }
+    },
+    deleteFolder: async (folderId) => {
+      setDriveError('');
+      try {
+        const saved = await deletePasta(folderId);
+        setFolders(saved.folders || []);
+        const place = new Map((saved.files || []).map(file => [file.id, file.folderId]));
+        setFiles(current => current.map(file => (place.has(file.id) ? { ...file, folderId: place.get(file.id) } : file)));
+      } catch (error) {
+        setDriveError(error.message);
+      }
+    },
+    moveFile: async (fileId, folderId) => {
+      setDriveError('');
+      try {
+        const saved = await moveArquivo(fileId, folderId);
+        setFiles(current => current.map(file => (file.id === saved.fileId ? { ...file, folderId: saved.folderId } : file)));
+      } catch (error) {
+        setDriveError(error.message);
+      }
+    },
     saveClassificacao: async (fileId, territoriosNext, tagsNext) => {
       setDriveError('');
       try {

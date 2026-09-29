@@ -29,6 +29,7 @@ export default function FolderModal({ config, flatFolders, onClose, onSave }) {
           {isEdit ? <Edit size={28} className="text-[#849B55]" /> : <FolderPlus size={28} className="text-[#849B55]" />}
           {isEdit ? 'Editar Pasta' : 'Nova Pasta'}
         </h3>
+        <p className="font-sans text-sm text-[#2C1A14]/70 -mt-4 mb-4">Fica só no MySQL. O Google Drive não muda.</p>
 
         <div className="space-y-4">
           <div>

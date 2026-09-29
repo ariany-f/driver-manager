@@ -17,7 +17,8 @@ export default function MoveFileModal({ isOpen, file, flatFolders, onClose, onSa
         <h3 className="text-2xl font-display font-black text-[#2C1A14] uppercase mb-2 flex items-center gap-2">
           <CornerDownRight size={28} className="text-[#C13B22]" /> Mover Arquivo
         </h3>
-        <p className="font-sans font-medium text-[#2C1A14]/70 mb-6 border-b-2 border-[#2C1A14]/20 pb-4 truncate">{file.name}</p>
+        <p className="font-sans font-medium text-[#2C1A14]/70 mb-2 truncate">{file.name}</p>
+        <p className="font-sans text-sm text-[#2C1A14]/70 mb-6 border-b-2 border-[#2C1A14]/20 pb-4">O lugar fica gravado no MySQL. O arquivo continua no Drive.</p>
 
         <div className="space-y-4">
           <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Selecione o novo destino:</label>

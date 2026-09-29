@@ -44,3 +44,39 @@ export function saveTags(tags) {
     body: JSON.stringify({ tags }),
   }).then(readJson);
 }
+
+export function createPasta({ name, parentId }) {
+  return fetch('/api/database/pastas', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name, parentId: parentId || '' }),
+  }).then(readJson);
+}
+
+export function renamePasta({ id, name }) {
+  return fetch('/api/database/pastas', {
+    method: 'PATCH',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id, name }),
+  }).then(readJson);
+}
+
+export function deletePasta(id) {
+  return fetch('/api/database/pastas', {
+    method: 'DELETE',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ id }),
+  }).then(readJson);
+}
+
+export function moveArquivo(fileId, pastaId) {
+  return fetch('/api/database/arquivos', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ fileId, pastaId: pastaId || '' }),
+  }).then(readJson);
+}

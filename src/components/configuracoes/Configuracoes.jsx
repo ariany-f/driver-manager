@@ -108,7 +108,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
         tables: saved.tables || [],
       });
       if (onDatabaseChange) onDatabaseChange(Boolean(saved.connected));
-      if (saved.connected) setDatabaseMessage('MySQL conectado. As tabelas territorios, tags e arquivo_classificacao estão criadas.');
+      if (saved.connected) setDatabaseMessage('MySQL conectado. As tabelas de pastas, arquivos, tags e territórios estão criadas.');
       else if (saved.DATABASE_HOST) setDatabaseError(saved.error || 'Os dados foram salvos no .env, mas o MySQL não conectou.');
       else setDatabaseMessage('Banco desconectado. O acervo mostra só os arquivos.');
     } catch (saveError) {
@@ -180,7 +180,7 @@ export default function Configuracoes({ onSaved, onDatabaseChange }) {
             <Database size={18} strokeWidth={2.5} /> Banco de dados
           </div>
           <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
-            MySQL da Hostinger. Ao salvar, o servidor cria as tabelas. No hPanel, libere este computador em MySQL remoto. Enquanto não conectar, Classificar, Identidade, tags e territórios ficam desligados.
+            MySQL da Hostinger. Ao salvar, o servidor cria as tabelas. Pastas, o lugar de cada arquivo, tags e territórios ficam só aqui. Nada disso vai para o Drive. No hPanel, libere este computador em MySQL remoto. Enquanto não conectar, criar pasta, Classificar e Identidade ficam desligados.
           </p>
           {databaseFields.map(field => (
             <div key={field.key}>

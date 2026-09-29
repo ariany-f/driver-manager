@@ -9,6 +9,7 @@ import Dashboard from './components/dashboard/Dashboard.jsx';
 import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx';
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import BancoNecessario from './components/banco/BancoNecessario.jsx';
+import UploadProgress from './components/drive/UploadProgress.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
 import { createPasta, deletePasta, getDatabaseStatus, getIdentidade, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
 import {
@@ -412,6 +413,7 @@ export default function App() {
           />
         )}
       </main>
+      {uploadProgress && <UploadProgress progress={uploadProgress} />}
     </div>
   );
 }

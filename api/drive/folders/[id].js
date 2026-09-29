@@ -1,0 +1,6 @@
+import { attachPath, runApi, segment } from '../../../server/vercelHandler.js';
+
+export default function handler(req, res) {
+  attachPath(req, `/api/drive/folders/${segment(req, 'id')}`);
+  return runApi(req, res);
+}

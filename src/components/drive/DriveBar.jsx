@@ -33,7 +33,7 @@ export default function DriveBar({ isAdmin, drive }) {
           )}
         </div>
         {isAdmin && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col items-end gap-2 shrink-0">
             {status.connected && status.folderId ? (
               <>
                 <button type="button" onClick={drive.sync} disabled={drive.busy} className="min-h-11 px-3 border-2 border-[#2C1A14] bg-[#EAB308] font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] inline-flex items-center gap-2 disabled:opacity-50">

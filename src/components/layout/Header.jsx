@@ -65,6 +65,7 @@ export default function Header({ isAdmin, labelsEnabled, logoUrl, activeView, on
           {isAdmin ? <Unlock size={16} strokeWidth={3} /> : <Lock size={16} strokeWidth={3} />}
           <span>{isAdmin ? 'Sair' : 'Entrar'}</span>
         </button>
+        </div>
       </div>
       {isAdmin && (
         <nav className="md:hidden grid grid-cols-2 border-t-2 border-white/10">

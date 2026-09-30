@@ -46,6 +46,7 @@ export default function App() {
   const [classificando, setClassificando] = useState(false);
   const novidadesDispensadas = useRef(false);
   const escolherPasta = useRef(false);
+  const vlibrasTouched = useRef(false);
   const [pickFolder, setPickFolder] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
 
@@ -204,7 +205,7 @@ export default function App() {
           refreshDrive();
           refreshLogo();
           refreshFavicon();
-          getVlibras().then(saved => setVlibras(Boolean(saved.enabled))).catch(() => setVlibras(false));
+          getVlibras().then(saved => { if (!vlibrasTouched.current) setVlibras(Boolean(saved.enabled)); }).catch(() => { if (!vlibrasTouched.current) setVlibras(false); });
         })
         .catch(() => {
           setLabelsEnabled(false);
@@ -470,7 +471,7 @@ export default function App() {
             faviconUrl={faviconUrl}
             onFaviconChange={refreshFavicon}
             vlibras={vlibras}
-            onVlibrasChange={setVlibras}
+            onVlibrasChange={(enabled) => { vlibrasTouched.current = true; setVlibras(enabled); }}
           />
         )}
       </main>

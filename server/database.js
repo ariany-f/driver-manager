@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { parseArchiveDate } from '../src/lib/archiveDate.js';
 import { isMediaIcon } from '../src/lib/mediaIconIds.js';
 import { DriveError, readDriveConfig, saveEnvKeys } from './driveClient.js';
 
@@ -81,14 +82,14 @@ const CREATE_ARQUIVOS = `
     file_id VARCHAR(128) NOT NULL,
     pasta_id VARCHAR(128) NULL,
     nome VARCHAR(255) NULL,
-    data_arquivo DATE NULL,
+    data_arquivo VARCHAR(10) NULL,
     PRIMARY KEY (file_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
 
 const ARQUIVOS_COLUMNS = [
   ['nome', 'VARCHAR(255) NULL'],
-  ['data_arquivo', 'DATE NULL'],
+  ['data_arquivo', 'VARCHAR(10) NULL'],
 ];
 
 const CREATE_DRIVE = `
@@ -258,6 +259,17 @@ async function ensureArquivosColumns(db) {
   for (const [name, definition] of ARQUIVOS_COLUMNS) {
     if (present.has(name)) continue;
     await db.query(`ALTER TABLE arquivos ADD COLUMN ${name} ${definition}`);
+  }
+  const [typed] = await db.query(
+    `SELECT data_type AS dataType
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'arquivos'
+       AND column_name = 'data_arquivo'`,
+  );
+  const dataType = String(typed[0]?.dataType || typed[0]?.DATA_TYPE || typed[0]?.datatype || '').toLowerCase();
+  if (dataType === 'date' || dataType === 'datetime') {
+    await db.query('ALTER TABLE arquivos MODIFY data_arquivo VARCHAR(10) NULL');
   }
 }
 
@@ -809,13 +821,26 @@ async function loadFolderTree(env) {
 
 async function loadPlacements(env) {
   const db = await withPool(env);
-  const [rows] = await db.query("SELECT file_id, pasta_id, nome, DATE_FORMAT(data_arquivo, '%Y-%m-%d') AS data_arquivo FROM arquivos");
+  const [rows] = await db.query('SELECT file_id, pasta_id, nome, data_arquivo FROM arquivos');
   return rows.map(row => ({
     id: row.file_id,
     folderId: row.pasta_id || '',
     nome: String(row.nome || '').trim(),
-    dataArquivo: String(row.data_arquivo || ''),
+    dataArquivo: readStoredDate(row.data_arquivo),
   }));
+}
+
+function readStoredDate(value) {
+  if (value == null || value === '') return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${value.getFullYear()}-${month}-${day}`;
+  }
+  const text = String(value).trim();
+  if (/^\d{4}-\d{2}$/.test(text)) return text;
+  const full = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return full ? full[1] : '';
 }
 
 function applyStoredFile(file, stored) {
@@ -829,15 +854,10 @@ function applyStoredFile(file, stored) {
 }
 
 function cleanArchiveDate(value) {
-  const text = String(value || '').trim();
-  if (!text) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new DriveError('A data precisa estar no formato AAAA-MM-DD.');
-  const [year, month, day] = text.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    throw new DriveError('Essa data não existe.');
-  }
-  return text;
+  const parsed = parseArchiveDate(value);
+  if (parsed.pending) throw new DriveError('A data está incompleta. Use 14/08/2025 ou 08/2025.');
+  if (!parsed.ok) throw new DriveError(parsed.error || 'A data não é válida.');
+  return parsed.iso || null;
 }
 
 export async function saveArquivoData(env, fileId, value) {

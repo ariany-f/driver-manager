@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ScrollText, X } from 'lucide-react';
+import { formatArchiveDate } from '../../lib/archiveDate.js';
 import { fileExtension } from '../../lib/fileExtension.js';
 import { mediaLabel } from '../../lib/media.js';
 import Badge from '../ui/Badge.jsx';
@@ -23,11 +24,6 @@ function formatFileDate(value) {
   }).format(parsed);
 }
 
-function toDateInput(value) {
-  const match = String(value || '').trim().match(/^(\d{4}-\d{2}-\d{2})/);
-  return match ? match[1] : '';
-}
-
 function Row({ label, children }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[9rem_minmax(0,1fr)] gap-1 sm:gap-4 border-b-2 border-dashed border-[#2C1A14]/20 py-3">
@@ -37,33 +33,35 @@ function Row({ label, children }) {
   );
 }
 
-export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], formatos = [], folderPath, onClose, onSaveOrigem, onSaveData }) {
+export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], folderPath, onClose, onSaveOrigem, onSaveData }) {
   const [origem, setOrigem] = useState('');
   const [dataArquivo, setDataArquivo] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingData, setSavingData] = useState(false);
   const [error, setError] = useState('');
   const [dataError, setDataError] = useState('');
+  const [dataReady, setDataReady] = useState(true);
 
   useEffect(() => {
     if (!file) return;
     setOrigem(file.origem || '');
-    setDataArquivo(toDateInput(file.dataArquivo));
+    setDataArquivo(file.dataArquivo || '');
     setError('');
     setDataError('');
+    setDataReady(true);
   }, [file]);
 
   if (!file) return null;
 
   const identified = fileExtension(file);
-  const manualFormats = (file.formatos || []).map(id => formatos.find(item => item.id === id)).filter(Boolean);
   const fileTerritorios = (file.territorios || []).map(id => territorios.find(item => item.id === id)).filter(Boolean);
   const fileTags = (file.tags || []).map(id => tags.find(item => item.id === id)).filter(Boolean);
-  const date = formatFileDate(file.dataArquivo);
+  const date = formatArchiveDate(file.dataArquivo);
   const driveDate = formatFileDate(file.date);
   const suggestions = origens.filter(item => item !== origem);
 
   const saveData = async () => {
+    if (!dataReady) return;
     setSavingData(true);
     setDataError('');
     try {
@@ -102,10 +100,7 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
           <dl>
             <Row label="Arquivo">{file.name}</Row>
             <Row label="Mídia">
-              <span className="inline-flex flex-wrap items-center gap-2">
-                <span>{mediaLabel(file.type)}</span>
-                {manualFormats.map(item => <Badge key={item.id} item={item} />)}
-              </span>
+              <span>{mediaLabel(file.type)}</span>
             </Row>
             <Row label="Extensão">{identified || 'Sem extensão'}</Row>
             <Row label="Origem">{file.origem || 'Sem origem'}</Row>
@@ -113,17 +108,33 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
               {isAdmin ? (
                 <span className="flex flex-col gap-2">
                   <span className="flex flex-col sm:flex-row sm:items-start gap-2">
-                    <Calendario id="ficha-data" value={dataArquivo} onChange={setDataArquivo} />
+                    <Calendario
+                      id="ficha-data"
+                      value={dataArquivo}
+                      onChange={(next) => {
+                        setDataArquivo(next);
+                        setDataReady(true);
+                        setDataError('');
+                      }}
+                      onReject={(message) => {
+                        setDataReady(false);
+                        setDataError(message);
+                      }}
+                      onPending={() => {
+                        setDataReady(false);
+                        setDataError('');
+                      }}
+                    />
                     <button
                       type="button"
                       onClick={saveData}
-                      disabled={savingData}
+                      disabled={savingData || !dataReady}
                       className="min-h-11 border-2 border-[#2C1A14] bg-[#849B55] px-3 font-display font-black uppercase text-xs text-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] disabled:opacity-50"
                     >
                       {savingData ? 'Salvando…' : 'Salvar data'}
                     </button>
                   </span>
-                  <span className="font-sans text-xs font-bold text-[#2C1A14]/70">Data do acervo. A do Drive fica na linha de baixo.</span>
+                  <span className="font-sans text-xs font-bold text-[#2C1A14]/70">Dia, mês e ano, ou só mês e ano. A data do Drive fica na linha de baixo.</span>
                   {dataError && <span className="font-sans text-sm font-bold text-[#C13B22]">{dataError}</span>}
                 </span>
               ) : (

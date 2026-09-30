@@ -9,11 +9,11 @@ function toggle(list, id) {
   return list.includes(id) ? list.filter(item => item !== id) : [...list, id];
 }
 
-export default function ClassificarNovosModal({ files, territorios, tags, formatos = [], busy, error, onClose, onSave, onOpenIdentidade }) {
+export default function ClassificarNovosModal({ files, territorios, tags, busy, error, onClose, onSave, onOpenIdentidade }) {
   const [choices, setChoices] = useState(() => Object.fromEntries(
     (files || []).map(file => [file.id, { territorios: [], tags: [], formatos: [] }]),
   ));
-  const semIdentidade = territorios.length === 0 && tags.length === 0 && formatos.length === 0;
+  const semIdentidade = territorios.length === 0 && tags.length === 0;
 
   const setChoice = (fileId, key, id) => {
     setChoices(current => ({
@@ -30,13 +30,13 @@ export default function ClassificarNovosModal({ files, territorios, tags, format
             <Tags size={24} className="text-[#C13B22]" strokeWidth={2.5} /> Classificar arquivos novos
           </h3>
           <p className="font-sans font-bold text-sm text-[#2C1A14]/80 mt-2">
-            {files.length === 1 ? 'Este arquivo entrou no acervo.' : `Estes ${files.length} arquivos entraram no acervo.`} Escolha formatos, mídias e tags. A mídia do arquivo continua, e dá para marcar outras. Nada disso vai para o Drive.
+            {files.length === 1 ? 'Este arquivo entrou no acervo.' : `Estes ${files.length} arquivos entraram no acervo.`} Escolha formatos e tags. A mídia é a que o sistema identifica. Nada disso vai para o Drive.
           </p>
         </div>
         <div className="overflow-y-auto p-4 sm:p-5 space-y-4 flex-1">
           {semIdentidade && (
             <p className="font-sans font-bold text-sm border-4 border-[#2C1A14] bg-white p-4">
-              Ainda não há formatos, mídias nem tags. Cadastre em Classificação e volte para classificar.
+              Ainda não há formatos nem tags. Cadastre em Classificação e volte para classificar.
             </p>
           )}
           {files.map(file => (
@@ -45,25 +45,6 @@ export default function ClassificarNovosModal({ files, territorios, tags, format
               <p className="font-mono text-[10px] font-black uppercase tracking-wider text-[#2C1A14]/70">
                 Mídia: {mediaLabel(file.type)}{fileExtension(file) ? ` · Extensão: ${fileExtension(file)}` : ''}
               </p>
-              {formatos.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {formatos.map(formato => {
-                    const active = choices[file.id]?.formatos.includes(formato.id);
-                    return (
-                      <button
-                        key={formato.id}
-                        type="button"
-                        onClick={() => setChoice(file.id, 'formatos', formato.id)}
-                        className={`min-h-11 px-3 border-2 border-[#2C1A14] font-display font-bold uppercase text-[11px] inline-flex items-center gap-1.5 ${active ? 'shadow-[3px_3px_0px_#2C1A14]' : 'opacity-70'}`}
-                        style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
-                      >
-                        <MediaGlyph icon={formato.icon} size={14} />
-                        {formato.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
               {territorios.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {territorios.map(territorio => {

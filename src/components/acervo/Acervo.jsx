@@ -36,9 +36,8 @@ function formatFileDate(value) {
   }).format(parsed);
 }
 
-function FileName({ file, formatos = [], className = '' }) {
+function FileName({ file, className = '' }) {
   const ext = fileExtension(file);
-  const manuais = (file.formatos || []).map(id => formatos.find(formato => formato.id === id)).filter(Boolean);
   return (
     <p className={className}>
       <span className="break-all group-hover:text-[#C13B22] transition-colors">{file.name}</span>
@@ -47,21 +46,11 @@ function FileName({ file, formatos = [], className = '' }) {
           {ext}
         </span>
       )}
-      {manuais.map(formato => (
-        <span
-          key={formato.id}
-          className="ml-2 inline-flex items-center align-middle border-2 border-[#2C1A14] px-1 py-0.5 font-display text-[10px] font-black leading-none tracking-wider uppercase whitespace-nowrap"
-          style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
-        >
-          <MediaGlyph icon={formato.icon} size={10} className="mr-1" />
-          {formato.name}
-        </span>
-      ))}
     </p>
   );
 }
 
-export default function Acervo({ isAdmin, files, setFiles, folders, territorios, tags, formatos = [], drive, labelsEnabled }) {
+export default function Acervo({ isAdmin, files, setFiles, folders, territorios, tags, drive, labelsEnabled }) {
   const [editingFile, setEditingFile] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
   const [sheetFile, setSheetFile] = useState(null);
@@ -77,7 +66,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTerritorios, setSelectedTerritorios] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedFormatos, setSelectedFormatos] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedExtensions, setSelectedExtensions] = useState([]);
   const [semTerritorio, setSemTerritorio] = useState(false);
@@ -161,13 +149,12 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTerritorio = !labelsEnabled || selectedTerritorios.length === 0 || selectedTerritorios.some(id => (file.territorios || []).includes(id));
     const matchesTag = !labelsEnabled || selectedTags.length === 0 || selectedTags.some(id => (file.tags || []).includes(id));
-    const matchesFormato = !labelsEnabled || selectedFormatos.length === 0 || selectedFormatos.some(id => (file.formatos || []).includes(id));
     const matchesSemTerritorio = !labelsEnabled || !semTerritorio || !(file.territorios || []).length;
     const matchesSemTag = !labelsEnabled || !semTag || !(file.tags || []).length;
     const matchesType = selectedTypes.length === 0 || selectedTypes.includes(file.type);
     const matchesExtension = activeExtensions.length === 0 || activeExtensions.includes(fileExtension(file));
     const matchesFolder = activeFolderId === '' ? true : file.folderId === activeFolderId;
-    return matchesSearch && matchesTerritorio && matchesTag && matchesFormato && matchesSemTerritorio && matchesSemTag && matchesType && matchesExtension && matchesFolder;
+    return matchesSearch && matchesTerritorio && matchesTag && matchesSemTerritorio && matchesSemTag && matchesType && matchesExtension && matchesFolder;
   });
 
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage) || 1;
@@ -243,7 +230,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     );
   };
 
-  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + selectedFormatos.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length;
+  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length;
+  const filterActive = searchQuery.trim() !== '' || selectedTerritorios.length > 0 || selectedTags.length > 0 || selectedTypes.length > 0 || activeExtensions.length > 0 || semTerritorio || semTag;
   const mediaRowClass = availableExtensions.length
     ? `md:col-span-12 grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-6${labelsEnabled ? ' border-t-2 border-dashed border-[#2C1A14]/20 pt-4' : ''}`
     : labelsEnabled
@@ -438,21 +426,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         aria-pressed={selectedTypes.includes(type)}
                       ><FileIcon type={type} size={20} /></button>
                     ))}
-                    {labelsEnabled && formatos.map(formato => (
-                      <button
-                        key={formato.id}
-                        type="button"
-                        aria-pressed={selectedFormatos.includes(formato.id)}
-                        onClick={() => handleFilterToggle(formato.id, setSelectedFormatos)}
-                        className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedFormatos.includes(formato.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
-                        style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
-                      >
-                        <span className="inline-flex items-center gap-1.5">
-                          <MediaGlyph icon={formato.icon} size={14} />
-                          {formato.name}
-                        </span>
-                      </button>
-                    ))}
                   </div>
                 </div>
                 {availableExtensions.length > 0 && (
@@ -551,10 +524,10 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <FileThumb file={file} iconSize={28} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <FileName file={file} formatos={formatos} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
+                    <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.dataArquivo) || 'Sem data'}</span>
+                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
                     </div>
                     <div className="mt-2 inline-flex max-w-full items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20" title={getDisplayPath(file.folderId)}>
                       <Folder size={12} className="shrink-0 text-[#EAB308]" />
@@ -566,7 +539,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   <div className="mt-3 flex flex-wrap">
                     {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
                     {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
-                    {(file.formatos || []).map(id => <Badge key={id} item={formatos.find(formato => formato.id === id)} />)}
                   </div>
                 )}
                 <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -609,10 +581,10 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           <FileThumb file={file} iconSize={32} badge />
                         </div>
                         <div className="min-w-0">
-                          <FileName file={file} formatos={formatos} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
+                          <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                            <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.dataArquivo) || 'Sem data'}</span>
+                            <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
                           </div>
                         </div>
                       </div>
@@ -631,7 +603,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
-                            {(file.formatos || []).map(id => <Badge key={id} item={formatos.find(formato => formato.id === id)} />)}
                           </div>
                         </div>
                       </td>
@@ -695,7 +666,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
       />
 
       {labelsEnabled && editingFile && (
-        <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} formatos={formatos} onClose={() => setEditingFile(null)}
+        <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} onClose={() => setEditingFile(null)}
           onSave={(id, nextTerritorios, nextTags, nextFormatos) => {
             if (drive.active) drive.saveClassificacao(id, nextTerritorios, nextTags, nextFormatos);
             else setFiles(files.map(file => file.id === id ? { ...file, territorios: nextTerritorios, tags: nextTags, formatos: nextFormatos } : file));
@@ -707,7 +678,10 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
       {viewingFile && (
         <FileViewer
           file={viewingFile}
+          files={(activeFolderId || filterActive) ? filteredFiles : filteredFiles.filter(item => (item.folderId || '') === (viewingFile.folderId || ''))}
+          paused={Boolean(sheetFile)}
           onClose={() => setViewingFile(null)}
+          onShowFile={setViewingFile}
           onShowSheet={() => setSheetFile(viewingFile)}
         />
       )}
@@ -717,7 +691,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
         origens={origens}
         territorios={territorios}
         tags={tags}
-        formatos={formatos}
         folderPath={sheetFile ? getDisplayPath(sheetFile.folderId) : ''}
         onClose={() => setSheetFile(null)}
         onSaveData={async (dataArquivo) => {

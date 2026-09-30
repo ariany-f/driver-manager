@@ -7,10 +7,9 @@ import { MEDIA_ICONS, MediaGlyph } from '../../lib/mediaIcons.js';
 const TAB_LABEL = {
   territorios: { plural: 'Formatos', singular: 'Formato' },
   tags: { plural: 'Tags Livres', singular: 'Tag' },
-  formatos: { plural: 'Mídia', singular: 'Mídia' },
 };
 
-export default function GerenciarIdentidade({ territorios, tags, formatos = [], onTerritorios, onTags, onFormatos }) {
+export default function GerenciarIdentidade({ territorios, tags, onTerritorios, onTags }) {
   const [activeTab, setActiveTab] = useState('territorios');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -45,23 +44,23 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
       name: name.trim(),
       bgColor: color,
       textColor: getContrastTextColor(color),
-      ...(activeTab === 'formatos' || activeTab === 'territorios' ? { icon } : {}),
+      ...(activeTab === 'territorios' ? { icon } : {}),
     };
 
     const apply = (list) => (editingItem ? list.map(item => item.id === editingItem.id ? newItem : item) : [...list, newItem]);
-    const lists = { territorios, tags, formatos };
-    const save = { territorios: onTerritorios, tags: onTags, formatos: onFormatos };
+    const lists = { territorios, tags };
+    const save = { territorios: onTerritorios, tags: onTags };
     save[activeTab](apply(lists[activeTab]));
     closeModal();
   };
 
   const handleDelete = (id) => {
-    const lists = { territorios, tags, formatos };
-    const save = { territorios: onTerritorios, tags: onTags, formatos: onFormatos };
+    const lists = { territorios, tags };
+    const save = { territorios: onTerritorios, tags: onTags };
     save[activeTab](lists[activeTab].filter(item => item.id !== id));
   };
 
-  const currentList = { territorios, tags, formatos }[activeTab];
+  const currentList = { territorios, tags }[activeTab];
   const tabLabel = TAB_LABEL[activeTab];
 
   return (
@@ -79,9 +78,6 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
           <button onClick={() => setActiveTab('tags')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'tags' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#EAB308]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
             Tags Livres
           </button>
-          <button onClick={() => setActiveTab('formatos')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'formatos' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#1E3A5F]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
-            Mídia
-          </button>
         </div>
 
         <div className="md:hidden space-y-3">
@@ -91,7 +87,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                 className="px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2 min-w-0"
                 style={{ backgroundColor: item.bgColor, color: item.textColor }}
               >
-                {activeTab !== 'tags' && <MediaGlyph icon={item.icon} size={14} />}
+                {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={14} />}
                 <span className="truncate">{item.name}</span>
               </span>
               <div className="flex items-center gap-2 shrink-0">
@@ -125,7 +121,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                       className="px-3 py-1.5 text-sm font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2"
                       style={{ backgroundColor: item.bgColor, color: item.textColor }}
                     >
-                      {activeTab !== 'tags' && <MediaGlyph icon={item.icon} size={16} />}
+                      {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={16} />}
                       {item.name}
                     </span>
                   </td>
@@ -164,11 +160,11 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
                   className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-lg outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
-                  placeholder={activeTab === 'formatos' ? 'Ex: Jornal' : activeTab === 'territorios' ? 'Ex: Documento' : 'Ex: Zona Norte'} autoFocus
+                  placeholder={activeTab === 'territorios' ? 'Ex: Documento' : 'Ex: Zona Norte'} autoFocus
                 />
               </div>
 
-              {activeTab !== 'tags' && (
+              {activeTab === 'territorios' && (
                 <div>
                   <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Ícone</label>
                   <div className="bg-white border-4 border-[#2C1A14] p-3 grid grid-cols-6 sm:grid-cols-8 gap-1.5">
@@ -216,7 +212,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                   className="px-4 py-2 text-lg font-display font-bold uppercase tracking-wider shadow-[4px_4px_0px_#2C1A14] border-4 border-[#2C1A14] inline-flex items-center gap-2"
                   style={{ backgroundColor: color, color: getContrastTextColor(color) }}
                 >
-                  {activeTab !== 'tags' && <MediaGlyph icon={icon} size={18} />}
+                  {activeTab === 'territorios' && <MediaGlyph icon={icon} size={18} />}
                   {name || 'Exemplo'}
                 </span>
               </div>

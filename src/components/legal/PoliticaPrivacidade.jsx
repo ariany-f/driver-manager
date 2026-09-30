@@ -49,7 +49,7 @@ export default function PoliticaPrivacidade() {
           <li>o token de atualização e o token de acesso da conta Google conectada;</li>
           <li>o identificador da pasta do acervo;</li>
           <li>identificador, nome, tipo e data de modificação dos arquivos exibidos;</li>
-          <li>pastas internas, formatos, tags, mídias e a classificação de cada arquivo;</li>
+          <li>pastas internas, formatos, tags e a mídia identificada de cada arquivo;</li>
           <li>logo, favicon e a opção de exibir o VLibras.</li>
         </ul>
         <p>

@@ -57,7 +57,7 @@ function RankList({ items, empty }) {
   );
 }
 
-export default function Dashboard({ files, territorios, tags = [], formatos = [], labelsEnabled }) {
+export default function Dashboard({ files, territorios, tags = [], labelsEnabled }) {
   const totalSizeMB = files.reduce((acc, file) => acc + parseSize(file.size), 0);
   const formattedSize = totalSizeMB > 1024 ? `${(totalSizeMB / 1024).toFixed(2)} GB` : `${totalSizeMB.toFixed(2)} MB`;
   const semClassificacao = files.filter(file => !(file.territorios || []).length && !(file.tags || []).length).length;
@@ -144,29 +144,6 @@ export default function Dashboard({ files, territorios, tags = [], formatos = []
                       </div>
                       <div className="w-full bg-[#E4CFB2] border-2 border-[#2C1A14] h-4">
                         <div className="h-full border-r-2 border-[#2C1A14]" style={{ width: `${percentage}%`, backgroundColor: typeColors[type] }}></div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {formatos.map(formato => {
-                const count = files.filter(file => (file.formatos || []).includes(formato.id)).length;
-                if (!count) return null;
-                const percentage = share(count, files.length);
-                return (
-                  <div key={formato.id} className="flex items-center gap-4">
-                    <div className="w-10 flex justify-center shrink-0">
-                      <span className="w-6 h-6 border-2 border-[#2C1A14] inline-flex items-center justify-center" style={{ backgroundColor: formato.bgColor, color: formato.textColor }}>
-                        <MediaGlyph icon={formato.icon} size={14} />
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs font-display font-bold uppercase mb-1">
-                        <span>{formato.name}</span>
-                        <span>{count} ({percentage}%)</span>
-                      </div>
-                      <div className="w-full bg-[#E4CFB2] border-2 border-[#2C1A14] h-4">
-                        <div className="h-full border-r-2 border-[#2C1A14]" style={{ width: `${percentage}%`, backgroundColor: formato.bgColor }}></div>
                       </div>
                     </div>
                   </div>

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ARCHIVE_MIN_YEAR, formatArchiveDate, parseArchiveDate } from '../../lib/archiveDate.js';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const MIN_YEAR = 1900;
+const MIN_YEAR = ARCHIVE_MIN_YEAR;
 
 function todayParts() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -14,17 +15,6 @@ function todayParts() {
   }).format(new Date());
   const [year, month, day] = parts.split('-').map(Number);
   return { year, month, day, iso: parts };
-}
-
-function parseIso(value) {
-  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return { year, month, day };
 }
 
 function toIso(year, month, day) {
@@ -55,10 +45,11 @@ function buildCells(year, month) {
   return cells;
 }
 
-function formatLabel(value) {
-  const parsed = parseIso(value);
-  if (!parsed) return '';
-  return `${String(parsed.day).padStart(2, '0')}/${String(parsed.month).padStart(2, '0')}/${parsed.year}`;
+function viewFromValue(value, fallback) {
+  const parsed = parseArchiveDate(value);
+  if (!parsed.ok || !parsed.iso) return fallback;
+  const [year, month] = parsed.iso.split('-').map(Number);
+  return { year, month };
 }
 
 function NavButton({ label, onClick, disabled, children }) {
@@ -75,16 +66,12 @@ function NavButton({ label, onClick, disabled, children }) {
   );
 }
 
-export default function Calendario({ value, onChange, id }) {
+export default function Calendario({ value, onChange, onReject, onPending, id }) {
   const today = todayParts();
-  const selected = parseIso(value);
   const maxYear = today.year + 1;
   const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState(() => ({
-    year: selected?.year || today.year,
-    month: selected?.month || today.month,
-  }));
+  const [view, setView] = useState(() => viewFromValue(value, { year: today.year, month: today.month }));
 
   useEffect(() => {
     if (!open) return undefined;
@@ -96,8 +83,7 @@ export default function Calendario({ value, onChange, id }) {
   }, [open]);
 
   const openCalendar = () => {
-    const current = parseIso(value);
-    setView({ year: current?.year || today.year, month: current?.month || today.month });
+    setView(viewFromValue(value, { year: today.year, month: today.month }));
     setOpen(currentOpen => !currentOpen);
   };
 
@@ -124,22 +110,73 @@ export default function Calendario({ value, onChange, id }) {
     setOpen(false);
   };
 
+  const [draft, setDraft] = useState(() => formatArchiveDate(value));
+
+  useEffect(() => {
+    setDraft(formatArchiveDate(value));
+  }, [value]);
+
+  const commitDraft = (raw, { finish = false } = {}) => {
+    const parsed = parseArchiveDate(raw);
+    if (parsed.pending) {
+      if (finish) onReject?.('A data está incompleta. Use 14/08/2025 ou 08/2025.');
+      return false;
+    }
+    if (!parsed.ok) {
+      onReject?.(parsed.error);
+      return false;
+    }
+    onChange(parsed.iso);
+    setDraft(parsed.display);
+    if (parsed.iso) {
+      const [year, month] = parsed.iso.split('-').map(Number);
+      setView({ year, month });
+    }
+    return true;
+  };
+
   const cells = buildCells(view.year, view.month);
-  const label = formatLabel(value);
 
   return (
     <div ref={rootRef} className="relative">
-      <button
-        id={id}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={openCalendar}
-        className="min-h-11 w-full sm:w-auto inline-flex items-center gap-2 border-4 border-[#2C1A14] bg-white px-3 py-2 font-display font-black uppercase tracking-wide text-sm text-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] hover:-translate-y-0.5"
-      >
-        <Calendar size={16} strokeWidth={2.5} />
-        {label || 'Escolher data'}
-      </button>
+      <span className="inline-flex items-center gap-2">
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="14/08/2025 ou 08/2025"
+          aria-label="Data do arquivo"
+          aria-invalid={false}
+          value={draft}
+          onChange={(event) => {
+            const next = event.target.value;
+            setDraft(next);
+            const parsed = parseArchiveDate(next);
+            if (parsed.ok) commitDraft(next);
+            else if (parsed.pending) onPending?.();
+            else onReject?.(parsed.error);
+          }}
+          onBlur={() => commitDraft(draft, { finish: true })}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commitDraft(draft, { finish: true });
+            }
+          }}
+          className="min-h-11 w-44 sm:w-52 border-4 border-[#2C1A14] bg-white px-3 py-2 font-display font-black tracking-wide text-sm text-[#2C1A14] outline-none focus:-translate-y-0.5 focus:shadow-[3px_3px_0px_#2C1A14]"
+        />
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label="Abrir calendário"
+          onClick={openCalendar}
+          className="min-h-11 min-w-11 inline-flex items-center justify-center border-4 border-[#2C1A14] bg-[#EAB308] text-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] hover:-translate-y-0.5"
+        >
+          <Calendar size={18} strokeWidth={2.5} />
+        </button>
+      </span>
 
       {open && (
         <div role="dialog" aria-label="Calendário" className="mt-2 w-full max-w-sm border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[6px_6px_0px_#1E3A5F]">

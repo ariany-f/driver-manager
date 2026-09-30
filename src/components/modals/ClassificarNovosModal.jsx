@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Tags } from 'lucide-react';
+import { fileExtension } from '../../lib/fileExtension.js';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 
 function toggle(list, id) {
   return list.includes(id) ? list.filter(item => item !== id) : [...list, id];
 }
 
-export default function ClassificarNovosModal({ files, territorios, tags, busy, error, onClose, onSave, onOpenIdentidade }) {
+export default function ClassificarNovosModal({ files, territorios, tags, formatos = [], busy, error, onClose, onSave, onOpenIdentidade }) {
   const [choices, setChoices] = useState(() => Object.fromEntries(
-    (files || []).map(file => [file.id, { territorios: [], tags: [] }]),
+    (files || []).map(file => [file.id, { territorios: [], tags: [], formatos: [] }]),
   ));
-  const semIdentidade = territorios.length === 0 && tags.length === 0;
+  const semIdentidade = territorios.length === 0 && tags.length === 0 && formatos.length === 0;
 
   const setChoice = (fileId, key, id) => {
     setChoices(current => ({
@@ -27,18 +28,39 @@ export default function ClassificarNovosModal({ files, territorios, tags, busy, 
             <Tags size={24} className="text-[#C13B22]" strokeWidth={2.5} /> Classificar arquivos novos
           </h3>
           <p className="font-sans font-bold text-sm text-[#2C1A14]/80 mt-2">
-            {files.length === 1 ? 'Este arquivo entrou no acervo.' : `Estes ${files.length} arquivos entraram no acervo.`} Escolha territórios e tags. Nada disso vai para o Drive.
+            {files.length === 1 ? 'Este arquivo entrou no acervo.' : `Estes ${files.length} arquivos entraram no acervo.`} Escolha territórios, formatos e tags. Nada disso vai para o Drive.
           </p>
         </div>
         <div className="overflow-y-auto p-4 sm:p-5 space-y-4 flex-1">
           {semIdentidade && (
             <p className="font-sans font-bold text-sm border-4 border-[#2C1A14] bg-white p-4">
-              Ainda não há territórios nem tags. Cadastre em Classificação e volte para classificar.
+              Ainda não há territórios, formatos nem tags. Cadastre em Classificação e volte para classificar.
             </p>
           )}
           {files.map(file => (
             <article key={file.id} className="border-4 border-[#2C1A14] bg-[#F4EFE6] p-4 space-y-3">
               <h4 className="font-display font-black uppercase text-sm break-words">{file.name}</h4>
+              <p className="font-mono text-[10px] font-black uppercase tracking-wider text-[#2C1A14]/70">
+                Identificado: {fileExtension(file) || 'sem extensão'}
+              </p>
+              {formatos.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formatos.map(formato => {
+                    const active = choices[file.id]?.formatos.includes(formato.id);
+                    return (
+                      <button
+                        key={formato.id}
+                        type="button"
+                        onClick={() => setChoice(file.id, 'formatos', formato.id)}
+                        className={`min-h-11 px-3 border-2 border-[#2C1A14] font-display font-bold uppercase text-[11px] ${active ? 'shadow-[3px_3px_0px_#2C1A14]' : 'opacity-70'}`}
+                        style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
+                      >
+                        {formato.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {territorios.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {territorios.map(territorio => {

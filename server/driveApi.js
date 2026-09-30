@@ -11,6 +11,7 @@ import {
   resolveChosenFolder,
   missingDriveKeys,
   openDriveMedia,
+  renameDriveFile,
   uploadDriveFile,
   resolveRedirectUri,
   saveDriveEnv,
@@ -26,11 +27,13 @@ import {
   loadFileLabels,
   moveArquivo,
   previewDriveLayout,
+  renameArquivo,
   rememberDriveLayout,
   resolveDriveConfig,
   resolveUploadFolder,
   saveDriveConfig,
   saveDriveConnection,
+  saveArquivoOrigem,
   saveFileLabels,
 } from './database.js';
 import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
@@ -100,6 +103,8 @@ function withLabels(placed, labels) {
       ...file,
       territorios: labels[file.id]?.territorios || [],
       tags: labels[file.id]?.tags || [],
+      formatos: labels[file.id]?.formatos || [],
+      origem: labels[file.id]?.origem || '',
     })),
     novos: placed.novos || [],
     novasPastas: placed.novasPastas || [],
@@ -314,7 +319,18 @@ async function handleDriveRequest(req, res, { root, env }) {
 
   const file = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)$/);
   if (file && req.method === 'PATCH') {
-    throw new DriveError('A pasta do cliente só é lida. Nenhum arquivo é movido no Drive.', 403);
+    const body = await readJson(req);
+    const cleanName = String(body.name || '').trim();
+    if (body.drive !== false) await renameDriveFile(env, config, file[1], cleanName);
+    sendJson(res, 200, await renameArquivo(env, file[1], cleanName));
+    return;
+  }
+
+  const origem = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)\/origem$/);
+  if (origem && req.method === 'PUT') {
+    const body = await readJson(req);
+    sendJson(res, 200, await saveArquivoOrigem(env, origem[1], body.origem));
+    return;
   }
 
   const labels = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)\/classificacao$/);
@@ -324,7 +340,7 @@ async function handleDriveRequest(req, res, { root, env }) {
       throw new DriveError('Territórios e tags ficam disponíveis quando o banco estiver conectado.', 409);
     }
     const body = await readJson(req);
-    const saved = await saveFileLabels(env, labels[1], body.territorios, body.tags);
+    const saved = await saveFileLabels(env, labels[1], body.territorios, body.tags, body.formatos);
     sendJson(res, 200, saved);
     return;
   }

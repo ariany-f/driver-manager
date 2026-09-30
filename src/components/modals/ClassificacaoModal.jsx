@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Tags, X } from 'lucide-react';
+import { fileExtension } from '../../lib/fileExtension.js';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 
-export default function ClassificacaoModal({ file, territorios, tags, onClose, onSave }) {
+export default function ClassificacaoModal({ file, territorios, tags, formatos = [], onClose, onSave }) {
   const [selectedTerritorios, setSelectedTerritorios] = useState(file.territorios || []);
   const [selectedTags, setSelectedTags] = useState(file.tags || []);
+  const [selectedFormatos, setSelectedFormatos] = useState(file.formatos || []);
+  const identified = fileExtension(file);
 
   const toggleSelection = (id, setList) => {
     setList(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -37,6 +40,25 @@ export default function ClassificacaoModal({ file, territorios, tags, onClose, o
             </div>
           </div>
           <div className="space-y-4">
+            <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Formatos</h4>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="border-2 border-[#2C1A14] bg-[#EAB308] px-2 py-1 font-mono text-xs font-black uppercase tracking-wider text-[#2C1A14]">
+                {identified || 'Sem extensão'}
+              </span>
+              <span className="font-sans text-xs font-bold text-[#2C1A14]/70">identificado pelo arquivo. Os outros formatos são manuais e podem ser vários.</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {formatos.map(formato => (
+                <label key={formato.id} onClick={() => toggleSelection(formato.id, setSelectedFormatos)} className="flex items-center gap-3 p-3 border-2 border-[#2C1A14] bg-white cursor-pointer hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_#2C1A14] transition-all">
+                  <div className="relative flex items-center justify-center w-6 h-6 border-2 border-[#2C1A14] bg-[#F4EFE6] shrink-0">
+                    {selectedFormatos.includes(formato.id) && <div className="absolute w-3.5 h-3.5 bg-[#1E3A5F]"></div>}
+                  </div>
+                  <span className="px-2 py-1 text-xs font-display font-bold uppercase truncate border-2 border-[#2C1A14]" style={{ backgroundColor: formato.bgColor, color: formato.textColor }}>{formato.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-4">
             <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Tags Livres</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {tags.map(tag => (
@@ -53,7 +75,7 @@ export default function ClassificacaoModal({ file, territorios, tags, onClose, o
         </div>
         <div className="p-4 border-t-4 border-[#2C1A14] bg-[#F4EFE6] flex flex-col-reverse sm:flex-row sm:justify-end gap-3 shrink-0">
           <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 decoration-2 px-4 py-2 w-full sm:w-auto">Cancelar</button>
-          <ButtonPrimary onClick={() => onSave(file.id, selectedTerritorios, selectedTags)} color="bgMustard" className="w-full sm:w-auto">Salvar</ButtonPrimary>
+          <ButtonPrimary onClick={() => onSave(file.id, selectedTerritorios, selectedTags, selectedFormatos)} color="bgMustard" className="w-full sm:w-auto">Salvar</ButtonPrimary>
         </div>
       </div>
     </div>

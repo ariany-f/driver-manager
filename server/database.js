@@ -26,14 +26,33 @@ const CREATE_TAGS = `
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
 
+const CREATE_FORMATOS = `
+  CREATE TABLE formatos (
+    id VARCHAR(64) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    bg_color VARCHAR(7) NOT NULL,
+    text_color VARCHAR(7) NOT NULL,
+    PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+
 const CREATE_CLASSIFICACAO = `
   CREATE TABLE arquivo_classificacao (
     file_id VARCHAR(128) NOT NULL,
     territorios LONGTEXT NOT NULL,
     tags LONGTEXT NOT NULL,
+    formatos LONGTEXT NULL,
+    origem VARCHAR(255) NULL,
     PRIMARY KEY (file_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
+
+const CLASSIFICACAO_COLUMNS = [
+  ['formatos', 'LONGTEXT NULL'],
+  ['origem', 'VARCHAR(255) NULL'],
+];
+
+const JORNAL_FORMATO = ['formato_jornal', 'Jornal', '#1E3A5F', '#FDFBF7'];
 
 const CREATE_PASTAS = `
   CREATE TABLE pastas (
@@ -50,9 +69,14 @@ const CREATE_ARQUIVOS = `
   CREATE TABLE arquivos (
     file_id VARCHAR(128) NOT NULL,
     pasta_id VARCHAR(128) NULL,
+    nome VARCHAR(255) NULL,
     PRIMARY KEY (file_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
+
+const ARQUIVOS_COLUMNS = [
+  ['nome', 'VARCHAR(255) NULL'],
+];
 
 const CREATE_DRIVE = `
   CREATE TABLE drive_conexao (
@@ -187,6 +211,7 @@ async function rememberPool(config, ssl) {
 const TABLE_SQL = [
   ['territorios', CREATE_TERRITORIOS],
   ['tags', CREATE_TAGS],
+  ['formatos', CREATE_FORMATOS],
   ['arquivo_classificacao', CREATE_CLASSIFICACAO],
   ['pastas', CREATE_PASTAS],
   ['arquivos', CREATE_ARQUIVOS],
@@ -207,6 +232,43 @@ function columnNameOf(row) {
   if (named) return String(named).toLowerCase();
   const value = Object.values(row)[0];
   return String(value || '').toLowerCase();
+}
+
+async function ensureArquivosColumns(db) {
+  const [rows] = await db.query(
+    `SELECT column_name AS columnName
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'arquivos'`,
+  );
+  const present = new Set(rows.map(columnNameOf));
+  for (const [name, definition] of ARQUIVOS_COLUMNS) {
+    if (present.has(name)) continue;
+    await db.query(`ALTER TABLE arquivos ADD COLUMN ${name} ${definition}`);
+  }
+}
+
+async function ensureClassificacaoColumns(db) {
+  const [rows] = await db.query(
+    `SELECT column_name AS columnName
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'arquivo_classificacao'`,
+  );
+  const present = new Set(rows.map(columnNameOf));
+  for (const [name, definition] of CLASSIFICACAO_COLUMNS) {
+    if (present.has(name)) continue;
+    await db.query(`ALTER TABLE arquivo_classificacao ADD COLUMN ${name} ${definition}`);
+  }
+}
+
+async function ensureJornal(db) {
+  const [rows] = await db.query('SELECT COUNT(*) AS total FROM formatos');
+  if (Number(rows[0]?.total) > 0) return;
+  await db.query(
+    'INSERT IGNORE INTO formatos (id, name, bg_color, text_color) VALUES (?, ?, ?, ?)',
+    JORNAL_FORMATO,
+  );
 }
 
 async function ensureAplicacaoColumns(db) {
@@ -248,6 +310,9 @@ export async function ensureTables(env) {
     await db.query(sql);
   }
   await ensureAplicacaoColumns(db);
+  await ensureArquivosColumns(db);
+  await ensureClassificacaoColumns(db);
+  await ensureJornal(db);
   tablesKey = key;
   return TABLE_SQL.map(([name]) => name);
 }
@@ -575,18 +640,20 @@ function parseList(value) {
 
 export async function loadIdentidade(env) {
   const status = await databaseStatus(env);
-  if (!status.connected) return { territorios: [], tags: [] };
+  if (!status.connected) return { territorios: [], tags: [], formatos: [] };
   const db = await withPool(env);
   const [territorios] = await db.query('SELECT id, name, bg_color, text_color FROM territorios ORDER BY name');
   const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
+  const [formatos] = await db.query('SELECT id, name, bg_color, text_color FROM formatos ORDER BY name');
   return {
     territorios: territorios.map(mapItem),
     tags: tags.map(mapItem),
+    formatos: formatos.map(mapItem),
   };
 }
 
 async function replaceItems(env, table, items) {
-  if (table !== 'territorios' && table !== 'tags') throw new DriveError('Tabela inválida.');
+  if (table !== 'territorios' && table !== 'tags' && table !== 'formatos') throw new DriveError('Tabela inválida.');
   const cleaned = cleanItems(items);
   const db = await withPool(env);
   const connection = await db.getConnection();
@@ -617,14 +684,23 @@ export function saveTags(env, items) {
   return replaceItems(env, 'tags', items);
 }
 
+export function saveFormatos(env, items) {
+  return replaceItems(env, 'formatos', items);
+}
+
 export async function loadFileLabels(env) {
   const status = await databaseStatus(env);
   if (!status.connected) return {};
   const db = await withPool(env);
-  const [rows] = await db.query('SELECT file_id, territorios, tags FROM arquivo_classificacao');
+  const [rows] = await db.query('SELECT file_id, territorios, tags, formatos, origem FROM arquivo_classificacao');
   const labels = {};
   for (const row of rows) {
-    labels[row.file_id] = { territorios: parseList(row.territorios), tags: parseList(row.tags) };
+    labels[row.file_id] = {
+      territorios: parseList(row.territorios),
+      tags: parseList(row.tags),
+      formatos: parseList(row.formatos),
+      origem: String(row.origem || '').trim(),
+    };
   }
   return labels;
 }
@@ -666,8 +742,21 @@ async function loadFolderTree(env) {
 
 async function loadPlacements(env) {
   const db = await withPool(env);
-  const [rows] = await db.query('SELECT file_id, pasta_id FROM arquivos');
-  return rows.map(row => ({ id: row.file_id, folderId: row.pasta_id || '' }));
+  const [rows] = await db.query('SELECT file_id, pasta_id, nome FROM arquivos');
+  return rows.map(row => ({
+    id: row.file_id,
+    folderId: row.pasta_id || '',
+    nome: String(row.nome || '').trim(),
+  }));
+}
+
+function applyStoredFile(file, stored) {
+  if (!stored) return file;
+  return {
+    ...file,
+    folderId: stored.folderId,
+    name: stored.nome || file.name,
+  };
 }
 
 async function knownDriveIds(env) {
@@ -697,15 +786,12 @@ export async function previewDriveLayout(env, archive) {
   const novos = (archive.files || [])
     .filter(file => RECORD_ID.test(String(file.id)) && !fileIds.has(file.id))
     .map(describeNewFile);
-  const placements = new Map((await loadPlacements(env)).map(item => [item.id, item.folderId]));
+  const placements = new Map((await loadPlacements(env)).map(item => [item.id, item]));
   return {
     folders: await loadFolderTree(env),
     files: (archive.files || [])
       .filter(file => fileIds.has(file.id))
-      .map(file => ({
-        ...file,
-        folderId: placements.has(file.id) ? placements.get(file.id) : (file.folderId || ''),
-      })),
+      .map(file => applyStoredFile(file, placements.get(file.id))),
     novos,
     novasPastas,
   };
@@ -736,13 +822,10 @@ export async function rememberDriveLayout(env, archive) {
     novos.push({ ...describeNewFile(file), folderId: pastaId || '' });
   }
 
-  const placements = new Map((await loadPlacements(env)).map(item => [item.id, item.folderId]));
+  const placements = new Map((await loadPlacements(env)).map(item => [item.id, item]));
   return {
     folders: await loadFolderTree(env),
-    files: (archive.files || []).map(file => ({
-      ...file,
-      folderId: placements.has(file.id) ? placements.get(file.id) : (file.folderId || ''),
-    })),
+    files: (archive.files || []).map(file => applyStoredFile(file, placements.get(file.id))),
     novos,
     novasPastas,
   };
@@ -808,6 +891,17 @@ export async function deletePasta(env, id) {
   return { folders: await loadFolderTree(env), files: await loadPlacements(env) };
 }
 
+export async function renameArquivo(env, fileId, name) {
+  const id = assertRecordId(fileId, 'arquivo');
+  const cleanName = String(name || '').trim();
+  if (!cleanName || cleanName.length > 255) throw new DriveError('Dê um nome para o arquivo.');
+  const db = await withPool(env);
+  const [found] = await db.query('SELECT file_id FROM arquivos WHERE file_id = ?', [id]);
+  if (!found.length) throw new DriveError('Arquivo não encontrado.', 404);
+  await db.query('UPDATE arquivos SET nome = ? WHERE file_id = ?', [cleanName, id]);
+  return { fileId: id, name: cleanName };
+}
+
 export async function moveArquivo(env, fileId, pastaId) {
   const id = assertRecordId(fileId, 'arquivo');
   const pasta = pastaId ? assertRecordId(pastaId, 'pasta') : null;
@@ -824,18 +918,36 @@ export async function moveArquivo(env, fileId, pastaId) {
   return { fileId: id, folderId: pasta || '' };
 }
 
-export async function saveFileLabels(env, fileId, territorios, tags) {
+export async function saveFileLabels(env, fileId, territorios, tags, formatos) {
   if (!RECORD_ID.test(String(fileId || ''))) throw new DriveError('arquivo inválido.');
-  const next = { territorios: cleanIdList(territorios), tags: cleanIdList(tags) };
+  const next = {
+    territorios: cleanIdList(territorios),
+    tags: cleanIdList(tags),
+    formatos: cleanIdList(formatos),
+  };
   const db = await withPool(env);
   const territoriosJson = JSON.stringify(next.territorios);
   const tagsJson = JSON.stringify(next.tags);
+  const formatosJson = JSON.stringify(next.formatos);
   await db.query(
-    `INSERT INTO arquivo_classificacao (file_id, territorios, tags) VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE territorios = ?, tags = ?`,
-    [fileId, territoriosJson, tagsJson, territoriosJson, tagsJson],
+    `INSERT INTO arquivo_classificacao (file_id, territorios, tags, formatos) VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE territorios = ?, tags = ?, formatos = ?`,
+    [fileId, territoriosJson, tagsJson, formatosJson, territoriosJson, tagsJson, formatosJson],
   );
   return next;
+}
+
+export async function saveArquivoOrigem(env, fileId, origem) {
+  const id = assertRecordId(fileId, 'arquivo');
+  const clean = String(origem || '').trim().slice(0, 255);
+  const db = await withPool(env);
+  await db.query(
+    `INSERT INTO arquivo_classificacao (file_id, territorios, tags, origem)
+     VALUES (?, '[]', '[]', ?)
+     ON DUPLICATE KEY UPDATE origem = ?`,
+    [id, clean || null, clean || null],
+  );
+  return { fileId: id, origem: clean };
 }
 
 function sendJson(res, status, body) {
@@ -964,6 +1076,12 @@ export async function handleDatabaseRequest(req, res, { root, env }) {
   if (req.method === 'PUT' && url.pathname === '/api/database/tags') {
     const body = await readBody(req);
     sendJson(res, 200, { tags: await saveTags(env, body.tags) });
+    return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/api/database/formatos') {
+    const body = await readBody(req);
+    sendJson(res, 200, { formatos: await saveFormatos(env, body.formatos) });
     return;
   }
 

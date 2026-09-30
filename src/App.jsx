@@ -14,11 +14,13 @@ import PoliticaPrivacidade from './components/legal/PoliticaPrivacidade.jsx';
 import TermosServico from './components/legal/TermosServico.jsx';
 import UploadProgress from './components/drive/UploadProgress.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
-import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, getVlibras, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
+import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, getVlibras, moveArquivo, renamePasta, saveFormatos, saveTags, saveTerritorios } from './services/database.js';
 import {
   disconnectDrive,
   getDriveStatus,
   previewDrive,
+  renameDriveArquivo,
+  saveArquivoOrigem,
   saveDriveClassificacao,
   syncDrive,
   uploadDriveFile,
@@ -34,6 +36,7 @@ export default function App() {
   const [vlibras, setVlibras] = useState(false);
   const [territorios, setTerritorios] = useState([]);
   const [tags, setTags] = useState([]);
+  const [formatos, setFormatos] = useState([]);
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [driveReady, setDriveReady] = useState(false);
@@ -67,6 +70,7 @@ export default function App() {
       .then(data => {
         setTerritorios(data.territorios || []);
         setTags(data.tags || []);
+        setFormatos(data.formatos || []);
       })
       .catch(() => {});
   }, []);
@@ -101,6 +105,16 @@ export default function App() {
     try {
       const saved = await saveTags(next);
       setTags(saved.tags || next);
+    } catch (error) {
+      setDriveError(error.message);
+    }
+  };
+
+  const persistFormatos = async (next) => {
+    setFormatos(next);
+    try {
+      const saved = await saveFormatos(next);
+      setFormatos(saved.formatos || next);
     } catch (error) {
       setDriveError(error.message);
     }
@@ -315,6 +329,28 @@ export default function App() {
         setDriveError(error.message);
       }
     },
+    renameFile: async (fileId, name, driveToo) => {
+      setDriveError('');
+      try {
+        const saved = await renameDriveArquivo(fileId, name, driveToo);
+        setFiles(current => current.map(file => (file.id === saved.fileId ? { ...file, name: saved.name } : file)));
+        return saved;
+      } catch (error) {
+        setDriveError(error.message);
+        throw error;
+      }
+    },
+    saveOrigem: async (fileId, origem) => {
+      setDriveError('');
+      try {
+        const saved = await saveArquivoOrigem(fileId, origem);
+        setFiles(current => current.map(file => (file.id === saved.fileId ? { ...file, origem: saved.origem } : file)));
+        return saved;
+      } catch (error) {
+        setDriveError(error.message);
+        throw error;
+      }
+    },
     moveFile: async (fileId, folderId) => {
       setDriveError('');
       try {
@@ -324,11 +360,11 @@ export default function App() {
         setDriveError(error.message);
       }
     },
-    saveClassificacao: async (fileId, territoriosNext, tagsNext) => {
+    saveClassificacao: async (fileId, territoriosNext, tagsNext, formatosNext = []) => {
       setDriveError('');
       try {
-        await saveDriveClassificacao(fileId, territoriosNext, tagsNext);
-        setFiles(current => current.map(file => file.id === fileId ? { ...file, territorios: territoriosNext, tags: tagsNext } : file));
+        await saveDriveClassificacao(fileId, territoriosNext, tagsNext, formatosNext);
+        setFiles(current => current.map(file => file.id === fileId ? { ...file, territorios: territoriosNext, tags: tagsNext, formatos: formatosNext } : file));
       } catch (error) {
         setDriveError(error.message);
       }
@@ -341,14 +377,14 @@ export default function App() {
     try {
       const saved = [];
       for (const file of classificarNovos) {
-        const choice = choices[file.id] || { territorios: [], tags: [] };
-        if (!choice.territorios.length && !choice.tags.length) continue;
-        await saveDriveClassificacao(file.id, choice.territorios, choice.tags);
+        const choice = choices[file.id] || { territorios: [], tags: [], formatos: [] };
+        if (!choice.territorios.length && !choice.tags.length && !(choice.formatos || []).length) continue;
+        await saveDriveClassificacao(file.id, choice.territorios, choice.tags, choice.formatos || []);
         saved.push({ id: file.id, ...choice });
       }
       if (saved.length) {
         const byId = new Map(saved.map(item => [item.id, item]));
-        setFiles(current => current.map(file => (byId.has(file.id) ? { ...file, territorios: byId.get(file.id).territorios, tags: byId.get(file.id).tags } : file)));
+        setFiles(current => current.map(file => (byId.has(file.id) ? { ...file, territorios: byId.get(file.id).territorios, tags: byId.get(file.id).tags, formatos: byId.get(file.id).formatos || [] } : file)));
       }
       setClassificarNovos([]);
     } catch (error) {
@@ -421,6 +457,7 @@ export default function App() {
           files={classificarNovos}
           territorios={territorios}
           tags={tags}
+          formatos={formatos}
           busy={classificando}
           error={driveError}
           onClose={() => setClassificarNovos([])}
@@ -443,7 +480,7 @@ export default function App() {
             onLogin={() => setLoginOpen(true)}
           />
         )}
-        {driveReady && labelsEnabled && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} tags={tags} labelsEnabled={labelsEnabled} />}
+        {driveReady && labelsEnabled && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} tags={tags} formatos={formatos} labelsEnabled={labelsEnabled} />}
         {driveReady && labelsEnabled && activeView === 'acervo' && (
           <Acervo
             isAdmin={isAdmin}
@@ -453,6 +490,7 @@ export default function App() {
             setFolders={setFolders}
             territorios={territorios}
             tags={tags}
+            formatos={formatos}
             drive={drive}
             labelsEnabled={labelsEnabled}
           />
@@ -461,8 +499,10 @@ export default function App() {
           <GerenciarIdentidade
             territorios={territorios}
             tags={tags}
+            formatos={formatos}
             onTerritorios={persistTerritorios}
             onTags={persistTags}
+            onFormatos={persistFormatos}
           />
         )}
         {driveReady && activeView === 'configuracoes' && (

@@ -1,4 +1,5 @@
 import { Archive, BarChart, Tags } from 'lucide-react';
+import { fileExtension } from '../../lib/fileExtension.js';
 import FileIcon from '../ui/FileIcon.jsx';
 
 const parseSize = (sizeStr) => {
@@ -20,32 +21,8 @@ const typeLabels = {
 
 const extColors = ['#1E3A5F', '#C13B22', '#849B55', '#EAB308', '#2C1A14'];
 
-const mimeExtensions = {
-  'application/pdf': 'PDF',
-  'application/vnd.google-apps.document': 'GDOC',
-  'application/vnd.google-apps.spreadsheet': 'XLSX',
-  'application/vnd.google-apps.presentation': 'PPTX',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
-  'application/vnd.ms-excel.sheet.macroEnabled.12': 'XLSM',
-  'application/msword': 'DOC',
-  'application/vnd.ms-excel': 'XLS',
-  'image/jpeg': 'JPG',
-  'image/png': 'PNG',
-  'image/webp': 'WEBP',
-  'image/gif': 'GIF',
-};
-
-function fileExtension(file) {
-  const name = String(file?.name || '');
-  const dot = name.lastIndexOf('.');
-  if (dot > 0 && dot < name.length - 1) {
-    const ext = name.slice(dot + 1);
-    if (/^[a-z0-9]{1,8}$/i.test(ext)) return ext.toUpperCase();
-  }
-  const mime = String(file?.mimeType || '');
-  if (mimeExtensions[mime]) return mimeExtensions[mime];
-  return 'SEM EXT.';
+function displayExtension(file) {
+  return fileExtension(file) || 'SEM EXT.';
 }
 
 function share(count, total) {
@@ -76,7 +53,7 @@ function RankList({ items, empty }) {
   );
 }
 
-export default function Dashboard({ files, territorios, tags = [], labelsEnabled }) {
+export default function Dashboard({ files, territorios, tags = [], formatos = [], labelsEnabled }) {
   const totalSizeMB = files.reduce((acc, file) => acc + parseSize(file.size), 0);
   const formattedSize = totalSizeMB > 1024 ? `${(totalSizeMB / 1024).toFixed(2)} GB` : `${totalSizeMB.toFixed(2)} MB`;
   const semClassificacao = files.filter(file => !(file.territorios || []).length && !(file.tags || []).length).length;
@@ -107,7 +84,7 @@ export default function Dashboard({ files, territorios, tags = [], labelsEnabled
     .filter(tag => tag.name);
 
   const extensionCounts = files.reduce((acc, file) => {
-    const ext = fileExtension(file);
+    const ext = displayExtension(file);
     acc[ext] = (acc[ext] || 0) + 1;
     return acc;
   }, {});
@@ -163,6 +140,27 @@ export default function Dashboard({ files, territorios, tags = [], labelsEnabled
                       </div>
                       <div className="w-full bg-[#E4CFB2] border-2 border-[#2C1A14] h-4">
                         <div className="h-full border-r-2 border-[#2C1A14]" style={{ width: `${percentage}%`, backgroundColor: typeColors[type] }}></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {formatos.map(formato => {
+                const count = files.filter(file => (file.formatos || []).includes(formato.id)).length;
+                if (!count) return null;
+                const percentage = share(count, files.length);
+                return (
+                  <div key={formato.id} className="flex items-center gap-4">
+                    <div className="w-10 flex justify-center shrink-0">
+                      <span className="w-6 h-6 border-2 border-[#2C1A14]" style={{ backgroundColor: formato.bgColor }} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs font-display font-bold uppercase mb-1">
+                        <span>{formato.name}</span>
+                        <span>{count} ({percentage}%)</span>
+                      </div>
+                      <div className="w-full bg-[#E4CFB2] border-2 border-[#2C1A14] h-4">
+                        <div className="h-full border-r-2 border-[#2C1A14]" style={{ width: `${percentage}%`, backgroundColor: formato.bgColor }}></div>
                       </div>
                     </div>
                   </div>

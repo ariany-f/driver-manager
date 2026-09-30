@@ -7,7 +7,7 @@ export default function TermosServico() {
   useEffect(() => {
     document.title = 'Termos de uso — Diário do Território';
     return () => {
-      document.title = 'Diver Manager';
+      document.title = 'Driver Manager';
     };
   }, []);
 

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree,
+  Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree, ScrollText,
   Plus, Search, Tags, Trash2, Upload, X,
 } from 'lucide-react';
 import Badge from '../ui/Badge.jsx';
@@ -9,42 +9,14 @@ import FileThumb from './FileThumb.jsx';
 import ClassificacaoModal from '../modals/ClassificacaoModal.jsx';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
 import FileViewer from '../modals/FileViewer.jsx';
+import FichaTecnica from '../modals/FichaTecnica.jsx';
 import FolderModal from '../modals/FolderModal.jsx';
 import UploadConfirmModal from '../modals/UploadConfirmModal.jsx';
 import MoveFileModal from '../modals/MoveFileModal.jsx';
+import RenameFileModal from '../modals/RenameFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
+import { fileExtension } from '../../lib/fileExtension.js';
 import { findFolder, flattenFolders, getAncestorFolderIds } from '../../lib/folders.js';
-
-const MIME_EXT = {
-  'application/pdf': 'PDF',
-  'application/vnd.google-apps.document': 'GDOC',
-  'application/vnd.google-apps.spreadsheet': 'XLSX',
-  'application/vnd.google-apps.presentation': 'PPTX',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
-  'application/vnd.ms-excel.sheet.macroEnabled.12': 'XLSM',
-  'application/msword': 'DOC',
-  'application/vnd.ms-excel': 'XLS',
-  'image/jpeg': 'JPG',
-  'image/png': 'PNG',
-  'image/webp': 'WEBP',
-  'image/gif': 'GIF',
-  'image/svg+xml': 'SVG',
-};
-
-function fileExtension(file) {
-  const name = String(file?.name || '');
-  const dot = name.lastIndexOf('.');
-  if (dot > 0 && dot < name.length - 1) {
-    const ext = name.slice(dot + 1);
-    if (/^[a-z0-9]{1,8}$/i.test(ext)) return ext.toUpperCase();
-  }
-  const mime = String(file?.mimeType || '');
-  if (MIME_EXT[mime]) return MIME_EXT[mime];
-  const sub = mime.slice(mime.indexOf('/') + 1).split(/[+.]/).pop();
-  if (mime.includes('/') && /^[a-z0-9]{2,8}$/i.test(sub)) return sub.toUpperCase();
-  return '';
-}
 
 function formatFileDate(value) {
   const text = String(value || '').trim();
@@ -63,8 +35,9 @@ function formatFileDate(value) {
   }).format(parsed);
 }
 
-function FileName({ file, className = '' }) {
+function FileName({ file, formatos = [], className = '' }) {
   const ext = fileExtension(file);
+  const manuais = (file.formatos || []).map(id => formatos.find(formato => formato.id === id)).filter(Boolean);
   return (
     <p className={className}>
       <span className="break-all group-hover:text-[#C13B22] transition-colors">{file.name}</span>
@@ -73,14 +46,26 @@ function FileName({ file, className = '' }) {
           {ext}
         </span>
       )}
+      {manuais.map(formato => (
+        <span
+          key={formato.id}
+          className="ml-2 inline-block align-middle border-2 border-[#2C1A14] px-1 py-0.5 font-display text-[10px] font-black leading-none tracking-wider uppercase whitespace-nowrap"
+          style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
+        >
+          {formato.name}
+        </span>
+      ))}
     </p>
   );
 }
 
-export default function Acervo({ isAdmin, files, setFiles, folders, territorios, tags, drive, labelsEnabled }) {
+export default function Acervo({ isAdmin, files, setFiles, folders, territorios, tags, formatos = [], drive, labelsEnabled }) {
   const [editingFile, setEditingFile] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
+  const [sheetFile, setSheetFile] = useState(null);
   const [movingFile, setMovingFile] = useState(null);
+  const [renamingFile, setRenamingFile] = useState(null);
+  const [renaming, setRenaming] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState('');
   const [folderModalConfig, setFolderModalConfig] = useState({ isOpen: false, mode: 'create', parentId: '', folder: null });
   const [folderToDelete, setFolderToDelete] = useState(null);
@@ -90,6 +75,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTerritorios, setSelectedTerritorios] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedFormatos, setSelectedFormatos] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [selectedExtensions, setSelectedExtensions] = useState([]);
   const [semTerritorio, setSemTerritorio] = useState(false);
@@ -100,6 +86,14 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const itemsPerPage = 8;
 
   const flatFolders = flattenFolders(folders);
+  const origens = useMemo(() => {
+    const found = new Set();
+    for (const file of files) {
+      const text = String(file.origem || '').trim();
+      if (text) found.add(text);
+    }
+    return [...found].sort((left, right) => left.localeCompare(right, 'pt-BR'));
+  }, [files]);
 
   const getDisplayPath = (folderId) => {
     if (!folderId) return '/ (Raiz)';
@@ -165,12 +159,13 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTerritorio = !labelsEnabled || selectedTerritorios.length === 0 || selectedTerritorios.some(id => (file.territorios || []).includes(id));
     const matchesTag = !labelsEnabled || selectedTags.length === 0 || selectedTags.some(id => (file.tags || []).includes(id));
+    const matchesFormato = !labelsEnabled || selectedFormatos.length === 0 || selectedFormatos.some(id => (file.formatos || []).includes(id));
     const matchesSemTerritorio = !labelsEnabled || !semTerritorio || !(file.territorios || []).length;
     const matchesSemTag = !labelsEnabled || !semTag || !(file.tags || []).length;
     const matchesType = selectedTypes.length === 0 || selectedTypes.includes(file.type);
     const matchesExtension = activeExtensions.length === 0 || activeExtensions.includes(fileExtension(file));
     const matchesFolder = activeFolderId === '' ? true : file.folderId === activeFolderId;
-    return matchesSearch && matchesTerritorio && matchesTag && matchesSemTerritorio && matchesSemTag && matchesType && matchesExtension && matchesFolder;
+    return matchesSearch && matchesTerritorio && matchesTag && matchesFormato && matchesSemTerritorio && matchesSemTag && matchesType && matchesExtension && matchesFolder;
   });
 
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage) || 1;
@@ -246,8 +241,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     );
   };
 
-  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length;
-  const mediaRowClass = availableExtensions.length
+  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + selectedFormatos.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length;
+  const hasFormatFilters = availableExtensions.length > 0 || (labelsEnabled && formatos.length > 0);
+  const mediaRowClass = hasFormatFilters
     ? `md:col-span-12 grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-6${labelsEnabled ? ' border-t-2 border-dashed border-[#2C1A14]/20 pt-4' : ''}`
     : labelsEnabled
       ? 'md:col-span-2 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6'
@@ -271,6 +267,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     <div className="flex items-center justify-end gap-2">
       {isAdmin && labelsEnabled && (
         <>
+          <button onClick={() => setRenamingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Renomear" aria-label="Renomear">
+            <Edit size={18} strokeWidth={2.5} />
+          </button>
           <button onClick={() => setMovingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Mover no banco" aria-label="Mover">
             <CornerDownRight size={18} strokeWidth={2.5} />
           </button>
@@ -279,6 +278,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
           </button>
         </>
       )}
+      <button onClick={() => setSheetFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Ficha técnica" aria-label="Ficha técnica">
+        <ScrollText size={18} strokeWidth={2.5} />
+      </button>
       <button onClick={() => setViewingFile(file)} className="bg-[#1E3A5F] border-2 border-[#2C1A14] p-2.5 hover:bg-[#C13B22] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14] text-white" title="Ver arquivo" aria-label="Ver arquivo">
         <Eye size={18} strokeWidth={2.5} />
       </button>
@@ -434,9 +436,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     ))}
                   </div>
                 </div>
-                {availableExtensions.length > 0 && (
+                {hasFormatFilters && (
                   <div className="border-t-2 sm:border-t-0 sm:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 sm:pt-0 sm:pl-6">
-                    <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#2C1A14]">Extensão</span>
+                    <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#2C1A14]">Formato</span>
                     <div className="flex flex-wrap gap-2">
                       {availableExtensions.map(ext => (
                         <button
@@ -447,6 +449,18 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-mono text-xs font-black tracking-wider transition-all ${activeExtensions.includes(ext) ? 'bg-[#2C1A14] text-white shadow-[3px_3px_0px_#EAB308] -translate-y-0.5' : 'bg-white text-[#2C1A14] hover:bg-black/5 hover:-translate-y-0.5'}`}
                         >
                           {ext}
+                        </button>
+                      ))}
+                      {labelsEnabled && formatos.map(formato => (
+                        <button
+                          key={formato.id}
+                          type="button"
+                          aria-pressed={selectedFormatos.includes(formato.id)}
+                          onClick={() => handleFilterToggle(formato.id, setSelectedFormatos)}
+                          className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedFormatos.includes(formato.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                          style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
+                        >
+                          {formato.name}
                         </button>
                       ))}
                     </div>
@@ -530,7 +544,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <FileThumb file={file} iconSize={28} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
+                    <FileName file={file} formatos={formatos} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
                       <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
@@ -545,16 +559,19 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   <div className="mt-3 flex flex-wrap">
                     {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
                     {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
+                    {(file.formatos || []).map(id => <Badge key={id} item={formatos.find(formato => formato.id === id)} />)}
                   </div>
                 )}
                 <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
                   {isAdmin && labelsEnabled && (
                     <>
+                      <button onClick={() => setRenamingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Renomear">Renomear</button>
                       <button onClick={() => setMovingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Mover">Mover</button>
                       <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
                     </>
                   )}
-                  <button onClick={() => setViewingFile(file)} className={`${isAdmin ? 'flex-1' : 'w-full'} min-h-11 bg-[#1E3A5F] text-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center gap-2`} aria-label="Abrir arquivo">
+                  <button onClick={() => setSheetFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Ficha técnica">Ficha</button>
+                  <button onClick={() => setViewingFile(file)} className="flex-1 min-h-11 bg-[#1E3A5F] text-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center gap-2" aria-label="Abrir arquivo">
                     <Eye size={16} strokeWidth={2.5} /> Abrir
                   </button>
                 </div>
@@ -573,7 +590,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   <th className="px-4 py-4 font-black">Arquivo</th>
                   <th className="px-4 py-4 font-black w-44">Localização</th>
                   {labelsEnabled && <th className="px-4 py-4 font-black w-52">Classificação</th>}
-                  <th className="px-4 py-4 font-black text-right w-44">Ações</th>
+                  <th className="px-4 py-4 font-black text-right w-64">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-dashed divide-[#2C1A14]/20 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
@@ -585,7 +602,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           <FileThumb file={file} iconSize={32} badge />
                         </div>
                         <div className="min-w-0">
-                          <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
+                          <FileName file={file} formatos={formatos} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
                             <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
@@ -607,6 +624,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
+                            {(file.formatos || []).map(id => <Badge key={id} item={formatos.find(formato => formato.id === id)} />)}
                           </div>
                         </div>
                       </td>
@@ -646,6 +664,21 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
         onCancel={() => setFolderToDelete(null)} onConfirm={handleConfirmDeleteFolder}
       />
 
+      <RenameFileModal
+        file={renamingFile}
+        busy={renaming}
+        onClose={() => { if (!renaming) setRenamingFile(null); }}
+        onSave={async (name, driveToo) => {
+          setRenaming(true);
+          try {
+            await drive.renameFile(renamingFile.id, name, driveToo);
+            setRenamingFile(null);
+          } finally {
+            setRenaming(false);
+          }
+        }}
+      />
+
       <MoveFileModal
         isOpen={!!movingFile} file={movingFile} flatFolders={flatFolders} onClose={() => setMovingFile(null)}
         onSave={(fileId, newFolderId) => {
@@ -655,16 +688,36 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
       />
 
       {labelsEnabled && editingFile && (
-        <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} onClose={() => setEditingFile(null)}
-          onSave={(id, nextTerritorios, nextTags) => {
-            if (drive.active) drive.saveClassificacao(id, nextTerritorios, nextTags);
-            else setFiles(files.map(file => file.id === id ? { ...file, territorios: nextTerritorios, tags: nextTags } : file));
+        <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} formatos={formatos} onClose={() => setEditingFile(null)}
+          onSave={(id, nextTerritorios, nextTags, nextFormatos) => {
+            if (drive.active) drive.saveClassificacao(id, nextTerritorios, nextTags, nextFormatos);
+            else setFiles(files.map(file => file.id === id ? { ...file, territorios: nextTerritorios, tags: nextTags, formatos: nextFormatos } : file));
             setEditingFile(null);
           }}
         />
       )}
 
-      {viewingFile && <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />}
+      {viewingFile && (
+        <FileViewer
+          file={viewingFile}
+          onClose={() => setViewingFile(null)}
+          onShowSheet={() => setSheetFile(viewingFile)}
+        />
+      )}
+      <FichaTecnica
+        file={sheetFile}
+        isAdmin={isAdmin && labelsEnabled}
+        origens={origens}
+        territorios={territorios}
+        tags={tags}
+        formatos={formatos}
+        folderPath={sheetFile ? getDisplayPath(sheetFile.folderId) : ''}
+        onClose={() => setSheetFile(null)}
+        onSaveOrigem={async (origem) => {
+          const saved = await drive.saveOrigem(sheetFile.id, origem);
+          setSheetFile(current => (current && current.id === saved.fileId ? { ...current, origem: saved.origem } : current));
+        }}
+      />
       </div>
     </div>
   );

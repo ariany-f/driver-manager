@@ -85,10 +85,28 @@ export function disconnectDrive() {
   return fetch('/api/drive/disconnect', { method: 'POST' }).then(readJson);
 }
 
-export function saveDriveClassificacao(fileId, territorios, tags) {
+export function renameDriveArquivo(fileId, name, drive) {
+  return fetch(`/api/drive/files/${fileId}`, {
+    method: 'PATCH',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name, drive }),
+  }).then(readJson);
+}
+
+export function saveArquivoOrigem(fileId, origem) {
+  return fetch(`/api/drive/files/${fileId}/origem`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ origem }),
+  }).then(readJson);
+}
+
+export function saveDriveClassificacao(fileId, territorios, tags, formatos) {
   return fetch(`/api/drive/files/${fileId}/classificacao`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ territorios, tags }),
+    body: JSON.stringify({ territorios, tags, formatos: formatos || [] }),
   }).then(readJson);
 }

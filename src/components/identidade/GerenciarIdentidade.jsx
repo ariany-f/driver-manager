@@ -3,7 +3,13 @@ import { Edit, Plus, Trash2 } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getContrastTextColor, PREDEFINED_COLORS } from '../../lib/colors.js';
 
-export default function GerenciarIdentidade({ territorios, tags, onTerritorios, onTags }) {
+const TAB_LABEL = {
+  territorios: { plural: 'Territórios', singular: 'Território' },
+  tags: { plural: 'Tags Livres', singular: 'Tag' },
+  formatos: { plural: 'Formatos', singular: 'Formato' },
+};
+
+export default function GerenciarIdentidade({ territorios, tags, formatos = [], onTerritorios, onTags, onFormatos }) {
   const [activeTab, setActiveTab] = useState('territorios');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -38,24 +44,27 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
     };
 
     const apply = (list) => (editingItem ? list.map(item => item.id === editingItem.id ? newItem : item) : [...list, newItem]);
-    if (activeTab === 'territorios') onTerritorios(apply(territorios));
-    else onTags(apply(tags));
+    const lists = { territorios, tags, formatos };
+    const save = { territorios: onTerritorios, tags: onTags, formatos: onFormatos };
+    save[activeTab](apply(lists[activeTab]));
     closeModal();
   };
 
   const handleDelete = (id) => {
-    if (activeTab === 'territorios') onTerritorios(territorios.filter(territorio => territorio.id !== id));
-    else onTags(tags.filter(tag => tag.id !== id));
+    const lists = { territorios, tags, formatos };
+    const save = { territorios: onTerritorios, tags: onTags, formatos: onFormatos };
+    save[activeTab](lists[activeTab].filter(item => item.id !== id));
   };
 
-  const currentList = activeTab === 'territorios' ? territorios : tags;
+  const currentList = { territorios, tags, formatos }[activeTab];
+  const tabLabel = TAB_LABEL[activeTab];
 
   return (
     <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300 relative">
       <div className="w-full space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 gap-4">
           <h1 className="text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.25] tracking-tighter">Classificação</h1>
-          <ButtonPrimary onClick={() => openModal()} icon={Plus} color="bgOlive" className="w-full sm:w-auto">Criar {activeTab === 'territorios' ? 'Território' : 'Tag'}</ButtonPrimary>
+          <ButtonPrimary onClick={() => openModal()} icon={Plus} color="bgOlive" className="w-full sm:w-auto">Criar {tabLabel.singular}</ButtonPrimary>
         </div>
 
         <div className="flex flex-wrap gap-3 border-b-2 border-[#2C1A14]/20 pb-4">
@@ -64,6 +73,9 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
           </button>
           <button onClick={() => setActiveTab('tags')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'tags' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#EAB308]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
             Tags Livres
+          </button>
+          <button onClick={() => setActiveTab('formatos')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'formatos' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#1E3A5F]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
+            Formatos
           </button>
         </div>
 
@@ -138,7 +150,7 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
         <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in zoom-in duration-200">
           <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[6px_6px_0px_#849B55] sm:shadow-[12px_12px_0px_#849B55] w-full max-w-lg relative p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
             <h3 className="text-2xl font-display font-black text-[#2C1A14] uppercase mb-6 flex items-center gap-2 border-b-4 border-[#2C1A14] pb-2">
-              {editingItem ? 'Editar' : 'Criar'} {activeTab === 'territorios' ? 'Território' : 'Tag'}
+              {editingItem ? 'Editar' : 'Criar'} {tabLabel.singular}
             </h3>
 
             <div className="space-y-6">
@@ -147,7 +159,7 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
                   className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-lg outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
-                  placeholder="Ex: Zona Norte" autoFocus
+                  placeholder={activeTab === 'formatos' ? 'Ex: Jornal' : 'Ex: Zona Norte'} autoFocus
                 />
               </div>
 

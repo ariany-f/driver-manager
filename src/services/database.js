@@ -45,6 +45,15 @@ export function saveTags(tags) {
   }).then(readJson);
 }
 
+export function saveFormatos(formatos) {
+  return fetch('/api/database/formatos', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ formatos }),
+  }).then(readJson);
+}
+
 export function createPasta({ name, parentId }) {
   return fetch('/api/database/pastas', {
     method: 'POST',

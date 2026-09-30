@@ -7,7 +7,7 @@ export default function PoliticaPrivacidade() {
   useEffect(() => {
     document.title = 'Política de privacidade — Diário do Território';
     return () => {
-      document.title = 'Diver Manager';
+      document.title = 'Driver Manager';
     };
   }, []);
 
@@ -49,7 +49,7 @@ export default function PoliticaPrivacidade() {
           <li>o token de atualização e o token de acesso da conta Google conectada;</li>
           <li>o identificador da pasta do acervo;</li>
           <li>identificador, nome, tipo e data de modificação dos arquivos exibidos;</li>
-          <li>pastas internas, territórios, tags e a classificação de cada arquivo;</li>
+          <li>pastas internas, territórios, tags, formatos e a classificação de cada arquivo;</li>
           <li>logo, favicon e a opção de exibir o VLibras.</li>
         </ul>
         <p>

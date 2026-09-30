@@ -5,7 +5,7 @@ import FileIcon from '../ui/FileIcon.jsx';
 import PdfPreview from './PdfPreview.jsx';
 import SpreadsheetPreview, { isSpreadsheet } from './SpreadsheetPreview.jsx';
 
-export default function FileViewer({ file, onClose }) {
+export default function FileViewer({ file, onClose, onShowSheet }) {
   const [scale, setScale] = useState(1);
   return (
     <div className="fixed inset-0 bg-[#2C1A14]/90 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-8">
@@ -14,9 +14,16 @@ export default function FileViewer({ file, onClose }) {
           <h3 className="text-sm sm:text-2xl font-display font-black text-[#2C1A14] uppercase truncate min-w-0 flex items-center gap-2 sm:gap-3">
             <FileIcon file={file} size={22} /> <span className="truncate">{file.name}</span>
           </h3>
-          <button onClick={onClose} className="bg-white text-[#2C1A14] hover:bg-[#C13B22] hover:text-white p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all shrink-0" aria-label="Fechar visualização">
+          <div className="flex items-center gap-2 shrink-0">
+            {onShowSheet && (
+              <button type="button" onClick={onShowSheet} className="bg-white text-[#2C1A14] hover:bg-[#EAB308] p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all font-display font-black uppercase text-xs tracking-wide">
+                Ficha técnica
+              </button>
+            )}
+            <button onClick={onClose} className="bg-white text-[#2C1A14] hover:bg-[#C13B22] hover:text-white p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all shrink-0" aria-label="Fechar visualização">
             <X size={24} strokeWidth={3} />
-          </button>
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] bg-[#2C1A14]">

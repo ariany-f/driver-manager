@@ -445,6 +445,16 @@ export async function createDriveFolder(env, config, { name, parentId }) {
   });
 }
 
+export async function renameDriveFile(env, config, fileId, name) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName || cleanName.length > 255) throw new DriveError('Dê um nome para o arquivo.');
+  const token = await getAccessToken(env, config);
+  return driveJson(`${DRIVE_API}/files/${assertDriveId(fileId, 'arquivo')}?supportsAllDrives=true&fields=id,name`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ name: cleanName }),
+  });
+}
+
 export async function renameDriveFolder(env, config, folderId, name) {
   const cleanName = String(name || '').trim();
   if (!cleanName) throw new DriveError('Dê um nome para a pasta.');

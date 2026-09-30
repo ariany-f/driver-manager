@@ -1,5 +1,13 @@
 {
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ],
   "rewrites": [
-    { "source": "/((?!api/.*).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|robots\\.txt|sitemap\\.xml).*)", "destination": "/index.html" }
   ]
 }

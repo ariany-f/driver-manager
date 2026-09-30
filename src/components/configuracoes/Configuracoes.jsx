@@ -314,6 +314,37 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           </p>
         </div>
 
+        <form onSubmit={saveFolder} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-span-2">
+          <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
+            <Folder size={18} strokeWidth={2.5} /> Pasta do acervo
+          </div>
+          <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
+            O ID também pode ser escolhido ao conectar a conta. Aqui dá para colar ou trocar direto.
+          </p>
+          <div>
+            <label htmlFor="DRIVE_FOLDER_ID" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">ID da pasta do Drive</label>
+            <input
+              id="DRIVE_FOLDER_ID"
+              name="DRIVE_FOLDER_ID"
+              value={form.DRIVE_FOLDER_ID}
+              onChange={(event) => setForm(current => ({ ...current, DRIVE_FOLDER_ID: event.target.value }))}
+              disabled={loading}
+              className="w-full border-4 border-[#2C1A14] p-3 font-mono text-sm text-[#2C1A14] outline-none bg-white [color-scheme:light] disabled:opacity-50"
+            />
+          </div>
+          {folderMessage && <p className="font-sans text-sm font-bold text-[#627933]">{folderMessage}</p>}
+          {folderError && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{folderError}</p>}
+          <ButtonPrimary type="submit" color="bgOlive" disabled={loading || savingFolder} className="w-full sm:w-auto">
+            {savingFolder ? 'Salvando' : 'Salvar pasta'}
+          </ButtonPrimary>
+        </form>
+
+        {drive?.status?.connected && (
+          <div className="lg:col-span-2">
+            <DriveBar isAdmin={isAdmin} drive={drive} />
+          </div>
+        )}
+
         <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Image size={18} strokeWidth={2.5} /> Logo
@@ -384,13 +415,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {faviconMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{faviconMessage}</p>}
         </section>
 
-        {drive?.status?.connected && (
-          <div className="lg:col-start-2 lg:row-start-2">
-            <DriveBar isAdmin={isAdmin} drive={drive} />
-          </div>
-        )}
-
-        <section className={`bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5 lg:col-start-2 ${drive?.status?.connected ? '' : 'lg:row-start-2'}`}>
+        <section className={`bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5 lg:col-start-2 ${drive?.status?.connected ? 'lg:row-start-4' : 'lg:row-start-3'}`}>
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Settings size={18} strokeWidth={2.5} /> Google Drive
           </div>
@@ -444,31 +469,6 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {message && <p className="font-sans text-sm font-bold text-[#627933]">{message}</p>}
           {error && !editing && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
         </section>
-
-        <form onSubmit={saveFolder} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-2">
-          <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
-            <Folder size={18} strokeWidth={2.5} /> Pasta do acervo
-          </div>
-          <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
-            O ID também pode ser escolhido ao conectar a conta. Aqui dá para colar ou trocar direto.
-          </p>
-          <div>
-            <label htmlFor="DRIVE_FOLDER_ID" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">ID da pasta do Drive</label>
-            <input
-              id="DRIVE_FOLDER_ID"
-              name="DRIVE_FOLDER_ID"
-              value={form.DRIVE_FOLDER_ID}
-              onChange={(event) => setForm(current => ({ ...current, DRIVE_FOLDER_ID: event.target.value }))}
-              disabled={loading}
-              className="w-full border-4 border-[#2C1A14] p-3 font-mono text-sm text-[#2C1A14] outline-none bg-white [color-scheme:light] disabled:opacity-50"
-            />
-          </div>
-          {folderMessage && <p className="font-sans text-sm font-bold text-[#627933]">{folderMessage}</p>}
-          {folderError && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{folderError}</p>}
-          <ButtonPrimary type="submit" color="bgOlive" disabled={loading || savingFolder} className="w-full sm:w-auto">
-            {savingFolder ? 'Salvando' : 'Salvar pasta'}
-          </ButtonPrimary>
-        </form>
 
         {editing && (
           <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4">

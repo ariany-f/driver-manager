@@ -153,7 +153,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
   };
 
   const confirmFolderChange = async () => {
-    if (!pendingFolder) return;
+    if (!pendingFolder || savingFolder) return;
     setSavingFolder(true);
     setFolderMessage('');
     setFolderError('');
@@ -633,6 +633,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           setFolderMessage('');
           setFolderError('');
           setPendingFolder(folder);
+          if (folder.id !== 'root') setForm(current => ({ ...current, DRIVE_FOLDER_ID: folder.id }));
         }}
       />
       <ConfirmModal
@@ -641,7 +642,9 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
         text={`A pasta passa a ser ${pendingFolder?.id === 'root' ? 'Meu Drive' : pendingFolder?.name || 'a pasta escolhida'}. Vai ser preciso sincronizar de novo. A classificação de arquivos e pastas que não baterem entre o banco e os arquivos sincronizados do Drive é perdida.`}
         confirmLabel={savingFolder ? 'Alterando…' : 'Alterar pasta'}
         onCancel={() => {
-          if (!savingFolder) setPendingFolder(null);
+          if (savingFolder) return;
+          setPendingFolder(null);
+          setForm(current => ({ ...current, DRIVE_FOLDER_ID: savedFolderId.current }));
         }}
         onConfirm={confirmFolderChange}
       />

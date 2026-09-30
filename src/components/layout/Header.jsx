@@ -42,6 +42,21 @@ export default function Header({ isAdmin, labelsEnabled, logoUrl, activeView, on
             </div>
           )}
         </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 shrink min-w-0">
+          <a
+            href="/privacidade"
+            onClick={(event) => { event.preventDefault(); onNavigate('privacidade'); }}
+            className={`font-display font-bold uppercase text-[10px] sm:text-xs tracking-wide whitespace-nowrap ${activeView === 'privacidade' ? 'text-[#EAB308]' : 'text-white/70 hover:text-white'}`}
+          >
+            Privacidade
+          </a>
+          <a
+            href="/termos"
+            onClick={(event) => { event.preventDefault(); onNavigate('termos'); }}
+            className={`font-display font-bold uppercase text-[10px] sm:text-xs tracking-wide whitespace-nowrap ${activeView === 'termos' ? 'text-[#EAB308]' : 'text-white/70 hover:text-white'}`}
+          >
+            Termos
+          </a>
         <button
           onClick={isAdmin ? onLogout : onLogin}
           title={isAdmin ? 'Sair' : 'Entrar'}

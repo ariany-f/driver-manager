@@ -10,6 +10,8 @@ import Dashboard from './components/dashboard/Dashboard.jsx';
 import GerenciarIdentidade from './components/identidade/GerenciarIdentidade.jsx';
 import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import BancoNecessario from './components/banco/BancoNecessario.jsx';
+import PoliticaPrivacidade from './components/legal/PoliticaPrivacidade.jsx';
+import TermosServico from './components/legal/TermosServico.jsx';
 import UploadProgress from './components/drive/UploadProgress.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
 import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, getVlibras, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
@@ -363,10 +365,11 @@ export default function App() {
     });
   };
 
+  const publicPage = currentView === 'privacidade' || currentView === 'termos';
   let activeView = currentView;
-  if (!isAdmin && activeView !== 'acervo') activeView = 'acervo';
-  if (!labelsEnabled && activeView !== 'configuracoes') activeView = 'acervo';
-  const showGate = driveReady && !labelsEnabled && activeView !== 'configuracoes';
+  if (!publicPage && !isAdmin && activeView !== 'acervo') activeView = 'acervo';
+  if (!publicPage && !labelsEnabled && activeView !== 'configuracoes') activeView = 'acervo';
+  const showGate = !publicPage && driveReady && !labelsEnabled && activeView !== 'configuracoes';
 
   return (
     <div className="h-dvh w-full bg-[#E4CFB2] flex flex-col font-sans text-[#2C1A14] overflow-hidden selection:bg-[#EAB308] selection:text-[#2C1A14]">
@@ -427,7 +430,9 @@ export default function App() {
       )}
 
       <main className="flex-1 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
-        {!driveReady && (
+        {activeView === 'privacidade' && <PoliticaPrivacidade />}
+        {activeView === 'termos' && <TermosServico />}
+        {!publicPage && !driveReady && (
           <p className="p-8 font-display font-black uppercase tracking-widest text-[#2C1A14]">Carregando acervo...</p>
         )}
         {showGate && (

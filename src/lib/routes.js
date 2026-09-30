@@ -5,6 +5,8 @@ const viewByPath = {
   '/identidade': 'categorias',
   '/classificacao': 'categorias',
   '/configuracoes': 'configuracoes',
+  '/privacidade': 'privacidade',
+  '/termos': 'termos',
 };
 
 const pathByView = {
@@ -12,6 +14,8 @@ const pathByView = {
   dashboard: '/metricas',
   categorias: '/classificacao',
   configuracoes: '/configuracoes',
+  privacidade: '/privacidade',
+  termos: '/termos',
 };
 
 export function viewFromLocation() {

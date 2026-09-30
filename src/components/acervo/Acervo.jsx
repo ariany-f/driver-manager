@@ -391,7 +391,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               {labelsEnabled && (
-                <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-display font-black text-xs uppercase tracking-widest text-[#2C1A14]">Filtrar</span>
                   <button
                     type="button"
                     aria-pressed={semTerritorio}
@@ -408,7 +409,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   >
                     Somente sem tag
                   </button>
-                </>
+                </div>
               )}
               {isAdmin && drive.active && (
                 <button

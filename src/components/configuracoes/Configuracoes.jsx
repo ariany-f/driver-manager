@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Database, Eye, EyeOff, Folder, Hand, Image, Pencil, Settings } from 'lucide-react';
+import { Database, Eye, EyeOff, Folder, Hand, Image as ImageIcon, Pencil, Settings } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, saveFavicon, saveLogo, saveVlibras } from '../../services/database.js';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
@@ -349,7 +349,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
 
         <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
-            <Image size={18} strokeWidth={2.5} /> Logo
+            <ImageIcon size={18} strokeWidth={2.5} /> Logo
           </div>
           <p className="font-sans font-bold text-sm text-[#2C1A14]/80">
             Use uma imagem horizontal, mais larga do que alta. Sem logo, o cabeçalho continua com Diário do Território.
@@ -384,7 +384,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
 
         <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-1">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
-            <Image size={18} strokeWidth={2.5} /> Favicon
+            <ImageIcon size={18} strokeWidth={2.5} /> Favicon
           </div>
           <p className="font-sans font-bold text-sm text-[#2C1A14]/80">
             Esse ícone aparece na aba do navegador. Sem favicon, a aba continua com o ícone atual. PNG, JPEG, WEBP, GIF ou ICO.

@@ -4,7 +4,8 @@ import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, saveFavicon, saveLogo } from '../../services/database.js';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
-import { getDriveSettings, saveDriveField } from '../../services/drive.js';
+import EscolherPastaModal from '../modals/EscolherPastaModal.jsx';
+import { getDriveSettings, saveDriveField, saveDriveFolder } from '../../services/drive.js';
 
 const fields = [
   { key: 'GOOGLE_CLIENT_ID', label: 'Google Client ID', secret: false },
@@ -79,6 +80,8 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
   const [saving, setSaving] = useState(false);
   const [savingFolder, setSavingFolder] = useState(false);
   const [askSync, setAskSync] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingFolder, setPendingFolder] = useState(null);
   const savedFolderId = useRef('');
   const [folderMessage, setFolderMessage] = useState('');
   const [folderError, setFolderError] = useState('');
@@ -149,22 +152,24 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
     }
   };
 
-  const saveFolder = async (event) => {
-    event.preventDefault();
+  const confirmFolderChange = async () => {
+    if (!pendingFolder) return;
     setSavingFolder(true);
     setFolderMessage('');
     setFolderError('');
     try {
-      const nextId = form.DRIVE_FOLDER_ID.trim();
+      const saved = await saveDriveFolder(pendingFolder.id);
+      const nextId = String(saved.folderId || '').trim();
       const changed = nextId !== savedFolderId.current;
-      const saved = await saveDriveField('DRIVE_FOLDER_ID', nextId);
-      savedFolderId.current = String(saved.DRIVE_FOLDER_ID || nextId).trim();
-      setForm(current => ({ ...current, ...saved, redirectFromApp: Boolean(saved.redirectFromApp) }));
-      setFolderMessage('ID da pasta salvo.');
+      savedFolderId.current = nextId;
+      setForm(current => ({ ...current, DRIVE_FOLDER_ID: nextId }));
+      setPendingFolder(null);
+      setFolderMessage('Pasta do acervo alterada.');
       if (changed && drive?.status?.connected) setAskSync(true);
-      else if (onSaved) await onSaved();
+      else if (onSaved) await onSaved({ statusOnly: true });
     } catch (saveError) {
       setFolderError(saveError.message);
+      setPendingFolder(null);
     } finally {
       setSavingFolder(false);
     }
@@ -453,30 +458,39 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {error && !editing && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
         </section>
 
-        <form onSubmit={saveFolder} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-2">
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-2">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Folder size={18} strokeWidth={2.5} /> Pasta do acervo
           </div>
           <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
-            O ID também pode ser escolhido ao conectar a conta. Aqui dá para colar ou trocar direto.
+            O ID vem da pasta escolhida no Drive. Para trocar, abra a lista e confirme a alteração.
           </p>
           <div>
             <label htmlFor="DRIVE_FOLDER_ID" className="block font-display font-bold text-sm uppercase tracking-wider mb-2">ID da pasta do Drive</label>
-            <input
-              id="DRIVE_FOLDER_ID"
-              name="DRIVE_FOLDER_ID"
-              value={form.DRIVE_FOLDER_ID}
-              onChange={(event) => setForm(current => ({ ...current, DRIVE_FOLDER_ID: event.target.value }))}
-              disabled={loading}
-              className="w-full border-4 border-[#2C1A14] p-3 font-mono text-sm text-[#2C1A14] outline-none bg-white [color-scheme:light] disabled:opacity-50"
-            />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                id="DRIVE_FOLDER_ID"
+                name="DRIVE_FOLDER_ID"
+                readOnly
+                value={form.DRIVE_FOLDER_ID}
+                className="w-full min-w-0 border-4 border-[#2C1A14] p-3 font-mono text-sm text-[#2C1A14] outline-none bg-[#E4CFB2] [color-scheme:light]"
+              />
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                disabled={loading || savingFolder || !drive?.status?.connected}
+                className="min-h-11 shrink-0 px-3 border-2 border-[#2C1A14] bg-white font-display font-black uppercase text-xs tracking-wider shadow-[3px_3px_0px_#2C1A14] disabled:opacity-50"
+              >
+                Alterar
+              </button>
+            </div>
           </div>
+          {!drive?.status?.connected && (
+            <p className="font-sans font-bold text-sm text-[#2C1A14]/70">Conecte o Google Drive para escolher outra pasta.</p>
+          )}
           {folderMessage && <p className="font-sans text-sm font-bold text-[#627933]">{folderMessage}</p>}
           {folderError && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{folderError}</p>}
-          <ButtonPrimary type="submit" color="bgOlive" disabled={loading || savingFolder} className="w-full sm:w-auto">
-            {savingFolder ? 'Salvando' : 'Salvar pasta'}
-          </ButtonPrimary>
-        </form>
+        </section>
 
         {editing && (
           <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
@@ -606,6 +620,31 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           </div>
         )}
       </div>
+      <EscolherPastaModal
+        isOpen={pickerOpen}
+        pickOnly
+        onClose={() => setPickerOpen(false)}
+        onChosen={(folder) => {
+          setPickerOpen(false);
+          if (folder.id !== 'root' && folder.id === savedFolderId.current) {
+            setFolderMessage('Essa já é a pasta do acervo.');
+            return;
+          }
+          setFolderMessage('');
+          setFolderError('');
+          setPendingFolder(folder);
+        }}
+      />
+      <ConfirmModal
+        isOpen={Boolean(pendingFolder)}
+        title="Alterar a pasta?"
+        text={`A pasta passa a ser ${pendingFolder?.id === 'root' ? 'Meu Drive' : pendingFolder?.name || 'a pasta escolhida'}. Vai ser preciso sincronizar de novo. A classificação de arquivos e pastas que não baterem entre o banco e os arquivos sincronizados do Drive é perdida.`}
+        confirmLabel={savingFolder ? 'Alterando…' : 'Alterar pasta'}
+        onCancel={() => {
+          if (!savingFolder) setPendingFolder(null);
+        }}
+        onConfirm={confirmFolderChange}
+      />
       <ConfirmModal
         isOpen={askSync}
         title="Sincronizar de novo?"

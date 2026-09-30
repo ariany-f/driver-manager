@@ -3,7 +3,7 @@ import { Folder, FolderTree } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { listDriveFolders, saveDriveFolder } from '../../services/drive.js';
 
-export default function EscolherPastaModal({ isOpen, onClose, onChosen }) {
+export default function EscolherPastaModal({ isOpen, onClose, onChosen, pickOnly = false }) {
   const [stack, setStack] = useState([]);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,7 +13,10 @@ export default function EscolherPastaModal({ isOpen, onClose, onChosen }) {
   const parent = stack[stack.length - 1];
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setStack([]);
+      return undefined;
+    }
     let active = true;
     setLoading(true);
     setError('');
@@ -35,6 +38,10 @@ export default function EscolherPastaModal({ isOpen, onClose, onChosen }) {
   if (!isOpen) return null;
 
   const choose = async (folder) => {
+    if (pickOnly) {
+      onChosen(folder);
+      return;
+    }
     setSaving(true);
     setError('');
     try {

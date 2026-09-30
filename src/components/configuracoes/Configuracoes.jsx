@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Database, Eye, EyeOff, Folder, Image, Pencil, Settings } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, saveFavicon, saveLogo } from '../../services/database.js';
+import ConfirmModal from '../modals/ConfirmModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import { getDriveSettings, saveDriveField } from '../../services/drive.js';
 
@@ -77,6 +78,8 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingFolder, setSavingFolder] = useState(false);
+  const [askSync, setAskSync] = useState(false);
+  const savedFolderId = useRef('');
   const [folderMessage, setFolderMessage] = useState('');
   const [folderError, setFolderError] = useState('');
   const [savingDatabase, setSavingDatabase] = useState(false);
@@ -94,6 +97,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
       .then(([settings, database]) => {
         if (!active) return;
         setForm({ ...emptyForm(), ...settings });
+        savedFolderId.current = String(settings.DRIVE_FOLDER_ID || '').trim();
         if (database.error && !database.DATABASE_HOST) {
           setDatabaseError(database.error);
           return;

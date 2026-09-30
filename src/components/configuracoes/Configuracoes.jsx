@@ -304,8 +304,8 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
 
   return (
     <div className="h-full overflow-y-auto p-3 sm:p-4 md:p-8">
-      <div className="w-full max-w-3xl space-y-6">
-        <div className="border-b-4 border-[#2C1A14] pb-4">
+      <div className="grid w-full grid-cols-1 lg:grid-cols-2 gap-6 items-start [&>*]:min-w-0">
+        <div className="border-b-4 border-[#2C1A14] pb-4 lg:col-span-2">
           <h1 className="text-3xl sm:text-5xl font-display font-black uppercase leading-none tracking-tighter text-[#2C1A14]">
             Configurações
           </h1>
@@ -349,7 +349,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {logoMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{logoMessage}</p>}
         </section>
 
-        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-1">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Image size={18} strokeWidth={2.5} /> Favicon
           </div>
@@ -384,9 +384,13 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {faviconMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{faviconMessage}</p>}
         </section>
 
-        {drive?.status?.connected && <DriveBar isAdmin={isAdmin} drive={drive} />}
+        {drive?.status?.connected && (
+          <div className="lg:col-start-2 lg:row-start-2">
+            <DriveBar isAdmin={isAdmin} drive={drive} />
+          </div>
+        )}
 
-        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
+        <section className={`bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5 lg:col-start-2 ${drive?.status?.connected ? '' : 'lg:row-start-2'}`}>
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Settings size={18} strokeWidth={2.5} /> Google Drive
           </div>
@@ -441,7 +445,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {error && !editing && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
         </section>
 
-        <form onSubmit={saveFolder} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
+        <form onSubmit={saveFolder} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-2">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Folder size={18} strokeWidth={2.5} /> Pasta do acervo
           </div>
@@ -510,7 +514,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           </div>
         )}
 
-        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5 lg:col-start-2">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Database size={18} strokeWidth={2.5} /> Banco de dados
           </div>

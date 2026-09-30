@@ -361,6 +361,14 @@ export async function clearDriveConnection(env) {
   await db.query('DELETE FROM drive_conexao WHERE id = 1');
 }
 
+export async function clearDriveFolderId(env) {
+  const status = await databaseStatus(env);
+  if (!status.connected) return false;
+  const db = await withPool(env);
+  await db.query("UPDATE drive_config SET folder_id = '' WHERE id = 1");
+  return true;
+}
+
 const LOGO_LIMIT = 2 * 1024 * 1024;
 
 function jpegSize(buf) {

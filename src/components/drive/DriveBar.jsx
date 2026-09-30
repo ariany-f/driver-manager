@@ -81,7 +81,7 @@ export default function DriveBar({ isAdmin, drive }) {
       <ConfirmModal
         isOpen={confirmDisconnect}
         title="Desconectar o Drive?"
-        text="A autorização sai. No banco, os arquivos e o caminho de cada um são apagados. Pastas, tags e territórios ficam. Nada é apagado no Google Drive."
+        text="A autorização sai. No banco, os arquivos, o caminho de cada um e o ID da pasta do acervo são apagados. Pastas, tags e territórios ficam. Nada é apagado no Google Drive."
         confirmLabel="Desconectar"
         onCancel={() => setConfirmDisconnect(false)}
         onConfirm={() => {

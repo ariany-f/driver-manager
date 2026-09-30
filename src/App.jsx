@@ -276,7 +276,7 @@ export default function App() {
         setNovidades(null);
         setClassificarNovos([]);
         setDriveStatus(await getDriveStatus());
-        setDriveMessage('Drive desconectado. Os arquivos e os caminhos saíram do banco. Pastas, tags e territórios continuam.');
+        setDriveMessage('Drive desconectado. Os arquivos, os caminhos e o ID da pasta saíram. Pastas, tags e territórios continuam.');
       } catch (error) {
         setDriveError(error.message);
       } finally {

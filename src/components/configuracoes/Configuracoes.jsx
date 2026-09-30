@@ -83,6 +83,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingFolder, setPendingFolder] = useState(null);
   const savedFolderId = useRef('');
+  const wasConnected = useRef(false);
   const [folderMessage, setFolderMessage] = useState('');
   const [folderError, setFolderError] = useState('');
   const [savingDatabase, setSavingDatabase] = useState(false);
@@ -124,6 +125,17 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
       active = false;
     };
   }, [onDatabaseChange]);
+
+  useEffect(() => {
+    const connected = Boolean(drive?.status?.connected);
+    if (wasConnected.current && !connected) {
+      savedFolderId.current = '';
+      setForm(current => ({ ...current, DRIVE_FOLDER_ID: '' }));
+      setPendingFolder(null);
+      setAskSync(false);
+    }
+    wasConnected.current = connected;
+  }, [drive?.status?.connected]);
 
   const openEdit = (field) => {
     setEditing(field);

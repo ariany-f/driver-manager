@@ -1,3 +1,28 @@
+export function findFolder(folders, targetId) {
+  for (const folder of folders || []) {
+    if (folder.id === targetId) return folder;
+    if (folder.children?.length) {
+      const found = findFolder(folder.children, targetId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+export function getAncestorFolderIds(folders, targetId) {
+  const walk = (nodes, trail) => {
+    for (const node of nodes || []) {
+      if (node.id === targetId) return trail;
+      if (node.children?.length) {
+        const found = walk(node.children, [...trail, node.id]);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  return walk(folders, []) || [];
+}
+
 export const flattenFolders = (folders, parentPath = '') => {
   let result = [];
   folders.forEach(folder => {

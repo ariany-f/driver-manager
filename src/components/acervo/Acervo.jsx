@@ -13,7 +13,7 @@ import FolderModal from '../modals/FolderModal.jsx';
 import UploadConfirmModal from '../modals/UploadConfirmModal.jsx';
 import MoveFileModal from '../modals/MoveFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
-import { flattenFolders } from '../../lib/folders.js';
+import { findFolder, flattenFolders, getAncestorFolderIds } from '../../lib/folders.js';
 
 const MIME_EXT = {
   'application/pdf': 'PDF',
@@ -111,6 +111,39 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     setActiveFolderId(id);
     setCurrentPage(1);
     setFoldersOpen(false);
+    if (!id) return;
+    const ancestors = getAncestorFolderIds(folders, id);
+    if (!ancestors.length) return;
+    setExpandedFolders(prev => [...new Set([...prev, ...ancestors])]);
+  };
+
+  const childFolders = useMemo(() => {
+    if (!activeFolderId) return [];
+    const children = findFolder(folders, activeFolderId)?.children || [];
+    const query = searchQuery.trim().toLowerCase();
+    const matched = query
+      ? children.filter(folder => folder.name.toLowerCase().includes(query))
+      : children;
+    return [...matched].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
+  }, [folders, activeFolderId, searchQuery]);
+
+  const directFileCounts = useMemo(() => {
+    const counts = new Map();
+    for (const file of files) {
+      const id = file.folderId || '';
+      if (!id) continue;
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    return counts;
+  }, [files]);
+
+  const folderSummary = (folder) => {
+    const fileCount = directFileCounts.get(folder.id) || 0;
+    const nested = folder.children?.length || 0;
+    const parts = ['Pasta'];
+    if (fileCount) parts.push(fileCount === 1 ? '1 arquivo' : `${fileCount} arquivos`);
+    if (nested) parts.push(nested === 1 ? '1 subpasta' : `${nested} subpastas`);
+    return parts.join(' · ');
   };
 
   const handleFilterToggle = (id, setList) => {
@@ -461,6 +494,33 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
               )}
             </div>
           </div>
+
+          {childFolders.length > 0 && (
+            <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] xl:shadow-[12px_12px_0px_rgba(44,26,20,0.15)] overflow-hidden">
+              <div className="bg-white border-b-4 border-[#2C1A14] px-4 py-3 font-display font-black uppercase tracking-widest text-[11px] text-[#2C1A14]">
+                Subpastas
+              </div>
+              <div className="divide-y-2 divide-dashed divide-[#2C1A14]/20">
+                {childFolders.map(folder => (
+                  <button
+                    key={folder.id}
+                    type="button"
+                    onClick={() => selectFolder(folder.id)}
+                    className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-white/60 transition-colors"
+                  >
+                    <div className="w-12 h-12 shrink-0 border-4 border-[#2C1A14] bg-[#EAB308] shadow-[3px_3px_0px_#2C1A14] flex items-center justify-center">
+                      <Folder size={22} strokeWidth={2.5} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display font-black text-[#2C1A14] text-sm uppercase truncate">{folder.name}</p>
+                      <p className="font-mono text-[10px] font-bold text-[#2C1A14]/60 uppercase tracking-wider">{folderSummary(folder)}</p>
+                    </div>
+                    <ChevronRight size={18} strokeWidth={3} className="shrink-0 text-[#2C1A14]" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="xl:hidden space-y-3">
             {currentFiles.map(file => (

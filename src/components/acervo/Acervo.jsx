@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree,
   Plus, Search, Tags, Trash2, Upload, X,
@@ -91,6 +91,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [selectedTerritorios, setSelectedTerritorios] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedExtensions, setSelectedExtensions] = useState([]);
   const [semTerritorio, setSemTerritorio] = useState(false);
   const [semTag, setSemTag] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -117,6 +118,16 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     setCurrentPage(1);
   };
 
+  const availableExtensions = useMemo(() => {
+    const found = new Set();
+    for (const file of files) {
+      const ext = fileExtension(file);
+      if (ext) found.add(ext);
+    }
+    return [...found].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [files]);
+  const activeExtensions = selectedExtensions.filter(ext => availableExtensions.includes(ext));
+
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTerritorio = !labelsEnabled || selectedTerritorios.length === 0 || selectedTerritorios.some(id => (file.territorios || []).includes(id));
@@ -124,8 +135,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     const matchesSemTerritorio = !labelsEnabled || !semTerritorio || !(file.territorios || []).length;
     const matchesSemTag = !labelsEnabled || !semTag || !(file.tags || []).length;
     const matchesType = selectedTypes.length === 0 || selectedTypes.includes(file.type);
+    const matchesExtension = activeExtensions.length === 0 || activeExtensions.includes(fileExtension(file));
     const matchesFolder = activeFolderId === '' ? true : file.folderId === activeFolderId;
-    return matchesSearch && matchesTerritorio && matchesTag && matchesSemTerritorio && matchesSemTag && matchesType && matchesFolder;
+    return matchesSearch && matchesTerritorio && matchesTag && matchesSemTerritorio && matchesSemTag && matchesType && matchesExtension && matchesFolder;
   });
 
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage) || 1;
@@ -201,7 +213,12 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     );
   };
 
-  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length;
+  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length;
+  const mediaRowClass = availableExtensions.length
+    ? `md:col-span-12 grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-6${labelsEnabled ? ' border-t-2 border-dashed border-[#2C1A14]/20 pt-4' : ''}`
+    : labelsEnabled
+      ? 'md:col-span-2 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6'
+      : 'md:col-span-12';
 
   const renderDirectoryList = () => (
     <div className="flex-1 overflow-y-auto py-2 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pb-20">
@@ -344,7 +361,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
 
             <div className={`${filtersOpen ? 'grid' : 'hidden'} md:grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t-2 border-dashed border-[#2C1A14]/20`}>
               {labelsEnabled && (
-                <div className="md:col-span-5">
+                <div className={availableExtensions.length ? 'md:col-span-6' : 'md:col-span-5'}>
                   <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#1E3A5F]">Filtrar por Territórios</span>
                   <div className="flex flex-wrap gap-2">
                     {territorios.map(territorio => (
@@ -358,7 +375,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
               )}
 
               {labelsEnabled && (
-                <div className="md:col-span-5 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6">
+                <div className={`${availableExtensions.length ? 'md:col-span-6' : 'md:col-span-5'} border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6`}>
                   <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#C13B22]">Filtrar por Tags</span>
                   <div className="flex flex-wrap gap-2">
                     {tags.map(tag => (
@@ -371,16 +388,37 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                 </div>
               )}
 
-              <div className={`${labelsEnabled ? 'md:col-span-2 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6' : 'md:col-span-12'}`}>
-                <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#849B55]">Mídia</span>
-                <div className="flex flex-wrap gap-2">
-                  {['document', 'image', 'video', 'audio'].map(type => (
-                    <button key={type} onClick={() => handleFilterToggle(type, setSelectedTypes)}
-                      className={`min-h-11 min-w-11 inline-flex items-center justify-center border-2 border-[#2C1A14] transition-all ${selectedTypes.includes(type) ? 'bg-[#2C1A14] text-white shadow-[3px_3px_0px_#EAB308] -translate-y-0.5' : 'bg-white hover:bg-black/5 hover:-translate-y-0.5'}`}
-                      title={`Filtrar ${type}`}
-                    ><FileIcon type={type} size={20} /></button>
-                  ))}
+              <div className={mediaRowClass}>
+                <div>
+                  <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#849B55]">Mídia</span>
+                  <div className="flex flex-wrap gap-2">
+                    {['document', 'image', 'video', 'audio'].map(type => (
+                      <button key={type} type="button" onClick={() => handleFilterToggle(type, setSelectedTypes)}
+                        className={`min-h-11 min-w-11 inline-flex items-center justify-center border-2 border-[#2C1A14] transition-all ${selectedTypes.includes(type) ? 'bg-[#2C1A14] text-white shadow-[3px_3px_0px_#EAB308] -translate-y-0.5' : 'bg-white hover:bg-black/5 hover:-translate-y-0.5'}`}
+                        title={`Filtrar ${type}`}
+                        aria-pressed={selectedTypes.includes(type)}
+                      ><FileIcon type={type} size={20} /></button>
+                    ))}
+                  </div>
                 </div>
+                {availableExtensions.length > 0 && (
+                  <div className="border-t-2 sm:border-t-0 sm:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 sm:pt-0 sm:pl-6">
+                    <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#2C1A14]">Extensão</span>
+                    <div className="flex flex-wrap gap-2">
+                      {availableExtensions.map(ext => (
+                        <button
+                          key={ext}
+                          type="button"
+                          aria-pressed={activeExtensions.includes(ext)}
+                          onClick={() => handleFilterToggle(ext, setSelectedExtensions)}
+                          className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-mono text-xs font-black tracking-wider transition-all ${activeExtensions.includes(ext) ? 'bg-[#2C1A14] text-white shadow-[3px_3px_0px_#EAB308] -translate-y-0.5' : 'bg-white text-[#2C1A14] hover:bg-black/5 hover:-translate-y-0.5'}`}
+                        >
+                          {ext}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

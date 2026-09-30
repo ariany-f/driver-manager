@@ -1,4 +1,4 @@
-import { Archive, BarChart } from 'lucide-react';
+import { Archive, BarChart, Tags } from 'lucide-react';
 import FileIcon from '../ui/FileIcon.jsx';
 
 const parseSize = (sizeStr) => {
@@ -18,9 +18,68 @@ const typeLabels = {
   audio: 'Áudios',
 };
 
-export default function Dashboard({ files, territorios, labelsEnabled }) {
+const extColors = ['#1E3A5F', '#C13B22', '#849B55', '#EAB308', '#2C1A14'];
+
+const mimeExtensions = {
+  'application/pdf': 'PDF',
+  'application/vnd.google-apps.document': 'GDOC',
+  'application/vnd.google-apps.spreadsheet': 'XLSX',
+  'application/vnd.google-apps.presentation': 'PPTX',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+  'application/vnd.ms-excel.sheet.macroEnabled.12': 'XLSM',
+  'application/msword': 'DOC',
+  'application/vnd.ms-excel': 'XLS',
+  'image/jpeg': 'JPG',
+  'image/png': 'PNG',
+  'image/webp': 'WEBP',
+  'image/gif': 'GIF',
+};
+
+function fileExtension(file) {
+  const name = String(file?.name || '');
+  const dot = name.lastIndexOf('.');
+  if (dot > 0 && dot < name.length - 1) {
+    const ext = name.slice(dot + 1);
+    if (/^[a-z0-9]{1,8}$/i.test(ext)) return ext.toUpperCase();
+  }
+  const mime = String(file?.mimeType || '');
+  if (mimeExtensions[mime]) return mimeExtensions[mime];
+  return 'SEM EXT.';
+}
+
+function share(count, total) {
+  if (!total) return 0;
+  return Math.round((count / total) * 100);
+}
+
+function RankList({ items, empty }) {
+  const maxCount = items[0]?.count || 1;
+  if (!items.length) return <p className="text-sm font-mono text-[#2C1A14]/60">{empty}</p>;
+  return (
+    <div className="space-y-3">
+      {items.map((item, index) => (
+        <div key={item.id} className="flex items-center gap-3">
+          <span className="font-display font-black text-[#2C1A14]/30 w-6 text-right">{(index + 1).toString().padStart(2, '0')}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-end mb-1 gap-2">
+              <span className="text-sm font-display font-bold uppercase truncate">{item.name}</span>
+              <span className="text-xs font-mono font-bold shrink-0">{item.count} arq</span>
+            </div>
+            <div className="w-full bg-[#E4CFB2] h-2">
+              <div className="h-full" style={{ width: `${Math.round((item.count / maxCount) * 100)}%`, backgroundColor: item.bgColor }}></div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Dashboard({ files, territorios, tags = [], labelsEnabled }) {
   const totalSizeMB = files.reduce((acc, file) => acc + parseSize(file.size), 0);
   const formattedSize = totalSizeMB > 1024 ? `${(totalSizeMB / 1024).toFixed(2)} GB` : `${totalSizeMB.toFixed(2)} MB`;
+  const semClassificacao = files.filter(file => !(file.territorios || []).length && !(file.tags || []).length).length;
 
   const typeCounts = files.reduce((acc, file) => {
     acc[file.type] = (acc[file.type] || 0) + 1;
@@ -38,6 +97,22 @@ export default function Dashboard({ files, territorios, labelsEnabled }) {
     .map(([id, count]) => ({ ...territorios.find(territorio => territorio.id === id), count }))
     .filter(territorio => territorio.name);
 
+  const tagCounts = files.reduce((acc, file) => {
+    (file.tags || []).forEach(tagId => { acc[tagId] = (acc[tagId] || 0) + 1; });
+    return acc;
+  }, {});
+  const sortedTags = Object.entries(tagCounts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([id, count]) => ({ ...tags.find(tag => tag.id === id), count }))
+    .filter(tag => tag.name);
+
+  const extensionCounts = files.reduce((acc, file) => {
+    const ext = fileExtension(file);
+    acc[ext] = (acc[ext] || 0) + 1;
+    return acc;
+  }, {});
+  const sortedExtensions = Object.entries(extensionCounts).sort(([, a], [, b]) => b - a);
+
   return (
     <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300">
       <div className="w-full space-y-6 sm:space-y-8">
@@ -45,7 +120,7 @@ export default function Dashboard({ files, territorios, labelsEnabled }) {
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Métricas do <span className="text-[#C13B22]">Acervo</span></h1>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-[#EAB308] border-4 border-[#2C1A14] p-4 sm:p-6 shadow-[4px_4px_0px_#2C1A14] sm:shadow-[8px_8px_0px_#2C1A14] flex flex-col justify-center">
             <div className="flex items-center gap-3 sm:gap-4 mb-2">
               <Archive size={32} className="text-[#2C1A14] shrink-0" strokeWidth={2.5} />
@@ -61,6 +136,15 @@ export default function Dashboard({ files, territorios, labelsEnabled }) {
             </div>
             <p className="text-4xl sm:text-6xl font-display font-black break-words">{formattedSize}</p>
           </div>
+
+          <div className="bg-[#1E3A5F] border-4 border-[#2C1A14] p-4 sm:p-6 shadow-[4px_4px_0px_#2C1A14] sm:shadow-[8px_8px_0px_#2C1A14] flex flex-col justify-center text-[#F4EFE6]">
+            <div className="flex items-center gap-3 sm:gap-4 mb-2">
+              <Tags size={32} className="text-[#EAB308] shrink-0" strokeWidth={2.5} />
+              <h2 className="text-xl sm:text-2xl font-display font-black uppercase">Sem classificação</h2>
+            </div>
+            <p className="text-4xl sm:text-6xl font-display font-black">{semClassificacao}</p>
+            <p className="font-sans font-bold text-sm text-[#F4EFE6]/80 mt-1">{share(semClassificacao, files.length)}% do acervo, sem território e sem tag</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -68,7 +152,7 @@ export default function Dashboard({ files, territorios, labelsEnabled }) {
             <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Arquivos por Formato</h3>
             <div className="space-y-4">
               {Object.entries(typeCounts).map(([type, count]) => {
-                const percentage = Math.round((count / files.length) * 100);
+                const percentage = share(count, files.length);
                 return (
                   <div key={type} className="flex items-center gap-4">
                     <div className="w-10 flex justify-center shrink-0"><FileIcon type={type} size={24} /></div>
@@ -88,29 +172,41 @@ export default function Dashboard({ files, territorios, labelsEnabled }) {
           </div>
 
           <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_rgba(44,26,20,0.15)]">
-            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Territórios Mais Ativos</h3>
-            {labelsEnabled ? (
-              <div className="space-y-3">
-                {sortedTerritories.map((territorio, index) => {
-                  const maxCount = sortedTerritories[0]?.count || 1;
-                  const percentage = Math.round((territorio.count / maxCount) * 100);
-                  return (
-                    <div key={territorio.id} className="flex items-center gap-3 group">
-                      <span className="font-display font-black text-[#2C1A14]/30 w-6 text-right">{(index + 1).toString().padStart(2, '0')}</span>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-end mb-1">
-                          <span className="text-sm font-display font-bold uppercase truncate pr-2">{territorio.name}</span>
-                          <span className="text-xs font-mono font-bold">{territorio.count} arq</span>
-                        </div>
-                        <div className="w-full bg-[#E4CFB2] h-2">
-                          <div className="h-full transition-all duration-1000" style={{ width: `${percentage}%`, backgroundColor: territorio.bgColor }}></div>
-                        </div>
-                      </div>
+            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Arquivos por extensão</h3>
+            <div className="space-y-4">
+              {sortedExtensions.map(([ext, count], index) => {
+                const percentage = share(count, files.length);
+                return (
+                  <div key={ext}>
+                    <div className="flex justify-between text-xs font-display font-bold uppercase mb-1 gap-2">
+                      <span className="truncate">{ext}</span>
+                      <span className="shrink-0">{count} ({percentage}%)</span>
                     </div>
-                  );
-                })}
-                {sortedTerritories.length === 0 && <p className="text-sm font-mono text-[#2C1A14]/60">Nenhum arquivo classificado ainda.</p>}
-              </div>
+                    <div className="w-full bg-[#E4CFB2] border-2 border-[#2C1A14] h-4">
+                      <div className="h-full border-r-2 border-[#2C1A14]" style={{ width: `${percentage}%`, backgroundColor: extColors[index % extColors.length] }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+              {sortedExtensions.length === 0 && <p className="text-sm font-mono text-[#2C1A14]/60">Nenhum arquivo no acervo.</p>}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_rgba(44,26,20,0.15)]">
+            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Territórios mais ativos</h3>
+            {labelsEnabled ? (
+              <RankList items={sortedTerritories} empty="Nenhum arquivo com território ainda." />
+            ) : (
+              <p className="text-sm font-mono text-[#2C1A14]/70">Desligado até o banco conectar. O acervo mostra só os arquivos.</p>
+            )}
+          </div>
+
+          <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_rgba(44,26,20,0.15)]">
+            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Tags mais usadas</h3>
+            {labelsEnabled ? (
+              <RankList items={sortedTags} empty="Nenhum arquivo com tag ainda." />
             ) : (
               <p className="text-sm font-mono text-[#2C1A14]/70">Desligado até o banco conectar. O acervo mostra só os arquivos.</p>
             )}

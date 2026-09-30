@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Music, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { isPdf } from '../acervo/PdfThumb.jsx';
 import FileIcon from '../ui/FileIcon.jsx';
+import PdfPreview from './PdfPreview.jsx';
 import SpreadsheetPreview, { isSpreadsheet } from './SpreadsheetPreview.jsx';
 
 export default function FileViewer({ file, onClose }) {
@@ -17,7 +19,7 @@ export default function FileViewer({ file, onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] bg-[#2C1A14]">
+        <div className="flex-1 min-h-0 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] bg-[#2C1A14]">
           {file.type === 'image' && (
             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
               <div className="absolute bottom-6 right-6 z-10 flex gap-2 bg-[#F4EFE6] border-4 border-[#2C1A14] p-2 shadow-[6px_6px_0px_#C13B22]">
@@ -43,7 +45,8 @@ export default function FileViewer({ file, onClose }) {
             </div>
           )}
           {isSpreadsheet(file) && <SpreadsheetPreview file={file} />}
-          {file.type === 'document' && !isSpreadsheet(file) && (
+          {isPdf(file) && <PdfPreview file={file} />}
+          {file.type === 'document' && !isSpreadsheet(file) && !isPdf(file) && (
             <iframe src={file.url} className="w-full h-full border-none bg-white" title="Documento" />
           )}
         </div>

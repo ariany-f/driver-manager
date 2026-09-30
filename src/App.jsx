@@ -433,7 +433,7 @@ export default function App() {
             onLogin={() => setLoginOpen(true)}
           />
         )}
-        {driveReady && labelsEnabled && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} labelsEnabled={labelsEnabled} />}
+        {driveReady && labelsEnabled && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} tags={tags} labelsEnabled={labelsEnabled} />}
         {driveReady && labelsEnabled && activeView === 'acervo' && (
           <Acervo
             isAdmin={isAdmin}

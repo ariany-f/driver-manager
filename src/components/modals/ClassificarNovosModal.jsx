@@ -33,7 +33,7 @@ export default function ClassificarNovosModal({ files, territorios, tags, busy, 
         <div className="overflow-y-auto p-4 sm:p-5 space-y-4 flex-1">
           {semIdentidade && (
             <p className="font-sans font-bold text-sm border-4 border-[#2C1A14] bg-white p-4">
-              Ainda não há territórios nem tags. Cadastre em Identidade e volte para classificar.
+              Ainda não há territórios nem tags. Cadastre em Classificação e volte para classificar.
             </p>
           )}
           {files.map(file => (
@@ -82,7 +82,7 @@ export default function ClassificarNovosModal({ files, territorios, tags, busy, 
         <div className="p-4 border-t-4 border-[#2C1A14] bg-[#F4EFE6] flex flex-col-reverse sm:flex-row sm:justify-end gap-3 shrink-0">
           {semIdentidade && (
             <button type="button" onClick={onOpenIdentidade} className="min-h-11 font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 decoration-2 px-4 py-2 w-full sm:w-auto">
-              Ir para Identidade
+              Ir para Classificação
             </button>
           )}
           <button type="button" onClick={onClose} disabled={busy} className="min-h-11 font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 decoration-2 px-4 py-2 w-full sm:w-auto disabled:opacity-50">

@@ -3,7 +3,7 @@ import { Lock, Unlock } from 'lucide-react';
 const views = [
   { id: 'acervo', lbl: 'Acervo' },
   { id: 'dashboard', lbl: 'Métricas' },
-  { id: 'categorias', lbl: 'Identidade' },
+  { id: 'categorias', lbl: 'Classificação' },
   { id: 'configuracoes', lbl: 'Configurações' },
 ];
 

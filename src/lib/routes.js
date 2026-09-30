@@ -3,13 +3,14 @@ const viewByPath = {
   '/acervo': 'acervo',
   '/metricas': 'dashboard',
   '/identidade': 'categorias',
+  '/classificacao': 'categorias',
   '/configuracoes': 'configuracoes',
 };
 
 const pathByView = {
   acervo: '/acervo',
   dashboard: '/metricas',
-  categorias: '/identidade',
+  categorias: '/classificacao',
   configuracoes: '/configuracoes',
 };
 

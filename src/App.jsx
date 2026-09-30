@@ -161,6 +161,9 @@ export default function App() {
   }, [loadIdentidade, refreshDrive]);
 
   useEffect(() => {
+    if ((window.location.pathname.replace(/\/$/, '') || '/') === '/identidade') {
+      writeViewPath('categorias', true);
+    }
     const onPop = () => setCurrentView(viewFromLocation());
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);

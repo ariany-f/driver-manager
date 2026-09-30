@@ -15,6 +15,7 @@ import UploadConfirmModal from '../modals/UploadConfirmModal.jsx';
 import MoveFileModal from '../modals/MoveFileModal.jsx';
 import RenameFileModal from '../modals/RenameFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
+import { formatArchiveDate } from '../../lib/archiveDate.js';
 import { fileExtension } from '../../lib/fileExtension.js';
 import { MediaGlyph } from '../../lib/mediaIcons.js';
 import { findFolder, flattenFolders, getAncestorFolderIds } from '../../lib/folders.js';
@@ -34,6 +35,23 @@ function formatFileDate(value) {
     month: '2-digit',
     year: 'numeric',
   }).format(parsed);
+}
+
+function FileDates({ file }) {
+  const archive = formatArchiveDate(file.dataArquivo);
+  const drive = formatFileDate(file.date);
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#2C1A14]/70" title="Data do acervo">
+        Acervo {archive || 'sem data'}
+      </span>
+      {drive && (
+        <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#2C1A14]/40" title="Data no Drive">
+          Drive {drive}
+        </span>
+      )}
+    </span>
+  );
 }
 
 function FileName({ file, className = '' }) {
@@ -527,7 +545,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
+                      <FileDates file={file} />
                     </div>
                     <div className="mt-2 inline-flex max-w-full items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20" title={getDisplayPath(file.folderId)}>
                       <Folder size={12} className="shrink-0 text-[#EAB308]" />
@@ -582,9 +600,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         </div>
                         <div className="min-w-0">
                           <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
                             <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                            <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
+                            <FileDates file={file} />
                           </div>
                         </div>
                       </div>

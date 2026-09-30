@@ -7,7 +7,7 @@ export default function PoliticaPrivacidade() {
   useEffect(() => {
     document.title = 'Política de privacidade — Diário do Território';
     return () => {
-      document.title = 'Diário do Território';
+      document.title = 'Diver Manager';
     };
   }, []);
 

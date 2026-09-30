@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getContrastTextColor, PREDEFINED_COLORS } from '../../lib/colors.js';
+import { MEDIA_ICONS, MediaGlyph } from '../../lib/mediaIcons.js';
 
 const TAB_LABEL = {
   territorios: { plural: 'Territórios', singular: 'Território' },
   tags: { plural: 'Tags Livres', singular: 'Tag' },
-  formatos: { plural: 'Formatos', singular: 'Formato' },
+  formatos: { plural: 'Mídia', singular: 'Mídia' },
 };
 
 export default function GerenciarIdentidade({ territorios, tags, formatos = [], onTerritorios, onTags, onFormatos }) {
@@ -15,16 +16,19 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
   const [editingItem, setEditingItem] = useState(null);
   const [name, setName] = useState('');
   const [color, setColor] = useState('#1E3A5F');
+  const [icon, setIcon] = useState('newspaper');
 
   const openModal = (item = null) => {
     if (item) {
       setEditingItem(item);
       setName(item.name);
       setColor(item.bgColor);
+      setIcon(item.icon || 'newspaper');
     } else {
       setEditingItem(null);
       setName('');
       setColor(PREDEFINED_COLORS[Math.floor(Math.random() * PREDEFINED_COLORS.length)]);
+      setIcon(MEDIA_ICONS[Math.floor(Math.random() * MEDIA_ICONS.length)].id);
     }
     setModalOpen(true);
   };
@@ -41,6 +45,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
       name: name.trim(),
       bgColor: color,
       textColor: getContrastTextColor(color),
+      ...(activeTab === 'formatos' ? { icon } : {}),
     };
 
     const apply = (list) => (editingItem ? list.map(item => item.id === editingItem.id ? newItem : item) : [...list, newItem]);
@@ -75,7 +80,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
             Tags Livres
           </button>
           <button onClick={() => setActiveTab('formatos')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'formatos' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#1E3A5F]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
-            Formatos
+            Mídia
           </button>
         </div>
 
@@ -87,6 +92,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                 style={{ backgroundColor: item.bgColor, color: item.textColor }}
               >
                 {activeTab === 'territorios' && <span className="w-2 h-2 rounded-full bg-current opacity-70 shrink-0"></span>}
+                {activeTab === 'formatos' && <MediaGlyph icon={item.icon} size={14} />}
                 <span className="truncate">{item.name}</span>
               </span>
               <div className="flex items-center gap-2 shrink-0">
@@ -121,6 +127,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                       style={{ backgroundColor: item.bgColor, color: item.textColor }}
                     >
                       {activeTab === 'territorios' && <span className="w-2 h-2 rounded-full bg-current opacity-70"></span>}
+                      {activeTab === 'formatos' && <MediaGlyph icon={item.icon} size={16} />}
                       {item.name}
                     </span>
                   </td>
@@ -163,6 +170,27 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                 />
               </div>
 
+              {activeTab === 'formatos' && (
+                <div>
+                  <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Ícone</label>
+                  <div className="bg-white border-4 border-[#2C1A14] p-3 grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+                    {MEDIA_ICONS.map(option => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        title={option.label}
+                        aria-label={option.label}
+                        aria-pressed={icon === option.id}
+                        onClick={() => setIcon(option.id)}
+                        className={`aspect-square inline-flex items-center justify-center border-2 text-[#2C1A14] transition-all ${icon === option.id ? 'border-[#2C1A14] bg-[#EAB308] shadow-[2px_2px_0px_#2C1A14] -translate-y-0.5' : 'border-transparent hover:border-[#2C1A14]/50 hover:bg-[#F4EFE6]'}`}
+                      >
+                        <MediaGlyph icon={option.id} size={18} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Cor de Fundo</label>
                 <div className="bg-white border-4 border-[#2C1A14] p-3 space-y-4">
@@ -191,6 +219,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                   style={{ backgroundColor: color, color: getContrastTextColor(color) }}
                 >
                   {activeTab === 'territorios' && <span className="w-2.5 h-2.5 rounded-full bg-current opacity-70"></span>}
+                  {activeTab === 'formatos' && <MediaGlyph icon={icon} size={18} />}
                   {name || 'Exemplo'}
                 </span>
               </div>

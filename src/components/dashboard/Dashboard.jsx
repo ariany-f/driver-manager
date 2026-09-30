@@ -1,5 +1,6 @@
 import { Archive, BarChart, Tags } from 'lucide-react';
 import { fileExtension } from '../../lib/fileExtension.js';
+import { MediaGlyph } from '../../lib/mediaIcons.js';
 import FileIcon from '../ui/FileIcon.jsx';
 
 const parseSize = (sizeStr) => {
@@ -126,7 +127,7 @@ export default function Dashboard({ files, territorios, tags = [], formatos = []
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_rgba(44,26,20,0.15)]">
-            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Arquivos por Formato</h3>
+            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Arquivos por mídia</h3>
             <div className="space-y-4">
               {Object.entries(typeCounts).map(([type, count]) => {
                 const percentage = share(count, files.length);
@@ -152,7 +153,9 @@ export default function Dashboard({ files, territorios, tags = [], formatos = []
                 return (
                   <div key={formato.id} className="flex items-center gap-4">
                     <div className="w-10 flex justify-center shrink-0">
-                      <span className="w-6 h-6 border-2 border-[#2C1A14]" style={{ backgroundColor: formato.bgColor }} />
+                      <span className="w-6 h-6 border-2 border-[#2C1A14] inline-flex items-center justify-center" style={{ backgroundColor: formato.bgColor, color: formato.textColor }}>
+                        <MediaGlyph icon={formato.icon} size={14} />
+                      </span>
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between text-xs font-display font-bold uppercase mb-1">

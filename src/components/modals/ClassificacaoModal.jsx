@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Tags, X } from 'lucide-react';
 import { fileExtension } from '../../lib/fileExtension.js';
+import { mediaLabel } from '../../lib/media.js';
+import { MediaGlyph } from '../../lib/mediaIcons.js';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 
 export default function ClassificacaoModal({ file, territorios, tags, formatos = [], onClose, onSave }) {
@@ -40,12 +42,17 @@ export default function ClassificacaoModal({ file, territorios, tags, formatos =
             </div>
           </div>
           <div className="space-y-4">
-            <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Formatos</h4>
+            <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Mídia</h4>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="border-2 border-[#2C1A14] bg-[#EAB308] px-2 py-1 font-mono text-xs font-black uppercase tracking-wider text-[#2C1A14]">
-                {identified || 'Sem extensão'}
+              <span className="border-2 border-[#2C1A14] bg-[#849B55] px-2 py-1 font-display text-xs font-black uppercase tracking-wider text-[#F4EFE6]">
+                {mediaLabel(file.type)}
               </span>
-              <span className="font-sans text-xs font-bold text-[#2C1A14]/70">identificado pelo arquivo. Os outros formatos são manuais e podem ser vários.</span>
+              {identified && (
+                <span className="border-2 border-[#2C1A14] bg-[#EAB308] px-2 py-1 font-mono text-xs font-black uppercase tracking-wider text-[#2C1A14]">
+                  {identified}
+                </span>
+              )}
+              <span className="font-sans text-xs font-bold text-[#2C1A14]/70">Essa mídia já vem do arquivo. Marque quantas outras quiser, além dela.</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {formatos.map(formato => (
@@ -53,10 +60,16 @@ export default function ClassificacaoModal({ file, territorios, tags, formatos =
                   <div className="relative flex items-center justify-center w-6 h-6 border-2 border-[#2C1A14] bg-[#F4EFE6] shrink-0">
                     {selectedFormatos.includes(formato.id) && <div className="absolute w-3.5 h-3.5 bg-[#1E3A5F]"></div>}
                   </div>
-                  <span className="px-2 py-1 text-xs font-display font-bold uppercase truncate border-2 border-[#2C1A14]" style={{ backgroundColor: formato.bgColor, color: formato.textColor }}>{formato.name}</span>
+                  <span className="px-2 py-1 text-xs font-display font-bold uppercase truncate border-2 border-[#2C1A14] inline-flex items-center gap-1" style={{ backgroundColor: formato.bgColor, color: formato.textColor }}>
+                    <MediaGlyph icon={formato.icon} size={12} />
+                    {formato.name}
+                  </span>
                 </label>
               ))}
             </div>
+            {formatos.length === 0 && (
+              <p className="font-sans text-sm font-bold text-[#2C1A14]/70">Cadastre outras mídias em Classificação para marcar além da que o sistema identificou.</p>
+            )}
           </div>
           <div className="space-y-4">
             <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Tags Livres</h4>

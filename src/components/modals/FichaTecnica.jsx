@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollText, X } from 'lucide-react';
 import { fileExtension } from '../../lib/fileExtension.js';
+import { mediaLabel } from '../../lib/media.js';
 import Badge from '../ui/Badge.jsx';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 
@@ -76,12 +77,13 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
         <div className="overflow-y-auto p-4 sm:p-6">
           <dl>
             <Row label="Arquivo">{file.name}</Row>
-            <Row label="Formato">{identified || 'Sem extensão'}</Row>
-            {manualFormats.length > 0 && (
-              <Row label="Formatos">
-                <span className="flex flex-wrap">{manualFormats.map(item => <Badge key={item.id} item={item} />)}</span>
-              </Row>
-            )}
+            <Row label="Mídia">
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <span>{mediaLabel(file.type)}</span>
+                {manualFormats.map(item => <Badge key={item.id} item={item} />)}
+              </span>
+            </Row>
+            <Row label="Extensão">{identified || 'Sem extensão'}</Row>
             <Row label="Origem">{file.origem || 'Sem origem'}</Row>
             {date && <Row label="Data">{date}</Row>}
             {file.size && <Row label="Tamanho">{file.size}</Row>}

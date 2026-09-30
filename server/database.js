@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { isMediaIcon } from '../src/lib/mediaIconIds.js';
 import { DriveError, readDriveConfig, saveEnvKeys } from './driveClient.js';
 
 const DATABASE_ENV_KEYS = ['DATABASE_HOST', 'DATABASE_PORT', 'DATABASE_USER', 'DATABASE_PASSWORD', 'DATABASE_NAME'];
@@ -32,9 +33,14 @@ const CREATE_FORMATOS = `
     name VARCHAR(160) NOT NULL,
     bg_color VARCHAR(7) NOT NULL,
     text_color VARCHAR(7) NOT NULL,
+    icon VARCHAR(40) NOT NULL DEFAULT '',
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
+
+const FORMATOS_COLUMNS = [
+  ['icon', "VARCHAR(40) NOT NULL DEFAULT ''"],
+];
 
 const CREATE_CLASSIFICACAO = `
   CREATE TABLE arquivo_classificacao (
@@ -52,7 +58,7 @@ const CLASSIFICACAO_COLUMNS = [
   ['origem', 'VARCHAR(255) NULL'],
 ];
 
-const JORNAL_FORMATO = ['formato_jornal', 'Jornal', '#1E3A5F', '#FDFBF7'];
+const JORNAL_FORMATO = ['formato_jornal', 'Jornal', '#1E3A5F', '#FDFBF7', 'newspaper'];
 
 const CREATE_PASTAS = `
   CREATE TABLE pastas (
@@ -262,12 +268,30 @@ async function ensureClassificacaoColumns(db) {
   }
 }
 
+async function ensureFormatosColumns(db) {
+  const [rows] = await db.query(
+    `SELECT column_name AS columnName
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'formatos'`,
+  );
+  const present = new Set(rows.map(columnNameOf));
+  for (const [name, definition] of FORMATOS_COLUMNS) {
+    if (present.has(name)) continue;
+    await db.query(`ALTER TABLE formatos ADD COLUMN ${name} ${definition}`);
+  }
+}
+
 async function ensureJornal(db) {
   const [rows] = await db.query('SELECT COUNT(*) AS total FROM formatos');
-  if (Number(rows[0]?.total) > 0) return;
+  if (Number(rows[0]?.total) === 0) {
+    await db.query(
+      'INSERT IGNORE INTO formatos (id, name, bg_color, text_color, icon) VALUES (?, ?, ?, ?, ?)',
+      JORNAL_FORMATO,
+    );
+  }
   await db.query(
-    'INSERT IGNORE INTO formatos (id, name, bg_color, text_color) VALUES (?, ?, ?, ?)',
-    JORNAL_FORMATO,
+    `UPDATE formatos SET icon = 'newspaper' WHERE id = 'formato_jornal' AND (icon IS NULL OR icon = '')`,
   );
 }
 
@@ -312,6 +336,7 @@ export async function ensureTables(env) {
   await ensureAplicacaoColumns(db);
   await ensureArquivosColumns(db);
   await ensureClassificacaoColumns(db);
+  await ensureFormatosColumns(db);
   await ensureJornal(db);
   tablesKey = key;
   return TABLE_SQL.map(([name]) => name);
@@ -610,6 +635,10 @@ function mapItem(row) {
   };
 }
 
+function mapFormato(row) {
+  return { ...mapItem(row), icon: String(row.icon || '') };
+}
+
 function cleanItems(items) {
   if (!Array.isArray(items)) throw new DriveError('A lista não veio no formato esperado.');
   return items.map(item => {
@@ -621,6 +650,14 @@ function cleanItems(items) {
     if (!name || name.length > 160) throw new DriveError('O nome precisa ter até 160 caracteres.');
     if (!COLOR.test(bgColor) || !COLOR.test(textColor)) throw new DriveError('A cor precisa estar em hexadecimal.');
     return { id, name, bgColor, textColor };
+  });
+}
+
+function cleanFormatos(items) {
+  return cleanItems(items).map((item, index) => {
+    const icon = String(items[index]?.icon || '').trim();
+    if (icon && !isMediaIcon(icon)) throw new DriveError('O ícone escolhido não está na lista.');
+    return { ...item, icon };
   });
 }
 
@@ -644,27 +681,34 @@ export async function loadIdentidade(env) {
   const db = await withPool(env);
   const [territorios] = await db.query('SELECT id, name, bg_color, text_color FROM territorios ORDER BY name');
   const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
-  const [formatos] = await db.query('SELECT id, name, bg_color, text_color FROM formatos ORDER BY name');
+  const [formatos] = await db.query('SELECT id, name, bg_color, text_color, icon FROM formatos ORDER BY name');
   return {
     territorios: territorios.map(mapItem),
     tags: tags.map(mapItem),
-    formatos: formatos.map(mapItem),
+    formatos: formatos.map(mapFormato),
   };
 }
 
 async function replaceItems(env, table, items) {
   if (table !== 'territorios' && table !== 'tags' && table !== 'formatos') throw new DriveError('Tabela inválida.');
-  const cleaned = cleanItems(items);
+  const cleaned = table === 'formatos' ? cleanFormatos(items) : cleanItems(items);
   const db = await withPool(env);
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
     await connection.query(`DELETE FROM ${table}`);
     for (const item of cleaned) {
-      await connection.query(
-        `INSERT INTO ${table} (id, name, bg_color, text_color) VALUES (?, ?, ?, ?)`,
-        [item.id, item.name, item.bgColor, item.textColor],
-      );
+      if (table === 'formatos') {
+        await connection.query(
+          'INSERT INTO formatos (id, name, bg_color, text_color, icon) VALUES (?, ?, ?, ?, ?)',
+          [item.id, item.name, item.bgColor, item.textColor, item.icon || ''],
+        );
+      } else {
+        await connection.query(
+          `INSERT INTO ${table} (id, name, bg_color, text_color) VALUES (?, ?, ?, ?)`,
+          [item.id, item.name, item.bgColor, item.textColor],
+        );
+      }
     }
     await connection.commit();
   } catch (error) {

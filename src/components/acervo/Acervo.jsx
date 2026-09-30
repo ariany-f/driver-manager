@@ -16,6 +16,7 @@ import MoveFileModal from '../modals/MoveFileModal.jsx';
 import RenameFileModal from '../modals/RenameFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import { fileExtension } from '../../lib/fileExtension.js';
+import { MediaGlyph } from '../../lib/mediaIcons.js';
 import { findFolder, flattenFolders, getAncestorFolderIds } from '../../lib/folders.js';
 
 function formatFileDate(value) {
@@ -49,9 +50,10 @@ function FileName({ file, formatos = [], className = '' }) {
       {manuais.map(formato => (
         <span
           key={formato.id}
-          className="ml-2 inline-block align-middle border-2 border-[#2C1A14] px-1 py-0.5 font-display text-[10px] font-black leading-none tracking-wider uppercase whitespace-nowrap"
+          className="ml-2 inline-flex items-center align-middle border-2 border-[#2C1A14] px-1 py-0.5 font-display text-[10px] font-black leading-none tracking-wider uppercase whitespace-nowrap"
           style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
         >
+          <MediaGlyph icon={formato.icon} size={10} className="mr-1" />
           {formato.name}
         </span>
       ))}
@@ -242,8 +244,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   };
 
   const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + selectedFormatos.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length;
-  const hasFormatFilters = availableExtensions.length > 0 || (labelsEnabled && formatos.length > 0);
-  const mediaRowClass = hasFormatFilters
+  const mediaRowClass = availableExtensions.length
     ? `md:col-span-12 grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-6${labelsEnabled ? ' border-t-2 border-dashed border-[#2C1A14]/20 pt-4' : ''}`
     : labelsEnabled
       ? 'md:col-span-2 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 md:pt-0 md:pl-6'
@@ -434,11 +435,26 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         aria-pressed={selectedTypes.includes(type)}
                       ><FileIcon type={type} size={20} /></button>
                     ))}
+                    {labelsEnabled && formatos.map(formato => (
+                      <button
+                        key={formato.id}
+                        type="button"
+                        aria-pressed={selectedFormatos.includes(formato.id)}
+                        onClick={() => handleFilterToggle(formato.id, setSelectedFormatos)}
+                        className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedFormatos.includes(formato.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                        style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <MediaGlyph icon={formato.icon} size={14} />
+                          {formato.name}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </div>
-                {hasFormatFilters && (
+                {availableExtensions.length > 0 && (
                   <div className="border-t-2 sm:border-t-0 sm:border-l-2 border-dashed border-[#2C1A14]/20 pt-4 sm:pt-0 sm:pl-6">
-                    <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#2C1A14]">Formato</span>
+                    <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#2C1A14]">Extensão</span>
                     <div className="flex flex-wrap gap-2">
                       {availableExtensions.map(ext => (
                         <button
@@ -449,18 +465,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-mono text-xs font-black tracking-wider transition-all ${activeExtensions.includes(ext) ? 'bg-[#2C1A14] text-white shadow-[3px_3px_0px_#EAB308] -translate-y-0.5' : 'bg-white text-[#2C1A14] hover:bg-black/5 hover:-translate-y-0.5'}`}
                         >
                           {ext}
-                        </button>
-                      ))}
-                      {labelsEnabled && formatos.map(formato => (
-                        <button
-                          key={formato.id}
-                          type="button"
-                          aria-pressed={selectedFormatos.includes(formato.id)}
-                          onClick={() => handleFilterToggle(formato.id, setSelectedFormatos)}
-                          className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedFormatos.includes(formato.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
-                          style={{ backgroundColor: formato.bgColor, color: formato.textColor }}
-                        >
-                          {formato.name}
                         </button>
                       ))}
                     </div>

@@ -1,3 +1,5 @@
+import { MediaGlyph } from '../../lib/mediaIcons.js';
+
 export default function Badge({ item, isTerritory = false }) {
   if (!item) return null;
   return (
@@ -6,6 +8,7 @@ export default function Badge({ item, isTerritory = false }) {
       style={{ backgroundColor: item.bgColor, color: item.textColor }}
     >
       {isTerritory && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>}
+      {item.icon && <MediaGlyph icon={item.icon} size={12} />}
       {item.name}
     </span>
   );

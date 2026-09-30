@@ -35,6 +35,7 @@ export default function App() {
   const [driveReady, setDriveReady] = useState(false);
   const [driveStatus, setDriveStatus] = useState(null);
   const [driveBusy, setDriveBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [driveMessage, setDriveMessage] = useState('');
   const [driveError, setDriveError] = useState('');
   const [labelsEnabled, setLabelsEnabled] = useState(false);
@@ -107,7 +108,12 @@ export default function App() {
       const status = await getDriveStatus();
       setDriveStatus(status);
       if (status.connected && status.folderId) {
-        const archive = commit ? await syncDrive() : await previewDrive();
+        const preview = !commit;
+        if (preview) {
+          setScanning(true);
+          setDriveReady(true);
+        }
+        const archive = preview ? await previewDrive() : await syncDrive();
         applyArchive(archive);
         const arquivos = archive.novos || [];
         const pastas = archive.novasPastas || [];
@@ -128,6 +134,7 @@ export default function App() {
       setDriveError(error.message);
       return null;
     } finally {
+      setScanning(false);
       setDriveBusy(false);
       setDriveReady(true);
     }
@@ -215,6 +222,7 @@ export default function App() {
   const drive = {
     status: driveStatus,
     busy: driveBusy,
+    scanning,
     message: driveMessage,
     error: driveError,
     active: Boolean(driveStatus?.connected && driveStatus?.folderId),

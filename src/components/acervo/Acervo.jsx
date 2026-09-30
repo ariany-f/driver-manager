@@ -225,7 +225,15 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   ) : null;
 
   return (
-    <div className="flex h-full relative overflow-hidden animate-in fade-in duration-300">
+    <div className="flex h-full relative overflow-hidden animate-in fade-in duration-300" aria-busy={drive.scanning || undefined}>
+      {drive.scanning && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#E4CFB2]/80">
+          <p className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_#1E3A5F] px-6 py-5 font-display font-black uppercase tracking-widest text-[#2C1A14]">
+            Buscando novidades...
+          </p>
+        </div>
+      )}
+      <div className="flex h-full w-full min-w-0" inert={drive.scanning ? true : undefined}>
       <div className="w-80 border-r-4 border-[#2C1A14] bg-[#F4EFE6] flex-col hidden lg:flex shrink-0 relative z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)]">
         <div className="p-6 border-b-4 border-[#2C1A14] bg-[#EAB308] flex justify-between items-center">
           <h2 className="text-xl font-display font-black text-[#2C1A14] uppercase tracking-tighter flex items-center gap-2">
@@ -514,6 +522,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
       )}
 
       {viewingFile && <FileViewer file={viewingFile} onClose={() => setViewingFile(null)} />}
+      </div>
     </div>
   );
 }

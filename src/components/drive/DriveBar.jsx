@@ -71,11 +71,11 @@ export default function DriveBar({ isAdmin, drive }) {
           Cadastre em Configurações: {status.missing.join(', ')}.
         </p>
       )}
-      {isAdmin && !status.connected && status.redirectUri && (
+      {/* {isAdmin && !status.connected && status.redirectUri && (
         <p className="font-mono text-[11px] text-[#2C1A14]/70 break-all">
           Cadastre esta URL de retorno no Google Cloud: {status.redirectUri}
         </p>
-      )}
+      )} */}
       {drive.message && <p className="font-sans text-sm font-bold text-[#627933]">{drive.message}</p>}
       {(drive.error || status.error) && <p className="font-sans text-sm font-bold text-[#C13B22]">{drive.error || status.error}</p>}
       <ConfirmModal

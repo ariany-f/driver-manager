@@ -116,6 +116,19 @@ export function removeFavicon() {
   return fetch('/api/database/favicon', { method: 'DELETE', credentials: 'same-origin' }).then(readJson);
 }
 
+export function getVlibras() {
+  return fetch('/api/database/vlibras', { credentials: 'same-origin' }).then(readJson);
+}
+
+export function saveVlibras(enabled) {
+  return fetch('/api/database/vlibras', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ enabled: Boolean(enabled) }),
+  }).then(readJson);
+}
+
 export function moveArquivo(fileId, pastaId) {
   return fetch('/api/database/arquivos', {
     method: 'PUT',

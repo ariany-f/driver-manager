@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Database, Eye, EyeOff, Folder, Image, Pencil, Settings } from 'lucide-react';
+import { Database, Eye, EyeOff, Folder, Hand, Image, Pencil, Settings } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
-import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, saveFavicon, saveLogo } from '../../services/database.js';
+import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, saveFavicon, saveLogo, saveVlibras } from '../../services/database.js';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import EscolherPastaModal from '../modals/EscolherPastaModal.jsx';
@@ -57,7 +57,7 @@ function measureImage(file) {
 
 const FAVICON_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/x-icon', 'image/vnd.microsoft.icon'];
 
-export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChange, logoUrl, onLogoChange, faviconUrl, onFaviconChange }) {
+export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChange, logoUrl, onLogoChange, faviconUrl, onFaviconChange, vlibras, onVlibrasChange }) {
   const [form, setForm] = useState(emptyForm);
   const [databaseForm, setDatabaseForm] = useState(emptyDatabase);
   const [databaseState, setDatabaseState] = useState({ configured: false, connected: false, error: '', tables: [] });
@@ -72,6 +72,8 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
   const [faviconError, setFaviconError] = useState('');
   const [faviconMessage, setFaviconMessage] = useState('');
   const [savingFavicon, setSavingFavicon] = useState(false);
+  const [savingVlibras, setSavingVlibras] = useState(false);
+  const [vlibrasError, setVlibrasError] = useState('');
   const [databaseDraft, setDatabaseDraft] = useState(emptyDatabase);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
@@ -413,6 +415,39 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           )}
           {faviconError && <p className="font-sans font-bold text-sm text-[#C13B22]">{faviconError}</p>}
           {faviconMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{faviconMessage}</p>}
+        </section>
+
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-1">
+          <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
+            <Hand size={18} strokeWidth={2.5} /> VLibras
+          </div>
+          <p className="font-sans font-bold text-sm text-[#2C1A14]/80">
+            Traduz o conteúdo da tela para Libras. Com ele ativo, o botão aparece para quem abre o site.
+          </p>
+          <p className="font-sans font-bold text-sm text-[#2C1A14]">{vlibras ? 'VLibras ativo.' : 'VLibras desligado.'}</p>
+          <button
+            type="button"
+            disabled={!databaseState.connected || savingVlibras}
+            onClick={async () => {
+              setSavingVlibras(true);
+              setVlibrasError('');
+              try {
+                const saved = await saveVlibras(!vlibras);
+                if (onVlibrasChange) onVlibrasChange(Boolean(saved.enabled));
+              } catch (saveError) {
+                setVlibrasError(saveError.message);
+              } finally {
+                setSavingVlibras(false);
+              }
+            }}
+            className="min-h-11 px-4 py-2 border-4 border-[#2C1A14] bg-[#EAB308] font-display font-black uppercase tracking-widest text-xs text-[#2C1A14] disabled:opacity-50"
+          >
+            {savingVlibras ? 'Salvando…' : vlibras ? 'Desativar' : 'Ativar'}
+          </button>
+          {!databaseState.connected && (
+            <p className="font-sans font-bold text-sm text-[#2C1A14]/70">Conecte o MySQL para guardar essa opção.</p>
+          )}
+          {vlibrasError && <p className="font-sans font-bold text-sm text-[#C13B22]">{vlibrasError}</p>}
         </section>
 
         <section className={`bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5 lg:col-start-2 ${drive?.status?.connected ? 'lg:row-start-4' : 'lg:row-start-3'}`}>

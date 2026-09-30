@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import EscolherPastaModal from './components/modals/EscolherPastaModal.jsx';
 import Header from './components/layout/Header.jsx';
+import VLibras from './components/layout/VLibras.jsx';
 import LoginModal from './components/modals/LoginModal.jsx';
 import NovidadesModal from './components/modals/NovidadesModal.jsx';
 import ClassificarNovosModal from './components/modals/ClassificarNovosModal.jsx';
@@ -11,7 +12,7 @@ import Configuracoes from './components/configuracoes/Configuracoes.jsx';
 import BancoNecessario from './components/banco/BancoNecessario.jsx';
 import UploadProgress from './components/drive/UploadProgress.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
-import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
+import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, getVlibras, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
 import {
   disconnectDrive,
   getDriveStatus,
@@ -28,6 +29,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState(viewFromLocation);
   const [logoUrl, setLogoUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
+  const [vlibras, setVlibras] = useState(false);
   const [territorios, setTerritorios] = useState([]);
   const [tags, setTags] = useState([]);
   const [files, setFiles] = useState([]);
@@ -195,12 +197,14 @@ export default function App() {
             setDriveReady(true);
             setLogoUrl('');
             setFaviconUrl('');
+            setVlibras(false);
             return;
           }
           loadIdentidade();
           refreshDrive();
           refreshLogo();
           refreshFavicon();
+          getVlibras().then(saved => setVlibras(Boolean(saved.enabled))).catch(() => setVlibras(false));
         })
         .catch(() => {
           setLabelsEnabled(false);
@@ -465,10 +469,13 @@ export default function App() {
             onLogoChange={refreshLogo}
             faviconUrl={faviconUrl}
             onFaviconChange={refreshFavicon}
+            vlibras={vlibras}
+            onVlibrasChange={setVlibras}
           />
         )}
       </main>
       {uploadProgress && <UploadProgress progress={uploadProgress} />}
+      <VLibras active={vlibras} />
     </div>
   );
 }

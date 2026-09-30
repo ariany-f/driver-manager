@@ -340,7 +340,7 @@ export async function handleApi(req, res, { root, env }) {
       return;
     }
     if (pathname.startsWith('/api/database')) {
-      const databaseOpen = req.method === 'GET' && (pathname === '/api/database/status' || pathname === '/api/database/identidade' || pathname === '/api/database/logo' || pathname === '/api/database/favicon');
+      const databaseOpen = req.method === 'GET' && (pathname === '/api/database/status' || pathname === '/api/database/identidade' || pathname === '/api/database/logo' || pathname === '/api/database/favicon' || pathname === '/api/database/vlibras');
       if (!databaseOpen && !isAdminRequest(req, env)) {
         sendJson(res, 401, { error: 'Entre como equipe para continuar.' });
         return;

@@ -73,6 +73,7 @@ const CREATE_APLICACAO = `
     logo MEDIUMBLOB NULL,
     favicon_mime VARCHAR(64) NOT NULL DEFAULT '',
     favicon MEDIUMBLOB NULL,
+    vlibras TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
@@ -80,6 +81,7 @@ const CREATE_APLICACAO = `
 const APLICACAO_COLUMNS = [
   ['favicon_mime', "VARCHAR(64) NOT NULL DEFAULT ''"],
   ['favicon', 'MEDIUMBLOB NULL'],
+  ['vlibras', 'TINYINT NOT NULL DEFAULT 0'],
 ];
 
 const CREATE_DRIVE_CONFIG = `
@@ -504,6 +506,23 @@ export async function clearFavicon(env) {
   await db.query("UPDATE aplicacao SET favicon_mime = '', favicon = NULL WHERE id = 1");
 }
 
+export async function loadVlibras(env) {
+  const db = await withPool(env);
+  const [rows] = await db.query('SELECT vlibras FROM aplicacao WHERE id = 1');
+  return Number(rows[0]?.vlibras) === 1;
+}
+
+export async function saveVlibras(env, enabled) {
+  const value = enabled ? 1 : 0;
+  const db = await withPool(env);
+  await db.query(
+    `INSERT INTO aplicacao (id, vlibras) VALUES (1, ?)
+     ON DUPLICATE KEY UPDATE vlibras = ?`,
+    [value, value],
+  );
+  return value === 1;
+}
+
 export async function clearSyncedFiles(env) {
   const db = await withPool(env);
   await db.query('DELETE FROM arquivos');
@@ -917,6 +936,17 @@ export async function handleDatabaseRequest(req, res, { root, env }) {
   if (req.method === 'DELETE' && url.pathname === '/api/database/favicon') {
     await clearFavicon(env);
     sendJson(res, 200, { removed: true });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/database/vlibras') {
+    sendJson(res, 200, { enabled: await loadVlibras(env) });
+    return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/api/database/vlibras') {
+    const body = await readBody(req);
+    sendJson(res, 200, { enabled: await saveVlibras(env, Boolean(body.enabled)) });
     return;
   }
 

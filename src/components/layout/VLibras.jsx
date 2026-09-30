@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 
 const SCRIPT = 'https://vlibras.gov.br/app/vlibras-plugin.js';
-const ROOT = 'https://vlibras.gov.br/app';
 
 function loadScript() {
   if (window.VLibras) return Promise.resolve();
@@ -27,32 +26,29 @@ function loadScript() {
   });
 }
 
-function removeWidget() {
-  document.querySelectorAll('[vw], [vw-plugin-wrapper], .vpw-box, .vp-pop-up, .vp-guide-arrow').forEach(node => node.remove());
+function setVisible(visible) {
+  for (const id of ['vlibras-access-wrapper', 'vlibras-app-root']) {
+    const node = document.getElementById(id);
+    if (node) node.style.display = visible ? '' : 'none';
+  }
 }
 
 export default function VLibras({ active }) {
   useEffect(() => {
     if (!active) {
-      removeWidget();
-      return undefined;
+      setVisible(false);
+      const timer = window.setTimeout(() => setVisible(false), 200);
+      return () => window.clearTimeout(timer);
     }
     let cancelled = false;
-    const box = document.createElement('div');
-    box.setAttribute('vw', '');
-    box.className = 'enabled';
-    box.innerHTML = '<div vw-access-button class="active"></div><div vw-plugin-wrapper><div class="vw-plugin-top-wrapper"></div></div>';
-    document.body.appendChild(box);
     loadScript()
       .then(() => {
-        if (cancelled || !window.VLibras) return;
-        new window.VLibras.Widget(ROOT);
+        if (cancelled) return;
+        setVisible(true);
+        window.setTimeout(() => { if (!cancelled) setVisible(true); }, 120);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-      removeWidget();
-    };
+    return () => { cancelled = true; };
   }, [active]);
 
   return null;

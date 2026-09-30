@@ -54,7 +54,7 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
     <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300 relative">
       <div className="w-full space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 gap-4">
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Classificação</h1>
+          <h1 className="text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.15] tracking-tighter">Classificação</h1>
           <ButtonPrimary onClick={() => openModal()} icon={Plus} color="bgOlive" className="w-full sm:w-auto">Criar {activeTab === 'territorios' ? 'Território' : 'Tag'}</ButtonPrimary>
         </div>
 

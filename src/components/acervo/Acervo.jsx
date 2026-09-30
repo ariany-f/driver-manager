@@ -255,7 +255,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
         </div>
       )}
       <div className="flex h-full w-full min-w-0" inert={drive.scanning ? true : undefined}>
-      <div className="w-80 border-r-4 border-[#2C1A14] bg-[#F4EFE6] flex-col hidden lg:flex shrink-0 relative z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)]">
+      <div className="w-64 xl:w-80 border-r-4 border-[#2C1A14] bg-[#F4EFE6] flex-col hidden lg:flex shrink-0 relative z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)]">
         <div className="p-6 border-b-4 border-[#2C1A14] bg-[#EAB308] flex justify-between items-center">
           <h2 className="text-xl font-display font-black text-[#2C1A14] uppercase tracking-tighter flex items-center gap-2">
             <FolderTree size={24} strokeWidth={3} /> Diretórios
@@ -306,7 +306,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 mb-2 gap-4">
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3 mb-2">
-                <h1 className="min-w-0 text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">
+                <h1 className="min-w-0 text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.15] tracking-tighter">
                   Busca & <span className="text-[#1E3A5F]">Acervo</span>
                 </h1>
                 <div className="flex shrink-0 gap-2">
@@ -423,7 +423,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             </div>
           </div>
 
-          <div className="lg:hidden space-y-3">
+          <div className="xl:hidden space-y-3">
             {currentFiles.map(file => (
               <article key={file.id} onClick={() => setViewingFile(file)} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3 cursor-pointer active:translate-x-0.5 active:translate-y-0.5">
                 <div className="flex gap-3">
@@ -467,20 +467,20 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             {pagination}
           </div>
 
-          <div className="hidden lg:block bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)] overflow-hidden">
+          <div className="hidden xl:block bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_rgba(44,26,20,0.15)] overflow-hidden">
             <table className="w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
-                  <th className="px-5 py-4 font-black w-2/5">Arquivo</th>
-                  <th className="px-5 py-4 font-black">Localização</th>
-                  {labelsEnabled && <th className="px-5 py-4 font-black w-1/3">Classificação</th>}
-                  <th className="px-5 py-4 font-black text-right">Ações</th>
+                  <th className="px-4 py-4 font-black">Arquivo</th>
+                  <th className="px-4 py-4 font-black w-44">Localização</th>
+                  {labelsEnabled && <th className="px-4 py-4 font-black w-52">Classificação</th>}
+                  <th className="px-4 py-4 font-black text-right w-44">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-dashed divide-[#2C1A14]/20 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
                 {currentFiles.map(file => (
                   <tr key={file.id} className="hover:bg-white/60 transition-colors group">
-                    <td className="px-5 py-4 min-w-0">
+                    <td className="px-4 py-4 min-w-0">
                       <div className="flex items-start gap-4 min-w-0">
                         <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[4px_4px_0px_#2C1A14] group-hover:-translate-y-1 group-hover:shadow-[6px_6px_0px_#C13B22] transition-all overflow-hidden flex items-center justify-center p-0.5">
                           <FileThumb file={file} iconSize={32} badge />
@@ -494,13 +494,14 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="inline-flex items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20 max-w-[180px] truncate" title={getDisplayPath(file.folderId)}>
-                        <Folder size={12} className="shrink-0 text-[#EAB308]" /> {getDisplayPath(file.folderId)}
+                    <td className="px-4 py-4 max-w-0">
+                      <div className="flex items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20 min-w-0 max-w-full" title={getDisplayPath(file.folderId)}>
+                        <Folder size={12} className="shrink-0 text-[#EAB308]" />
+                        <span className="truncate">{getDisplayPath(file.folderId)}</span>
                       </div>
                     </td>
                     {labelsEnabled && (
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex flex-col gap-1.5">
                           <div className="flex flex-wrap gap-1">
                             {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
@@ -511,7 +512,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         </div>
                       </td>
                     )}
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       {renderFileActions(file)}
                     </td>
                   </tr>

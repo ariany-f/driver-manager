@@ -117,10 +117,10 @@ export default function Dashboard({ files, territorios, tags = [], labelsEnabled
     <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300">
       <div className="w-full space-y-6 sm:space-y-8">
         <div className="border-b-4 border-[#2C1A14] pb-4 sm:pb-6">
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-black text-[#2C1A14] uppercase leading-none tracking-tighter">Métricas do <span className="text-[#C13B22]">Acervo</span></h1>
+          <h1 className="text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.15] tracking-tighter">Métricas do <span className="text-[#C13B22]">Acervo</span></h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div className="bg-[#EAB308] border-4 border-[#2C1A14] p-4 sm:p-6 shadow-[4px_4px_0px_#2C1A14] sm:shadow-[8px_8px_0px_#2C1A14] flex flex-col justify-center">
             <div className="flex items-center gap-3 sm:gap-4 mb-2">
               <Archive size={32} className="text-[#2C1A14] shrink-0" strokeWidth={2.5} />

@@ -33,7 +33,7 @@ export default function Header({ isAdmin, labelsEnabled, logoUrl, activeView, on
                     disabled={disabled}
                     title={disabled ? 'Conecte o banco MySQL' : view.lbl}
                     onClick={() => { if (!disabled) onNavigate(view.id); }}
-                    className={`font-display font-bold uppercase text-xs tracking-widest px-2 py-1 border-b-4 ${disabled ? 'border-transparent text-white/25 cursor-not-allowed' : activeView === view.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}
+                    className={`font-display font-bold uppercase text-xs tracking-wide px-2 py-1 border-b-4 whitespace-nowrap ${disabled ? 'border-transparent text-white/25 cursor-not-allowed' : activeView === view.id ? 'border-[#EAB308] text-[#EAB308]' : 'border-transparent text-white/50 hover:text-white'}`}
                   >
                     {view.lbl}
                   </button>

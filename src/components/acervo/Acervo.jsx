@@ -306,7 +306,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 mb-2 gap-4">
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3 mb-2">
-                <h1 className="min-w-0 text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.15] tracking-tighter">
+                <h1 className="min-w-0 text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.25] tracking-tighter">
                   Busca & <span className="text-[#1E3A5F]">Acervo</span>
                 </h1>
                 <div className="flex shrink-0 gap-2">

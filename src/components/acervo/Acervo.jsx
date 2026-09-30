@@ -229,7 +229,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
       {drive.scanning && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#E4CFB2]/80">
           <p className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_#1E3A5F] px-6 py-5 font-display font-black uppercase tracking-widest text-[#2C1A14]">
-            Buscando novidades...
+            Buscando atualizações...
           </p>
         </div>
       )}

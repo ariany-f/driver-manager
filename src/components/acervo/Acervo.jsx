@@ -46,6 +46,23 @@ function fileExtension(file) {
   return '';
 }
 
+function formatFileDate(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const [year, month, day] = text.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(parsed);
+}
+
 function FileName({ file, className = '' }) {
   const ext = fileExtension(file);
   return (
@@ -74,6 +91,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [selectedTerritorios, setSelectedTerritorios] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedTypes, setSelectedTypes] = useState([]);
+  const [semTerritorio, setSemTerritorio] = useState(false);
+  const [semTag, setSemTag] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [uploadQueue, setUploadQueue] = useState([]);
   const uploadRef = useRef(null);
@@ -102,9 +121,11 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTerritorio = !labelsEnabled || selectedTerritorios.length === 0 || selectedTerritorios.some(id => (file.territorios || []).includes(id));
     const matchesTag = !labelsEnabled || selectedTags.length === 0 || selectedTags.some(id => (file.tags || []).includes(id));
+    const matchesSemTerritorio = !labelsEnabled || !semTerritorio || !(file.territorios || []).length;
+    const matchesSemTag = !labelsEnabled || !semTag || !(file.tags || []).length;
     const matchesType = selectedTypes.length === 0 || selectedTypes.includes(file.type);
     const matchesFolder = activeFolderId === '' ? true : file.folderId === activeFolderId;
-    return matchesSearch && matchesTerritorio && matchesTag && matchesType && matchesFolder;
+    return matchesSearch && matchesTerritorio && matchesTag && matchesSemTerritorio && matchesSemTag && matchesType && matchesFolder;
   });
 
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage) || 1;
@@ -180,7 +201,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     );
   };
 
-  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length : 0) + selectedTypes.length;
+  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length;
 
   const renderDirectoryList = () => (
     <div className="flex-1 overflow-y-auto py-2 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pb-20">
@@ -364,20 +385,42 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="bg-[#2C1A14] text-[#F4EFE6] px-4 py-2 font-display font-bold uppercase text-xs shadow-[4px_4px_0px_#C13B22]">
               {filteredFiles.length} registros encontrados
             </div>
-            {isAdmin && drive.active && (
-              <button
-                type="button"
-                onClick={() => uploadRef.current?.click()}
-                disabled={drive.busy}
-                className="min-h-11 shrink-0 bg-[#C13B22] text-white border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
-              >
-                <Upload size={18} strokeWidth={3} /> Enviar
-              </button>
-            )}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {labelsEnabled && (
+                <>
+                  <button
+                    type="button"
+                    aria-pressed={semTerritorio}
+                    onClick={() => { setSemTerritorio(current => !current); setCurrentPage(1); }}
+                    className={`min-h-11 shrink-0 border-2 border-[#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider ${semTerritorio ? 'bg-[#EAB308] text-[#2C1A14] shadow-[3px_3px_0px_#2C1A14]' : 'bg-white text-[#2C1A14]'}`}
+                  >
+                    Somente sem território
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={semTag}
+                    onClick={() => { setSemTag(current => !current); setCurrentPage(1); }}
+                    className={`min-h-11 shrink-0 border-2 border-[#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider ${semTag ? 'bg-[#EAB308] text-[#2C1A14] shadow-[3px_3px_0px_#2C1A14]' : 'bg-white text-[#2C1A14]'}`}
+                  >
+                    Somente sem tag
+                  </button>
+                </>
+              )}
+              {isAdmin && drive.active && (
+                <button
+                  type="button"
+                  onClick={() => uploadRef.current?.click()}
+                  disabled={drive.busy}
+                  className="min-h-11 shrink-0 bg-[#C13B22] text-white border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Upload size={18} strokeWidth={3} /> Enviar
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="lg:hidden space-y-3">
@@ -391,7 +434,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{file.date}</span>
+                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
                     </div>
                     <div className="mt-2 inline-flex max-w-full items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20" title={getDisplayPath(file.folderId)}>
                       <Folder size={12} className="shrink-0 text-[#EAB308]" />
@@ -446,7 +489,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                            <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{file.date}</span>
+                            <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
                           </div>
                         </div>
                       </div>

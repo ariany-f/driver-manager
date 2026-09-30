@@ -415,7 +415,7 @@ export async function syncArchive(env, config) {
           folderId: file.parentId === rootId ? '' : file.parentId,
           territorios: label.territorios || [],
           tags: label.tags || [],
-          date: String(file.modifiedTime || '').slice(0, 10),
+          date: String(file.modifiedTime || ''),
           size: formatSize(file.size),
           type: mediaType(file.mimeType, file.name),
           mimeType: file.mimeType,

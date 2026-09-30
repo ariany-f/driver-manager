@@ -101,11 +101,15 @@ export default function App() {
     }
   };
 
-  const refreshDrive = useCallback(async ({ commit = false, announce = false } = {}) => {
+  const refreshDrive = useCallback(async ({ commit = false, announce = false, statusOnly = false } = {}) => {
     setDriveBusy(true);
     setDriveError('');
     try {
       const status = await getDriveStatus();
+      if (statusOnly) {
+        setDriveStatus(status);
+        return status;
+      }
       setDriveStatus(status);
       if (status.connected && status.folderId) {
         const preview = !commit;
@@ -452,7 +456,7 @@ export default function App() {
           <Configuracoes
             isAdmin={isAdmin}
             drive={drive}
-            onSaved={() => refreshDrive()}
+            onSaved={(options) => refreshDrive(options)}
             onDatabaseChange={handleDatabaseChange}
             logoUrl={logoUrl}
             onLogoChange={refreshLogo}

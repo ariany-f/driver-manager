@@ -613,7 +613,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
         confirmLabel="Sincronizar"
         onCancel={() => {
           setAskSync(false);
-          if (onSaved) onSaved();
+          if (onSaved) onSaved({ statusOnly: true });
         }}
         onConfirm={() => {
           setAskSync(false);

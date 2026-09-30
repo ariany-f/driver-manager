@@ -155,10 +155,14 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
     setFolderMessage('');
     setFolderError('');
     try {
-      const saved = await saveDriveField('DRIVE_FOLDER_ID', form.DRIVE_FOLDER_ID.trim());
+      const nextId = form.DRIVE_FOLDER_ID.trim();
+      const changed = nextId !== savedFolderId.current;
+      const saved = await saveDriveField('DRIVE_FOLDER_ID', nextId);
+      savedFolderId.current = String(saved.DRIVE_FOLDER_ID || nextId).trim();
       setForm(current => ({ ...current, ...saved, redirectFromApp: Boolean(saved.redirectFromApp) }));
       setFolderMessage('ID da pasta salvo.');
-      if (onSaved) await onSaved();
+      if (changed && drive?.status?.connected) setAskSync(true);
+      else if (onSaved) await onSaved();
     } catch (saveError) {
       setFolderError(saveError.message);
     } finally {
@@ -602,6 +606,20 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={askSync}
+        title="Sincronizar de novo?"
+        text="A pasta do acervo mudou. Sincronize para a lista passar a usar os arquivos dessa pasta."
+        confirmLabel="Sincronizar"
+        onCancel={() => {
+          setAskSync(false);
+          if (onSaved) onSaved();
+        }}
+        onConfirm={() => {
+          setAskSync(false);
+          if (drive?.sync) drive.sync();
+        }}
+      />
     </div>
   );
 }

@@ -94,6 +94,15 @@ export function renameDriveArquivo(fileId, name, drive) {
   }).then(readJson);
 }
 
+export function saveArquivoData(fileId, dataArquivo) {
+  return fetch(`/api/drive/files/${fileId}/data`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ dataArquivo }),
+  }).then(readJson);
+}
+
 export function saveArquivoOrigem(fileId, origem) {
   return fetch(`/api/drive/files/${fileId}/origem`, {
     method: 'PUT',

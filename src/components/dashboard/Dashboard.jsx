@@ -41,7 +41,10 @@ function RankList({ items, empty }) {
           <span className="font-display font-black text-[#2C1A14]/30 w-6 text-right">{(index + 1).toString().padStart(2, '0')}</span>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-end mb-1 gap-2">
-              <span className="text-sm font-display font-bold uppercase truncate">{item.name}</span>
+              <span className="text-sm font-display font-bold uppercase truncate inline-flex items-center gap-1.5">
+                <MediaGlyph icon={item.icon} size={14} />
+                {item.name}
+              </span>
               <span className="text-xs font-mono font-bold shrink-0">{item.count} arq</span>
             </div>
             <div className="w-full bg-[#E4CFB2] h-2">
@@ -121,7 +124,7 @@ export default function Dashboard({ files, territorios, tags = [], formatos = []
               <h2 className="text-xl sm:text-2xl font-display font-black uppercase">Sem classificação</h2>
             </div>
             <p className="text-4xl sm:text-6xl font-display font-black">{semClassificacao}</p>
-            <p className="font-sans font-bold text-sm text-[#F4EFE6]/80 mt-1">{share(semClassificacao, files.length)}% do acervo, sem território e sem tag</p>
+            <p className="font-sans font-bold text-sm text-[#F4EFE6]/80 mt-1">{share(semClassificacao, files.length)}% do acervo, sem formato e sem tag</p>
           </div>
         </div>
 
@@ -196,9 +199,9 @@ export default function Dashboard({ files, territorios, tags = [], formatos = []
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_rgba(44,26,20,0.15)]">
-            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Territórios mais ativos</h3>
+            <h3 className="text-xl font-display font-black uppercase mb-6 border-b-2 border-[#2C1A14]/20 pb-2">Formatos mais ativos</h3>
             {labelsEnabled ? (
-              <RankList items={sortedTerritories} empty="Nenhum arquivo com território ainda." />
+              <RankList items={sortedTerritories} empty="Nenhum arquivo com formato ainda." />
             ) : (
               <p className="text-sm font-mono text-[#2C1A14]/70">Desligado até o banco conectar. O acervo mostra só os arquivos.</p>
             )}

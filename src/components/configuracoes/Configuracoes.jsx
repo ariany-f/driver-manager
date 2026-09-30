@@ -319,7 +319,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
       });
       if (onDatabaseChange) onDatabaseChange(Boolean(saved.connected));
       setDatabaseOpen(false);
-      if (saved.connected) setDatabaseMessage('MySQL conectado. A aplicação já pode guardar a conexão do Drive, as pastas, os arquivos, as tags e os territórios.');
+      if (saved.connected) setDatabaseMessage('MySQL conectado. A aplicação já pode guardar a conexão do Drive, as pastas, os arquivos, as tags e os formatos.');
       else if (saved.DATABASE_HOST) setDatabaseError(saved.error || 'Os dados foram salvos no .env, mas o MySQL não conectou.');
       else setDatabaseMessage('Banco desconectado. O acervo mostra só os arquivos.');
     } catch (saveError) {

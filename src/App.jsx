@@ -20,6 +20,7 @@ import {
   getDriveStatus,
   previewDrive,
   renameDriveArquivo,
+  saveArquivoData,
   saveArquivoOrigem,
   saveDriveClassificacao,
   syncDrive,
@@ -300,7 +301,7 @@ export default function App() {
         setNovidades(null);
         setClassificarNovos([]);
         setDriveStatus(await getDriveStatus());
-        setDriveMessage('Drive desconectado. Os arquivos, os caminhos e o ID da pasta saíram. Pastas, tags e territórios continuam.');
+        setDriveMessage('Drive desconectado. Os arquivos, os caminhos e o ID da pasta saíram. Pastas, tags e formatos continuam.');
       } catch (error) {
         setDriveError(error.message);
       } finally {
@@ -334,6 +335,17 @@ export default function App() {
       try {
         const saved = await renameDriveArquivo(fileId, name, driveToo);
         setFiles(current => current.map(file => (file.id === saved.fileId ? { ...file, name: saved.name } : file)));
+        return saved;
+      } catch (error) {
+        setDriveError(error.message);
+        throw error;
+      }
+    },
+    saveData: async (fileId, dataArquivo) => {
+      setDriveError('');
+      try {
+        const saved = await saveArquivoData(fileId, dataArquivo);
+        setFiles(current => current.map(file => (file.id === saved.fileId ? { ...file, dataArquivo: saved.dataArquivo } : file)));
         return saved;
       } catch (error) {
         setDriveError(error.message);

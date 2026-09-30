@@ -18,7 +18,7 @@ export default function DriveBar({ isAdmin, drive }) {
           <p className="font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">Google Drive</p>
           {status.connected && status.folderId ? (
             <p className="font-sans font-bold text-sm text-[#2C1A14] break-words">
-              Sincronizado com {folder}{account}. Enviar grava no Drive, depois da confirmação. Pastas, tags e territórios ficam no MySQL.
+              Sincronizado com {folder}{account}. Enviar grava no Drive, depois da confirmação. Pastas, tags e formatos ficam no MySQL.
             </p>
           ) : status.connected ? (
             <p className="font-sans font-bold text-sm text-[#2C1A14]">
@@ -81,7 +81,7 @@ export default function DriveBar({ isAdmin, drive }) {
       <ConfirmModal
         isOpen={confirmDisconnect}
         title="Desconectar o Drive?"
-        text="A autorização sai. No banco, os arquivos, o caminho de cada um e o ID da pasta do acervo são apagados. Pastas, tags e territórios ficam. Nada é apagado no Google Drive."
+        text="A autorização sai. No banco, os arquivos, o caminho de cada um e o ID da pasta do acervo são apagados. Pastas, tags e formatos ficam. Nada é apagado no Google Drive."
         confirmLabel="Desconectar"
         onCancel={() => setConfirmDisconnect(false)}
         onConfirm={() => {

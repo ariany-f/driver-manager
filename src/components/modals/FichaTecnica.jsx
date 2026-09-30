@@ -4,6 +4,7 @@ import { fileExtension } from '../../lib/fileExtension.js';
 import { mediaLabel } from '../../lib/media.js';
 import Badge from '../ui/Badge.jsx';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
+import Calendario from '../ui/Calendario.jsx';
 
 function formatFileDate(value) {
   const text = String(value || '').trim();
@@ -22,6 +23,11 @@ function formatFileDate(value) {
   }).format(parsed);
 }
 
+function toDateInput(value) {
+  const match = String(value || '').trim().match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : '';
+}
+
 function Row({ label, children }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[9rem_minmax(0,1fr)] gap-1 sm:gap-4 border-b-2 border-dashed border-[#2C1A14]/20 py-3">
@@ -31,15 +37,20 @@ function Row({ label, children }) {
   );
 }
 
-export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], formatos = [], folderPath, onClose, onSaveOrigem }) {
+export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], formatos = [], folderPath, onClose, onSaveOrigem, onSaveData }) {
   const [origem, setOrigem] = useState('');
+  const [dataArquivo, setDataArquivo] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingData, setSavingData] = useState(false);
   const [error, setError] = useState('');
+  const [dataError, setDataError] = useState('');
 
   useEffect(() => {
     if (!file) return;
     setOrigem(file.origem || '');
+    setDataArquivo(toDateInput(file.dataArquivo));
     setError('');
+    setDataError('');
   }, [file]);
 
   if (!file) return null;
@@ -48,8 +59,21 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
   const manualFormats = (file.formatos || []).map(id => formatos.find(item => item.id === id)).filter(Boolean);
   const fileTerritorios = (file.territorios || []).map(id => territorios.find(item => item.id === id)).filter(Boolean);
   const fileTags = (file.tags || []).map(id => tags.find(item => item.id === id)).filter(Boolean);
-  const date = formatFileDate(file.date);
+  const date = formatFileDate(file.dataArquivo);
+  const driveDate = formatFileDate(file.date);
   const suggestions = origens.filter(item => item !== origem);
+
+  const saveData = async () => {
+    setSavingData(true);
+    setDataError('');
+    try {
+      await onSaveData(dataArquivo);
+    } catch (err) {
+      setDataError(err.message || 'Não foi possível gravar a data.');
+    } finally {
+      setSavingData(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -85,11 +109,32 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
             </Row>
             <Row label="Extensão">{identified || 'Sem extensão'}</Row>
             <Row label="Origem">{file.origem || 'Sem origem'}</Row>
-            {date && <Row label="Data">{date}</Row>}
+            <Row label="Data">
+              {isAdmin ? (
+                <span className="flex flex-col gap-2">
+                  <span className="flex flex-col sm:flex-row sm:items-start gap-2">
+                    <Calendario id="ficha-data" value={dataArquivo} onChange={setDataArquivo} />
+                    <button
+                      type="button"
+                      onClick={saveData}
+                      disabled={savingData}
+                      className="min-h-11 border-2 border-[#2C1A14] bg-[#849B55] px-3 font-display font-black uppercase text-xs text-[#2C1A14] shadow-[2px_2px_0px_#2C1A14] disabled:opacity-50"
+                    >
+                      {savingData ? 'Salvando…' : 'Salvar data'}
+                    </button>
+                  </span>
+                  <span className="font-sans text-xs font-bold text-[#2C1A14]/70">Data do acervo. A do Drive fica na linha de baixo.</span>
+                  {dataError && <span className="font-sans text-sm font-bold text-[#C13B22]">{dataError}</span>}
+                </span>
+              ) : (
+                date || 'Sem data'
+              )}
+            </Row>
+            {driveDate && <Row label="No Drive">{driveDate}</Row>}
             {file.size && <Row label="Tamanho">{file.size}</Row>}
             {folderPath && <Row label="Pasta">{folderPath}</Row>}
             {fileTerritorios.length > 0 && (
-              <Row label="Territórios">
+              <Row label="Formatos">
                 <span className="flex flex-wrap">{fileTerritorios.map(item => <Badge key={item.id} item={item} isTerritory />)}</span>
               </Row>
             )}

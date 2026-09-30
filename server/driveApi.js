@@ -33,6 +33,7 @@ import {
   resolveUploadFolder,
   saveDriveConfig,
   saveDriveConnection,
+  saveArquivoData,
   saveArquivoOrigem,
   saveFileLabels,
 } from './database.js';
@@ -326,6 +327,13 @@ async function handleDriveRequest(req, res, { root, env }) {
     return;
   }
 
+  const dataArquivo = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)\/data$/);
+  if (dataArquivo && req.method === 'PUT') {
+    const body = await readJson(req);
+    sendJson(res, 200, await saveArquivoData(env, dataArquivo[1], body.dataArquivo));
+    return;
+  }
+
   const origem = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)\/origem$/);
   if (origem && req.method === 'PUT') {
     const body = await readJson(req);
@@ -337,7 +345,7 @@ async function handleDriveRequest(req, res, { root, env }) {
   if (labels && req.method === 'PUT') {
     const database = await databaseStatus(env);
     if (!database.connected) {
-      throw new DriveError('Territórios e tags ficam disponíveis quando o banco estiver conectado.', 409);
+      throw new DriveError('Formatos e tags ficam disponíveis quando o banco estiver conectado.', 409);
     }
     const body = await readJson(req);
     const saved = await saveFileLabels(env, labels[1], body.territorios, body.tags, body.formatos);

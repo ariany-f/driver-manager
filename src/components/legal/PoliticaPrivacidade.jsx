@@ -22,7 +22,7 @@ export default function PoliticaPrivacidade() {
           Estudantes e outras pessoas abrem o site e consultam os arquivos publicados sem criar conta e sem entrar com o Google.
         </p>
         <p>
-          A equipe responsável entra com e-mail e senha do próprio site, separados da conta Google. Esse acesso serve para conectar o Drive, escolher a pasta do acervo, enviar arquivos e organizar territórios e tags.
+          A equipe responsável entra com e-mail e senha do próprio site, separados da conta Google. Esse acesso serve para conectar o Drive, escolher a pasta do acervo, enviar arquivos e organizar formatos e tags.
         </p>
       </LegalSection>
 
@@ -49,7 +49,7 @@ export default function PoliticaPrivacidade() {
           <li>o token de atualização e o token de acesso da conta Google conectada;</li>
           <li>o identificador da pasta do acervo;</li>
           <li>identificador, nome, tipo e data de modificação dos arquivos exibidos;</li>
-          <li>pastas internas, territórios, tags, formatos e a classificação de cada arquivo;</li>
+          <li>pastas internas, formatos, tags, mídias e a classificação de cada arquivo;</li>
           <li>logo, favicon e a opção de exibir o VLibras.</li>
         </ul>
         <p>
@@ -86,7 +86,7 @@ export default function PoliticaPrivacidade() {
 
       <LegalSection title="Por quanto tempo e como retirar o acesso">
         <p>
-          Ao desconectar o Google Drive no site, o token, a lista de arquivos sincronizada e o identificador da pasta saem do banco. Os arquivos continuam na conta Google. Pastas, tags e territórios criados no site podem continuar no banco até a equipe apagá-los.
+          Ao desconectar o Google Drive no site, o token, a lista de arquivos sincronizada e o identificador da pasta saem do banco. Os arquivos continuam na conta Google. Pastas, tags e formatos criados no site podem continuar no banco até a equipe apagá-los.
         </p>
         <p>
           A autorização também pode ser revogada na conta Google, em <a className="underline font-bold" href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">myaccount.google.com/permissions</a>.

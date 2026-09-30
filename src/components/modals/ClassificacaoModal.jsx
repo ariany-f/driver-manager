@@ -29,14 +29,17 @@ export default function ClassificacaoModal({ file, territorios, tags, formatos =
         </div>
         <div className="p-6 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] overflow-y-auto space-y-8 flex-1">
           <div className="space-y-4">
-            <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Territórios</h4>
+            <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Formatos</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {territorios.map(territorio => (
                 <label key={territorio.id} onClick={() => toggleSelection(territorio.id, setSelectedTerritorios)} className="flex items-center gap-3 p-3 border-2 border-[#2C1A14] bg-white cursor-pointer hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_#2C1A14] transition-all">
                   <div className="relative flex items-center justify-center w-6 h-6 border-2 border-[#2C1A14] bg-[#F4EFE6] shrink-0">
                     {selectedTerritorios.includes(territorio.id) && <div className="absolute w-3.5 h-3.5 bg-[#C13B22]"></div>}
                   </div>
-                  <span className="px-2 py-1 text-xs font-display font-bold uppercase truncate border-2 border-[#2C1A14]" style={{ backgroundColor: territorio.bgColor, color: territorio.textColor }}>{territorio.name}</span>
+                  <span className="px-2 py-1 text-xs font-display font-bold uppercase truncate border-2 border-[#2C1A14] inline-flex items-center gap-1" style={{ backgroundColor: territorio.bgColor, color: territorio.textColor }}>
+                    <MediaGlyph icon={territorio.icon} size={12} />
+                    {territorio.name}
+                  </span>
                 </label>
               ))}
             </div>

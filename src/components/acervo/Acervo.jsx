@@ -398,13 +398,16 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             <div className={`${filtersOpen ? 'grid' : 'hidden'} md:grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t-2 border-dashed border-[#2C1A14]/20`}>
               {labelsEnabled && (
                 <div className={availableExtensions.length ? 'md:col-span-6' : 'md:col-span-5'}>
-                  <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#1E3A5F]">Filtrar por Territórios</span>
+                  <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#1E3A5F]">Filtrar por Formatos</span>
                   <div className="flex flex-wrap gap-2">
                     {territorios.map(territorio => (
                       <button key={territorio.id} onClick={() => handleFilterToggle(territorio.id, setSelectedTerritorios)}
-                        className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-[#2C1A14] transition-all ${selectedTerritorios.includes(territorio.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                        className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-[#2C1A14] transition-all inline-flex items-center gap-1.5 ${selectedTerritorios.includes(territorio.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
                         style={selectedTerritorios.includes(territorio.id) ? { backgroundColor: territorio.bgColor, color: territorio.textColor } : {}}
-                      >{territorio.name}</button>
+                      >
+                        <MediaGlyph icon={territorio.icon} size={14} />
+                        {territorio.name}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -488,7 +491,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     onClick={() => { setSemTerritorio(current => !current); setCurrentPage(1); }}
                     className={`min-h-11 shrink-0 border-2 border-[#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider ${semTerritorio ? 'bg-[#EAB308] text-[#2C1A14] shadow-[3px_3px_0px_#2C1A14]' : 'bg-white text-[#2C1A14]'}`}
                   >
-                    Somente sem território
+                    Somente sem formato
                   </button>
                   <button
                     type="button"
@@ -551,7 +554,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     <FileName file={file} formatos={formatos} className="font-display font-black text-[#2C1A14] text-sm uppercase leading-tight" />
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
+                      <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.dataArquivo) || 'Sem data'}</span>
                     </div>
                     <div className="mt-2 inline-flex max-w-full items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20" title={getDisplayPath(file.folderId)}>
                       <Folder size={12} className="shrink-0 text-[#EAB308]" />
@@ -609,7 +612,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                           <FileName file={file} formatos={formatos} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
-                            <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.date)}</span>
+                            <span className="text-[10px] font-sans font-bold text-[#2C1A14]/40 uppercase tracking-wider">{formatFileDate(file.dataArquivo) || 'Sem data'}</span>
                           </div>
                         </div>
                       </div>
@@ -717,6 +720,10 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
         formatos={formatos}
         folderPath={sheetFile ? getDisplayPath(sheetFile.folderId) : ''}
         onClose={() => setSheetFile(null)}
+        onSaveData={async (dataArquivo) => {
+          const saved = await drive.saveData(sheetFile.id, dataArquivo);
+          setSheetFile(current => (current && current.id === saved.fileId ? { ...current, dataArquivo: saved.dataArquivo } : current));
+        }}
         onSaveOrigem={async (origem) => {
           const saved = await drive.saveOrigem(sheetFile.id, origem);
           setSheetFile(current => (current && current.id === saved.fileId ? { ...current, origem: saved.origem } : current));

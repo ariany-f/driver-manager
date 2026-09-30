@@ -9,7 +9,7 @@ export default function BancoNecessario({ isAdmin, error, onOpenSettings, onLogi
         </p>
         <h1 className="font-display font-black uppercase text-3xl sm:text-4xl leading-none">Conecte um banco para usar o acervo.</h1>
         <p className="font-sans font-bold text-[#2C1A14]">
-          A aplicação só abre com o MySQL conectado. A autorização do Google Drive, as pastas, os arquivos, as tags e os territórios ficam nesse banco.
+          A aplicação só abre com o MySQL conectado. A autorização do Google Drive, as pastas, os arquivos, as tags e os formatos ficam nesse banco.
         </p>
         {error && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
         {isAdmin ? (

@@ -13,9 +13,14 @@ const CREATE_TERRITORIOS = `
     name VARCHAR(160) NOT NULL,
     bg_color VARCHAR(7) NOT NULL,
     text_color VARCHAR(7) NOT NULL,
+    icon VARCHAR(40) NOT NULL DEFAULT '',
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
+
+const TERRITORIOS_COLUMNS = [
+  ['icon', "VARCHAR(40) NOT NULL DEFAULT ''"],
+];
 
 const CREATE_TAGS = `
   CREATE TABLE tags (
@@ -76,12 +81,14 @@ const CREATE_ARQUIVOS = `
     file_id VARCHAR(128) NOT NULL,
     pasta_id VARCHAR(128) NULL,
     nome VARCHAR(255) NULL,
+    data_arquivo DATE NULL,
     PRIMARY KEY (file_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
 
 const ARQUIVOS_COLUMNS = [
   ['nome', 'VARCHAR(255) NULL'],
+  ['data_arquivo', 'DATE NULL'],
 ];
 
 const CREATE_DRIVE = `
@@ -268,6 +275,20 @@ async function ensureClassificacaoColumns(db) {
   }
 }
 
+async function ensureTerritoriosColumns(db) {
+  const [rows] = await db.query(
+    `SELECT column_name AS columnName
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'territorios'`,
+  );
+  const present = new Set(rows.map(columnNameOf));
+  for (const [name, definition] of TERRITORIOS_COLUMNS) {
+    if (present.has(name)) continue;
+    await db.query(`ALTER TABLE territorios ADD COLUMN ${name} ${definition}`);
+  }
+}
+
 async function ensureFormatosColumns(db) {
   const [rows] = await db.query(
     `SELECT column_name AS columnName
@@ -336,6 +357,7 @@ export async function ensureTables(env) {
   await ensureAplicacaoColumns(db);
   await ensureArquivosColumns(db);
   await ensureClassificacaoColumns(db);
+  await ensureTerritoriosColumns(db);
   await ensureFormatosColumns(db);
   await ensureJornal(db);
   tablesKey = key;
@@ -679,11 +701,11 @@ export async function loadIdentidade(env) {
   const status = await databaseStatus(env);
   if (!status.connected) return { territorios: [], tags: [], formatos: [] };
   const db = await withPool(env);
-  const [territorios] = await db.query('SELECT id, name, bg_color, text_color FROM territorios ORDER BY name');
+  const [territorios] = await db.query('SELECT id, name, bg_color, text_color, icon FROM territorios ORDER BY name');
   const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
   const [formatos] = await db.query('SELECT id, name, bg_color, text_color, icon FROM formatos ORDER BY name');
   return {
-    territorios: territorios.map(mapItem),
+    territorios: territorios.map(mapFormato),
     tags: tags.map(mapItem),
     formatos: formatos.map(mapFormato),
   };
@@ -691,16 +713,17 @@ export async function loadIdentidade(env) {
 
 async function replaceItems(env, table, items) {
   if (table !== 'territorios' && table !== 'tags' && table !== 'formatos') throw new DriveError('Tabela inválida.');
-  const cleaned = table === 'formatos' ? cleanFormatos(items) : cleanItems(items);
+  const withIcon = table === 'formatos' || table === 'territorios';
+  const cleaned = withIcon ? cleanFormatos(items) : cleanItems(items);
   const db = await withPool(env);
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
     await connection.query(`DELETE FROM ${table}`);
     for (const item of cleaned) {
-      if (table === 'formatos') {
+      if (withIcon) {
         await connection.query(
-          'INSERT INTO formatos (id, name, bg_color, text_color, icon) VALUES (?, ?, ?, ?, ?)',
+          `INSERT INTO ${table} (id, name, bg_color, text_color, icon) VALUES (?, ?, ?, ?, ?)`,
           [item.id, item.name, item.bgColor, item.textColor, item.icon || ''],
         );
       } else {
@@ -786,11 +809,12 @@ async function loadFolderTree(env) {
 
 async function loadPlacements(env) {
   const db = await withPool(env);
-  const [rows] = await db.query('SELECT file_id, pasta_id, nome FROM arquivos');
+  const [rows] = await db.query("SELECT file_id, pasta_id, nome, DATE_FORMAT(data_arquivo, '%Y-%m-%d') AS data_arquivo FROM arquivos");
   return rows.map(row => ({
     id: row.file_id,
     folderId: row.pasta_id || '',
     nome: String(row.nome || '').trim(),
+    dataArquivo: String(row.data_arquivo || ''),
   }));
 }
 
@@ -800,7 +824,30 @@ function applyStoredFile(file, stored) {
     ...file,
     folderId: stored.folderId,
     name: stored.nome || file.name,
+    dataArquivo: stored.dataArquivo || '',
   };
+}
+
+function cleanArchiveDate(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new DriveError('A data precisa estar no formato AAAA-MM-DD.');
+  const [year, month, day] = text.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw new DriveError('Essa data não existe.');
+  }
+  return text;
+}
+
+export async function saveArquivoData(env, fileId, value) {
+  const id = assertRecordId(fileId, 'arquivo');
+  const dataArquivo = cleanArchiveDate(value);
+  const db = await withPool(env);
+  const [found] = await db.query('SELECT file_id FROM arquivos WHERE file_id = ?', [id]);
+  if (!found.length) throw new DriveError('Arquivo não encontrado.', 404);
+  await db.query('UPDATE arquivos SET data_arquivo = ? WHERE file_id = ?', [dataArquivo, id]);
+  return { fileId: id, dataArquivo: dataArquivo || '' };
 }
 
 async function knownDriveIds(env) {

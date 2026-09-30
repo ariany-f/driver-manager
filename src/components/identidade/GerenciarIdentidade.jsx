@@ -5,7 +5,7 @@ import { getContrastTextColor, PREDEFINED_COLORS } from '../../lib/colors.js';
 import { MEDIA_ICONS, MediaGlyph } from '../../lib/mediaIcons.js';
 
 const TAB_LABEL = {
-  territorios: { plural: 'Territórios', singular: 'Território' },
+  territorios: { plural: 'Formatos', singular: 'Formato' },
   tags: { plural: 'Tags Livres', singular: 'Tag' },
   formatos: { plural: 'Mídia', singular: 'Mídia' },
 };
@@ -45,7 +45,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
       name: name.trim(),
       bgColor: color,
       textColor: getContrastTextColor(color),
-      ...(activeTab === 'formatos' ? { icon } : {}),
+      ...(activeTab === 'formatos' || activeTab === 'territorios' ? { icon } : {}),
     };
 
     const apply = (list) => (editingItem ? list.map(item => item.id === editingItem.id ? newItem : item) : [...list, newItem]);
@@ -74,7 +74,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
 
         <div className="flex flex-wrap gap-3 border-b-2 border-[#2C1A14]/20 pb-4">
           <button onClick={() => setActiveTab('territorios')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'territorios' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#C13B22]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
-            Territórios
+            Formatos
           </button>
           <button onClick={() => setActiveTab('tags')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'tags' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#EAB308]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
             Tags Livres
@@ -91,8 +91,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                 className="px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2 min-w-0"
                 style={{ backgroundColor: item.bgColor, color: item.textColor }}
               >
-                {activeTab === 'territorios' && <span className="w-2 h-2 rounded-full bg-current opacity-70 shrink-0"></span>}
-                {activeTab === 'formatos' && <MediaGlyph icon={item.icon} size={14} />}
+                {activeTab !== 'tags' && <MediaGlyph icon={item.icon} size={14} />}
                 <span className="truncate">{item.name}</span>
               </span>
               <div className="flex items-center gap-2 shrink-0">
@@ -126,8 +125,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                       className="px-3 py-1.5 text-sm font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2"
                       style={{ backgroundColor: item.bgColor, color: item.textColor }}
                     >
-                      {activeTab === 'territorios' && <span className="w-2 h-2 rounded-full bg-current opacity-70"></span>}
-                      {activeTab === 'formatos' && <MediaGlyph icon={item.icon} size={16} />}
+                      {activeTab !== 'tags' && <MediaGlyph icon={item.icon} size={16} />}
                       {item.name}
                     </span>
                   </td>
@@ -166,11 +164,11 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
                   className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-lg outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
-                  placeholder={activeTab === 'formatos' ? 'Ex: Jornal' : 'Ex: Zona Norte'} autoFocus
+                  placeholder={activeTab === 'formatos' ? 'Ex: Jornal' : activeTab === 'territorios' ? 'Ex: Documento' : 'Ex: Zona Norte'} autoFocus
                 />
               </div>
 
-              {activeTab === 'formatos' && (
+              {activeTab !== 'tags' && (
                 <div>
                   <label className="block font-display font-bold text-sm uppercase tracking-wider mb-2">Ícone</label>
                   <div className="bg-white border-4 border-[#2C1A14] p-3 grid grid-cols-6 sm:grid-cols-8 gap-1.5">
@@ -218,8 +216,7 @@ export default function GerenciarIdentidade({ territorios, tags, formatos = [], 
                   className="px-4 py-2 text-lg font-display font-bold uppercase tracking-wider shadow-[4px_4px_0px_#2C1A14] border-4 border-[#2C1A14] inline-flex items-center gap-2"
                   style={{ backgroundColor: color, color: getContrastTextColor(color) }}
                 >
-                  {activeTab === 'territorios' && <span className="w-2.5 h-2.5 rounded-full bg-current opacity-70"></span>}
-                  {activeTab === 'formatos' && <MediaGlyph icon={icon} size={18} />}
+                  {activeTab !== 'tags' && <MediaGlyph icon={icon} size={18} />}
                   {name || 'Exemplo'}
                 </span>
               </div>

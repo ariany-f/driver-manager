@@ -51,6 +51,7 @@ export default function App() {
   const [driveMessage, setDriveMessage] = useState('');
   const [driveError, setDriveError] = useState('');
   const [labelsEnabled, setLabelsEnabled] = useState(false);
+  const [databaseProblem, setDatabaseProblem] = useState(null);
   const [novidades, setNovidades] = useState(null);
   const [classificarNovos, setClassificarNovos] = useState([]);
   const [classificando, setClassificando] = useState(false);
@@ -218,6 +219,7 @@ export default function App() {
         .then(status => {
           const connected = Boolean(status.connected);
           setLabelsEnabled(connected);
+          setDatabaseProblem(connected ? null : { error: status.error || '', limited: Boolean(status.limited), limit: Number(status.limit) || 0, at: Date.now() });
           if (!connected) {
             setDriveReady(true);
             setLogoUrl('');
@@ -545,7 +547,10 @@ export default function App() {
         {showGate && (
           <BancoNecessario
             isAdmin={isAdmin}
-            error={driveError}
+            error={databaseProblem?.limited ? '' : driveError || databaseProblem?.error}
+            limited={Boolean(databaseProblem?.limited)}
+            limitedAt={databaseProblem?.at}
+            limit={databaseProblem?.limit}
             onOpenSettings={() => goTo('configuracoes')}
             onLogin={() => setLoginOpen(true)}
           />

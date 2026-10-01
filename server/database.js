@@ -197,11 +197,17 @@ function publicStatus(status) {
     configured: status.configured,
     connected: status.connected,
     error: status.error,
+    limited: Boolean(status.limited),
+    limit: status.limit || 0,
     tables: status.tables || [],
   };
 }
 
 const CONNECTION_LIMIT = /max_connections_per_hour|max_user_connections|max_connections/i;
+
+function limitOf(error) {
+  return Number(String(error?.message || '').match(/current value:\s*(\d+)/i)?.[1]) || 0;
+}
 
 function safeMessage(error, settings) {
   if (/max_connections_per_hour/i.test(String(error?.message))) {
@@ -433,7 +439,7 @@ async function ping(settings) {
       return { configured: true, connected: true, error: '', tables };
     } catch (error) {
       if (CONNECTION_LIMIT.test(String(error?.message))) {
-        return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited: true };
+        return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited: true, limit: limitOf(error) };
       }
     }
   }
@@ -445,7 +451,7 @@ async function ping(settings) {
     return { configured: true, connected: true, error: '', tables };
   } catch (error) {
     const limited = CONNECTION_LIMIT.test(String(error?.message));
-    return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited };
+    return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited, limit: limited ? limitOf(error) : 0 };
   } finally {
     await opened?.connection.end().catch(() => {});
   }

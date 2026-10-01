@@ -785,9 +785,15 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   <tr key={file.id} className="hover:bg-white/60 transition-colors group">
                     <td className="px-4 py-4 min-w-0">
                       <div className="flex items-start gap-4 min-w-0">
-                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[4px_4px_0px_#2C1A14] group-hover:-translate-y-1 group-hover:shadow-[6px_6px_0px_#C13B22] transition-all overflow-hidden flex items-center justify-center p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewingFile(file)}
+                          className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 border-4 border-[#2C1A14] bg-[#F4EFE6] shadow-[4px_4px_0px_#2C1A14] group-hover:-translate-y-1 group-hover:shadow-[6px_6px_0px_#C13B22] transition-all overflow-hidden flex items-center justify-center p-0.5 cursor-zoom-in focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#EAB308]"
+                          title="Ver arquivo"
+                          aria-label={`Ver arquivo ${file.name}`}
+                        >
                           <FileThumb file={file} iconSize={32} badge />
-                        </div>
+                        </button>
                         <div className="min-w-0">
                           <FileName file={file} className="font-display font-black text-[#2C1A14] text-sm sm:text-base uppercase" />
                           <div className="flex flex-wrap items-center gap-2 mt-1">

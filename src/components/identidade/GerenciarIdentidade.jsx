@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Edit, Plus, Star, Trash2 } from 'lucide-react';
+import Badge from '../ui/Badge.jsx';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
+import StatusBadge from '../ui/StatusBadge.jsx';
 import { getContrastTextColor, PREDEFINED_COLORS } from '../../lib/colors.js';
 import { MEDIA_ICONS, MediaGlyph } from '../../lib/mediaIcons.js';
 
@@ -118,13 +120,19 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
         <div className="md:hidden space-y-3">
           {currentList.map(item => (
             <div key={item.id} className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[4px_4px_0px_rgba(44,26,20,0.15)] p-3 flex items-center justify-between gap-3">
-              <span
-                className="px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2 min-w-0"
-                style={{ backgroundColor: item.bgColor, color: item.textColor }}
-              >
-                {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={14} />}
-                <span className="truncate">{item.name}</span>
-              </span>
+              {activeTab === 'tags' ? (
+                <span className="min-w-0 [&>span]:!mb-0"><Badge item={item} /></span>
+              ) : activeTab === 'status' ? (
+                <StatusBadge item={item} className="min-w-0" />
+              ) : (
+                <span
+                  className="px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2 min-w-0"
+                  style={{ backgroundColor: item.bgColor, color: item.textColor }}
+                >
+                  {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={14} />}
+                  <span className="truncate">{item.name}</span>
+                </span>
+              )}
               {activeTab === 'status' && item.padrao && <PadraoMark />}
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => openModal(item)} className="bg-white border-2 border-[#2C1A14] p-2.5 shadow-[2px_2px_0px_#2C1A14]" title="Editar" aria-label="Editar">
@@ -153,13 +161,19 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
               {currentList.map(item => (
                 <tr key={item.id} className="hover:bg-white/60 transition-colors">
                   <td className="px-5 py-4">
-                    <span
-                      className="px-3 py-1.5 text-sm font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2"
-                      style={{ backgroundColor: item.bgColor, color: item.textColor }}
-                    >
-                      {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={16} />}
-                      {item.name}
-                    </span>
+                    {activeTab === 'tags' ? (
+                      <span className="inline-flex [&>span]:!mb-0"><Badge item={item} /></span>
+                    ) : activeTab === 'status' ? (
+                      <StatusBadge item={item} />
+                    ) : (
+                      <span
+                        className="px-3 py-1.5 text-sm font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#2C1A14] border-2 border-[#2C1A14] inline-flex items-center gap-2"
+                        style={{ backgroundColor: item.bgColor, color: item.textColor }}
+                      >
+                        {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={16} />}
+                        {item.name}
+                      </span>
+                    )}
                     {activeTab === 'status' && item.padrao && <PadraoMark className="ml-4" />}
                   </td>
                   <td className="px-5 py-4">
@@ -262,6 +276,15 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
 
               <div className="pt-2">
                 <span className="block font-display font-bold text-sm uppercase tracking-wider mb-2 text-[#2C1A14]/60">Prévia</span>
+                {activeTab === 'tags' ? (
+                  <span className="inline-flex origin-left scale-150 [&>span]:!mb-0">
+                    <Badge item={{ name: name || 'Exemplo', bgColor: color, textColor: getContrastTextColor(color) }} />
+                  </span>
+                ) : activeTab === 'status' ? (
+                  <span className="inline-flex origin-left scale-150">
+                    <StatusBadge item={{ name: name || 'Exemplo', bgColor: color, textColor: getContrastTextColor(color) }} />
+                  </span>
+                ) : (
                 <span
                   className="px-4 py-2 text-lg font-display font-bold uppercase tracking-wider shadow-[4px_4px_0px_#2C1A14] border-4 border-[#2C1A14] inline-flex items-center gap-2"
                   style={{ backgroundColor: color, color: getContrastTextColor(color) }}
@@ -269,6 +292,7 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
                   {activeTab === 'territorios' && <MediaGlyph icon={icon} size={18} />}
                   {name || 'Exemplo'}
                 </span>
+                )}
               </div>
             </div>
 

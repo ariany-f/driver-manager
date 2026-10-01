@@ -137,7 +137,7 @@ async function readCachedArchive(config, env) {
   return fresh ? archiveCache.archive : readDriveArchive(config, env);
 }
 
-const SORT_FIELDS = new Set(['nome', 'local', 'classificacao', 'status', 'origem', 'dataArquivo', 'dataDrive', 'tamanho']);
+const SORT_FIELDS = new Set(['formato', 'nome', 'local', 'classificacao', 'status', 'dataArquivo', 'dataDrive', 'tamanho']);
 
 function folderPaths(tree, prefix = '', paths = new Map()) {
   for (const folder of tree || []) {
@@ -154,13 +154,14 @@ function sortedIds(payload, identidade, campo, direcao) {
   const defaultStatusName = (identidade.status || []).find(item => item.padrao)?.name || '';
   const statusName = (file) => statusNames.get(file.status) || defaultStatusName;
   const territorioNames = new Map((identidade.territorios || []).map(item => [item.id, item.name]));
-  const firstTerritorio = (file) => (file.territorios || []).map(id => territorioNames.get(id)).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'))[0] || '';
+  const tagNames = new Map((identidade.tags || []).map(item => [item.id, item.name]));
+  const firstName = (ids, names) => (ids || []).map(id => names.get(id)).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'))[0] || '';
   const valueOf = {
+    formato: file => firstName(file.territorios, territorioNames),
     nome: file => file.name || '',
     local: file => (file.folderId ? paths.get(file.folderId) || '' : '/'),
-    classificacao: file => [statusName(file), firstTerritorio(file)].filter(Boolean).join(' · '),
+    classificacao: file => firstName(file.tags, tagNames),
     status: statusName,
-    origem: file => file.origem || '',
     dataArquivo: file => file.dataArquivo || '',
     dataDrive: file => file.date || '',
     tamanho: file => Number(file.sizeBytes) || 0,

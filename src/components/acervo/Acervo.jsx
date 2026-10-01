@@ -75,6 +75,7 @@ const SEM_STATUS = '__sem_status__';
 const SEM_ORIGEM = '__sem_origem__';
 
 const SORT_OPTIONS = [
+  { campo: 'formato', label: 'Formato' },
   { campo: 'nome', label: 'Nome' },
   { campo: 'dataArquivo', label: 'Data do acervo' },
   { campo: 'dataDrive', label: 'Data no Drive' },
@@ -82,7 +83,6 @@ const SORT_OPTIONS = [
   { campo: 'local', label: 'Localização' },
   { campo: 'classificacao', label: 'Classificação' },
   { campo: 'status', label: 'Status' },
-  { campo: 'origem', label: 'Origem' },
 ];
 
 function SortButton({ campo, label, sort, sorting, onToggle, className = '' }) {
@@ -627,7 +627,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                 >
                   <option value="">Sem ordenação</option>
                   {SORT_OPTIONS
-                    .filter(option => (option.campo !== 'status' || statusList.length) && (option.campo !== 'origem' || origens.length) && (option.campo !== 'classificacao' || labelsEnabled))
+                    .filter(option => (option.campo !== 'status' || statusList.length) && (!['classificacao', 'formato'].includes(option.campo) || labelsEnabled))
                     .map(option => <option key={option.campo} value={option.campo}>{option.label}</option>)}
                 </select>
                 {sort.campo && (
@@ -758,15 +758,18 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             <table className="w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
+                  {labelsEnabled && (
+                    <th className="px-4 py-4 font-black w-36" aria-sort={sort.campo === 'formato' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                      <SortButton campo="formato" label="Formato" sort={sort} sorting={sorting} onToggle={toggleSort} />
+                    </th>
+                  )}
                   <th className="px-4 py-4 font-black" aria-sort={sort.campo === 'nome' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                       <SortButton campo="nome" label="Arquivo" sort={sort} sorting={sorting} onToggle={toggleSort} />
                       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[#2C1A14]/70">
                         <SortButton campo="dataArquivo" label="Data acervo" sort={sort} sorting={sorting} onToggle={toggleSort} />
                         <SortButton campo="dataDrive" label="Data Drive" sort={sort} sorting={sorting} onToggle={toggleSort} />
-                        <SortButton campo="tamanho" label="Tamanho" sort={sort} sorting={sorting} onToggle={toggleSort} />
-                        {origens.length > 0 && <SortButton campo="origem" label="Origem" sort={sort} sorting={sorting} onToggle={toggleSort} />}
-                      </span>
+                        <SortButton campo="tamanho" label="Tamanho" sort={sort} sorting={sorting} onToggle={toggleSort} />                      </span>
                     </div>
                   </th>
                   <th className="px-4 py-4 font-black w-44" aria-sort={sort.campo === 'local' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
@@ -774,18 +777,31 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   </th>
                   {labelsEnabled && (
                     <th className="px-4 py-4 font-black w-52" aria-sort={sort.campo === 'classificacao' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
-                      <div className="flex flex-col items-start gap-1">
-                        <SortButton campo="classificacao" label="Classificação" sort={sort} sorting={sorting} onToggle={toggleSort} />
-                        {statusList.length > 0 && <SortButton campo="status" label="Status" sort={sort} sorting={sorting} onToggle={toggleSort} className="text-[10px] text-[#2C1A14]/70" />}
-                      </div>
+                      <SortButton campo="classificacao" label="Classificação" sort={sort} sorting={sorting} onToggle={toggleSort} />
                     </th>
                   )}
-                  <th className={`px-4 py-4 font-black text-right ${isAdmin && labelsEnabled ? 'w-96' : 'w-64'}`}>Ações</th>
+                  <th className={`px-4 py-4 font-black text-right ${isAdmin && labelsEnabled ? 'w-96' : 'w-64'}`} aria-sort={sort.campo === 'status' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                    <div className="flex flex-col items-end gap-1">
+                      <span>Ações</span>
+                      {labelsEnabled && statusList.length > 0 && <SortButton campo="status" label="Status" sort={sort} sorting={sorting} onToggle={toggleSort} className="text-[10px] text-[#2C1A14]/70" />}
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-dashed divide-[#2C1A14]/20 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
                 {currentFiles.map(file => (
                   <tr key={file.id} className="hover:bg-white/60 transition-colors group">
+                    {labelsEnabled && (
+                      <td className="px-4 py-4 align-middle">
+                        {(file.territorios || []).some(id => territorios.some(territorio => territorio.id === id)) ? (
+                          <div className="flex flex-wrap">
+                            {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
+                          </div>
+                        ) : (
+                          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#2C1A14]/40">Sem formato</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-4 min-w-0">
                       <div className="flex items-start gap-4 min-w-0">
                         <button
@@ -814,28 +830,23 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     </td>
                     {labelsEnabled && (
                       <td className="px-4 py-4">
-                        <div className="flex flex-col gap-1.5">
-                          {fileStatus(file) && (
-                            <div>
-                              <StatusBadge item={statusById.get(fileStatus(file))} />
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-1">
-                            {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
-                          </div>
+                        <div className="flex flex-wrap gap-1">
+                          {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
                         </div>
                       </td>
                     )}
                     <td className="px-4 py-4 whitespace-nowrap">
+                      {labelsEnabled && fileStatus(file) && (
+                        <div className="flex justify-end mb-2">
+                          <StatusBadge item={statusById.get(fileStatus(file))} />
+                        </div>
+                      )}
                       {renderFileActions(file)}
                     </td>
                   </tr>
                 ))}
                 {currentFiles.length === 0 && (
-                  <tr><td colSpan={labelsEnabled ? 4 : 3} className="px-5 py-12 text-center font-display font-bold uppercase text-[#2C1A14]/50">Nenhum arquivo encontrado com estes filtros.</td></tr>
+                  <tr><td colSpan={labelsEnabled ? 5 : 3} className="px-5 py-12 text-center font-display font-bold uppercase text-[#2C1A14]/50">Nenhum arquivo encontrado com estes filtros.</td></tr>
                 )}
               </tbody>
             </table>

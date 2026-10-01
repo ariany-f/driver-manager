@@ -5,9 +5,10 @@ import { mediaLabel } from '../../lib/media.js';
 import { MediaGlyph } from '../../lib/mediaIcons.js';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 
-export default function ClassificacaoModal({ file, territorios, tags, onClose, onSave }) {
+export default function ClassificacaoModal({ file, territorios, tags, statusList = [], onClose, onSave }) {
   const [selectedTerritorios, setSelectedTerritorios] = useState(file.territorios || []);
   const [selectedTags, setSelectedTags] = useState(file.tags || []);
+  const [selectedStatus, setSelectedStatus] = useState(statusList.some(item => item.id === file.status) ? file.status : '');
   const identified = fileExtension(file);
 
   const toggleSelection = (id, setList) => {
@@ -27,6 +28,38 @@ export default function ClassificacaoModal({ file, territorios, tags, onClose, o
           <button onClick={onClose} className="text-[#2C1A14] hover:bg-[#C13B22] hover:text-white p-2 border-2 border-transparent hover:border-[#2C1A14] transition-colors"><X size={24} strokeWidth={3} /></button>
         </div>
         <div className="p-6 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] overflow-y-auto space-y-8 flex-1">
+          <div className="space-y-4">
+            <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Status</h4>
+            {statusList.length === 0 ? (
+              <p className="font-sans text-sm font-bold text-[#2C1A14]/70">Nenhum status criado. Crie em Classificações › Status.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Status do documento">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedStatus === ''}
+                  onClick={() => setSelectedStatus('')}
+                  className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedStatus === '' ? 'bg-[#2C1A14] text-[#F4EFE6] shadow-[3px_3px_0px_#C13B22] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-70 hover:opacity-100'}`}
+                >
+                  Sem status
+                </button>
+                {statusList.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedStatus === item.id}
+                    onClick={() => setSelectedStatus(item.id)}
+                    className={`min-h-11 inline-flex items-center gap-1.5 border-2 border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedStatus === item.id ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'opacity-60 hover:opacity-100'}`}
+                    style={{ backgroundColor: item.bgColor, color: item.textColor }}
+                  >
+                    <span className="w-2 h-2 border border-current bg-current" aria-hidden="true" />
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="space-y-4">
             <h4 className="font-display font-black text-lg uppercase border-b-2 border-[#2C1A14]/20 pb-2">Formatos</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -74,7 +107,7 @@ export default function ClassificacaoModal({ file, territorios, tags, onClose, o
         </div>
         <div className="p-4 border-t-4 border-[#2C1A14] bg-[#F4EFE6] flex flex-col-reverse sm:flex-row sm:justify-end gap-3 shrink-0">
           <button onClick={onClose} className="font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 decoration-2 px-4 py-2 w-full sm:w-auto">Cancelar</button>
-          <ButtonPrimary onClick={() => onSave(file.id, selectedTerritorios, selectedTags, file.formatos || [])} color="bgMustard" className="w-full sm:w-auto">Salvar</ButtonPrimary>
+          <ButtonPrimary onClick={() => onSave(file.id, selectedTerritorios, selectedTags, file.formatos || [], selectedStatus)} color="bgMustard" className="w-full sm:w-auto">Salvar</ButtonPrimary>
         </div>
       </div>
     </div>

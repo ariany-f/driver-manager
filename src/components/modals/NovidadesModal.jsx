@@ -93,7 +93,7 @@ export default function NovidadesModal({ arquivos, pastas, excluidos, busy, erro
           />
           <Section
             title="Excluídos do acervo"
-            hint="Voltam com as tags, formatos, origem, data e nome que já tinham."
+            hint="Voltam com as tags, formatos, status, origem, data e nome que já tinham."
             items={arquivosExcluidos}
             chosen={chosenRestore}
             onToggle={id => setChosenRestore(current => toggle(current, id))}

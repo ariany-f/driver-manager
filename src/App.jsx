@@ -14,7 +14,7 @@ import PoliticaPrivacidade from './components/legal/PoliticaPrivacidade.jsx';
 import TermosServico from './components/legal/TermosServico.jsx';
 import UploadProgress from './components/drive/UploadProgress.jsx';
 import { getSession, logout as endSession } from './services/auth.js';
-import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, getVlibras, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
+import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, getVlibras, moveArquivo, renamePasta, saveStatus, saveTags, saveTerritorios } from './services/database.js';
 import {
   disconnectDrive,
   exportClassificacoes,
@@ -41,6 +41,7 @@ export default function App() {
   const [vlibras, setVlibras] = useState(false);
   const [territorios, setTerritorios] = useState([]);
   const [tags, setTags] = useState([]);
+  const [statusList, setStatusList] = useState([]);
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [driveReady, setDriveReady] = useState(false);
@@ -74,6 +75,7 @@ export default function App() {
       .then(data => {
         setTerritorios(data.territorios || []);
         setTags(data.tags || []);
+        setStatusList(data.status || []);
       })
       .catch(() => {});
   }, []);
@@ -108,6 +110,19 @@ export default function App() {
     try {
       const saved = await saveTags(next);
       setTags(saved.tags || next);
+    } catch (error) {
+      setDriveError(error.message);
+    }
+  };
+
+  const persistStatus = async (next) => {
+    setStatusList(next);
+    try {
+      const saved = await saveStatus(next);
+      const kept = saved.status || next;
+      setStatusList(kept);
+      const ids = new Set(kept.map(item => item.id));
+      setFiles(current => current.map(file => (file.status && !ids.has(file.status) ? { ...file, status: '' } : file)));
     } catch (error) {
       setDriveError(error.message);
     }
@@ -415,11 +430,11 @@ export default function App() {
         setDriveError(error.message);
       }
     },
-    saveClassificacao: async (fileId, territoriosNext, tagsNext, formatosNext = []) => {
+    saveClassificacao: async (fileId, territoriosNext, tagsNext, formatosNext = [], statusNext = '') => {
       setDriveError('');
       try {
-        await saveDriveClassificacao(fileId, territoriosNext, tagsNext, formatosNext);
-        setFiles(current => current.map(file => file.id === fileId ? { ...file, territorios: territoriosNext, tags: tagsNext, formatos: formatosNext } : file));
+        await saveDriveClassificacao(fileId, territoriosNext, tagsNext, formatosNext, statusNext);
+        setFiles(current => current.map(file => file.id === fileId ? { ...file, territorios: territoriosNext, tags: tagsNext, formatos: formatosNext, status: statusNext } : file));
       } catch (error) {
         setDriveError(error.message);
       }
@@ -545,6 +560,7 @@ export default function App() {
             setFolders={setFolders}
             territorios={territorios}
             tags={tags}
+            statusList={statusList}
             drive={drive}
             labelsEnabled={labelsEnabled}
           />
@@ -553,8 +569,10 @@ export default function App() {
           <GerenciarIdentidade
             territorios={territorios}
             tags={tags}
+            statusList={statusList}
             onTerritorios={persistTerritorios}
             onTags={persistTags}
+            onStatus={persistStatus}
           />
         )}
         {driveReady && activeView === 'configuracoes' && (

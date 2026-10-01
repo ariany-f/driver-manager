@@ -31,6 +31,7 @@ export function downloadBackup(backup) {
 export function countClassified(backup) {
   return (backup?.arquivos || []).filter(item => (item.territorios || []).length
     || (item.tags || []).length
+    || item.status
     || item.origem
     || item.dataArquivo
     || item.nome

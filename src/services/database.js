@@ -45,6 +45,15 @@ export function saveTags(tags) {
   }).then(readJson);
 }
 
+export function saveStatus(status) {
+  return fetch('/api/database/status', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ status }),
+  }).then(readJson);
+}
+
 export function saveFormatos(formatos) {
   return fetch('/api/database/formatos', {
     method: 'PUT',

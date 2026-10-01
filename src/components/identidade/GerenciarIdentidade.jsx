@@ -7,9 +7,22 @@ import { MEDIA_ICONS, MediaGlyph } from '../../lib/mediaIcons.js';
 const TAB_LABEL = {
   territorios: { plural: 'Formatos', singular: 'Formato' },
   tags: { plural: 'Tags Livres', singular: 'Tag' },
+  status: { plural: 'Status', singular: 'Status' },
 };
 
-export default function GerenciarIdentidade({ territorios, tags, onTerritorios, onTags }) {
+const TABS = [
+  { id: 'territorios', shadow: '#C13B22' },
+  { id: 'tags', shadow: '#EAB308' },
+  { id: 'status', shadow: '#849B55' },
+];
+
+const PLACEHOLDER = {
+  territorios: 'Ex: Documento',
+  tags: 'Ex: Zona Norte',
+  status: 'Ex: Em revisão',
+};
+
+export default function GerenciarIdentidade({ territorios, tags, statusList = [], onTerritorios, onTags, onStatus }) {
   const [activeTab, setActiveTab] = useState('territorios');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -48,19 +61,18 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
     };
 
     const apply = (list) => (editingItem ? list.map(item => item.id === editingItem.id ? newItem : item) : [...list, newItem]);
-    const lists = { territorios, tags };
-    const save = { territorios: onTerritorios, tags: onTags };
     save[activeTab](apply(lists[activeTab]));
     closeModal();
   };
 
+  const lists = { territorios, tags, status: statusList };
+  const save = { territorios: onTerritorios, tags: onTags, status: onStatus };
+
   const handleDelete = (id) => {
-    const lists = { territorios, tags };
-    const save = { territorios: onTerritorios, tags: onTags };
     save[activeTab](lists[activeTab].filter(item => item.id !== id));
   };
 
-  const currentList = { territorios, tags }[activeTab];
+  const currentList = lists[activeTab];
   const tabLabel = TAB_LABEL[activeTab];
 
   return (
@@ -72,12 +84,16 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
         </div>
 
         <div className="flex flex-wrap gap-3 border-b-2 border-[#2C1A14]/20 pb-4">
-          <button onClick={() => setActiveTab('territorios')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'territorios' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#C13B22]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
-            Formatos
-          </button>
-          <button onClick={() => setActiveTab('tags')} className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === 'tags' ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6] shadow-[4px_4px_0px_#EAB308]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}>
-            Tags Livres
-          </button>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`font-display font-black uppercase text-sm sm:text-lg px-3 sm:px-4 py-2 border-4 transition-all ${activeTab === tab.id ? 'bg-[#2C1A14] border-[#2C1A14] text-[#F4EFE6]' : 'bg-transparent border-transparent text-[#2C1A14]/60 hover:text-[#2C1A14]'}`}
+              style={activeTab === tab.id ? { boxShadow: `4px 4px 0px ${tab.shadow}` } : undefined}
+            >
+              {TAB_LABEL[tab.id].plural}
+            </button>
+          ))}
         </div>
 
         <div className="md:hidden space-y-3">
@@ -160,7 +176,7 @@ export default function GerenciarIdentidade({ territorios, tags, onTerritorios, 
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
                   className="w-full border-4 border-[#2C1A14] p-3 font-sans font-medium text-lg outline-none focus:-translate-y-1 focus:shadow-[4px_4px_0px_#2C1A14] transition-all bg-white"
-                  placeholder={activeTab === 'territorios' ? 'Ex: Documento' : 'Ex: Zona Norte'} autoFocus
+                  placeholder={PLACEHOLDER[activeTab]} autoFocus
                 />
               </div>
 

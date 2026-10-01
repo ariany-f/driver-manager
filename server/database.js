@@ -33,6 +33,16 @@ const CREATE_TAGS = `
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
 
+const CREATE_STATUS = `
+  CREATE TABLE status_arquivo (
+    id VARCHAR(64) NOT NULL,
+    name VARCHAR(160) NOT NULL,
+    bg_color VARCHAR(7) NOT NULL,
+    text_color VARCHAR(7) NOT NULL,
+    PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+
 const CREATE_FORMATOS = `
   CREATE TABLE formatos (
     id VARCHAR(64) NOT NULL,
@@ -62,6 +72,7 @@ const CREATE_CLASSIFICACAO = `
 const CLASSIFICACAO_COLUMNS = [
   ['formatos', 'LONGTEXT NULL'],
   ['origem', 'VARCHAR(255) NULL'],
+  ['status_id', 'VARCHAR(64) NULL'],
 ];
 
 const JORNAL_FORMATO = ['formato_jornal', 'Jornal', '#1E3A5F', '#FDFBF7', 'newspaper'];
@@ -231,6 +242,7 @@ async function rememberPool(config, ssl) {
 const TABLE_SQL = [
   ['territorios', CREATE_TERRITORIOS],
   ['tags', CREATE_TAGS],
+  ['status_arquivo', CREATE_STATUS],
   ['formatos', CREATE_FORMATOS],
   ['arquivo_classificacao', CREATE_CLASSIFICACAO],
   ['pastas', CREATE_PASTAS],
@@ -749,20 +761,22 @@ function parseList(value) {
 
 export async function loadIdentidade(env) {
   const status = await databaseStatus(env);
-  if (!status.connected) return { territorios: [], tags: [], formatos: [] };
+  if (!status.connected) return { territorios: [], tags: [], formatos: [], status: [] };
   const db = await withPool(env);
   const [territorios] = await db.query('SELECT id, name, bg_color, text_color, icon FROM territorios ORDER BY name');
   const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
   const [formatos] = await db.query('SELECT id, name, bg_color, text_color, icon FROM formatos ORDER BY name');
+  const [statusRows] = await db.query('SELECT id, name, bg_color, text_color FROM status_arquivo ORDER BY id');
   return {
     territorios: territorios.map(mapFormato),
     tags: tags.map(mapItem),
     formatos: formatos.map(mapFormato),
+    status: statusRows.map(mapItem),
   };
 }
 
 async function replaceItems(env, table, items) {
-  if (table !== 'territorios' && table !== 'tags' && table !== 'formatos') throw new DriveError('Tabela inválida.');
+  if (!['territorios', 'tags', 'formatos', 'status_arquivo'].includes(table)) throw new DriveError('Tabela inválida.');
   const withIcon = table === 'formatos' || table === 'territorios';
   const cleaned = withIcon ? cleanFormatos(items) : cleanItems(items);
   const db = await withPool(env);
@@ -805,11 +819,28 @@ export function saveFormatos(env, items) {
   return replaceItems(env, 'formatos', items);
 }
 
+export async function saveStatus(env, items) {
+  const cleaned = await replaceItems(env, 'status_arquivo', items);
+  const db = await withPool(env);
+  const ids = cleaned.map(item => item.id);
+  if (ids.length) {
+    await db.query(`UPDATE arquivo_classificacao SET status_id = NULL WHERE status_id IS NOT NULL AND status_id NOT IN (${ids.map(() => '?').join(', ')})`, ids);
+  } else {
+    await db.query('UPDATE arquivo_classificacao SET status_id = NULL WHERE status_id IS NOT NULL');
+  }
+  return cleaned;
+}
+
+function cleanStatusId(value) {
+  const id = String(value || '').trim();
+  return ITEM_ID.test(id) ? id : '';
+}
+
 export async function loadFileLabels(env) {
   const status = await databaseStatus(env);
   if (!status.connected) return {};
   const db = await withPool(env);
-  const [rows] = await db.query('SELECT file_id, territorios, tags, formatos, origem FROM arquivo_classificacao');
+  const [rows] = await db.query('SELECT file_id, territorios, tags, formatos, origem, status_id FROM arquivo_classificacao');
   const labels = {};
   for (const row of rows) {
     labels[row.file_id] = {
@@ -817,6 +848,7 @@ export async function loadFileLabels(env) {
       tags: parseList(row.tags),
       formatos: parseList(row.formatos),
       origem: String(row.origem || '').trim(),
+      status: cleanStatusId(row.status_id),
     };
   }
   return labels;
@@ -1126,7 +1158,7 @@ export async function moveArquivo(env, fileId, pastaId) {
   return { fileId: id, folderId: pasta || '' };
 }
 
-export async function saveFileLabels(env, fileId, territorios, tags, formatos) {
+export async function saveFileLabels(env, fileId, territorios, tags, formatos, status) {
   if (!RECORD_ID.test(String(fileId || ''))) throw new DriveError('arquivo inválido.');
   const next = {
     territorios: cleanIdList(territorios),
@@ -1137,12 +1169,27 @@ export async function saveFileLabels(env, fileId, territorios, tags, formatos) {
   const territoriosJson = JSON.stringify(next.territorios);
   const tagsJson = JSON.stringify(next.tags);
   const formatosJson = JSON.stringify(next.formatos);
+  if (status === undefined) {
+    await db.query(
+      `INSERT INTO arquivo_classificacao (file_id, territorios, tags, formatos) VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE territorios = ?, tags = ?, formatos = ?`,
+      [fileId, territoriosJson, tagsJson, formatosJson, territoriosJson, tagsJson, formatosJson],
+    );
+    return next;
+  }
+  let statusId = cleanStatusId(status);
+  if (statusId) {
+    const [found] = await db.query('SELECT id FROM status_arquivo WHERE id = ?', [statusId]);
+    if (!found.length) throw new DriveError('Esse status não existe mais. Atualize a página.');
+  } else {
+    statusId = null;
+  }
   await db.query(
-    `INSERT INTO arquivo_classificacao (file_id, territorios, tags, formatos) VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE territorios = ?, tags = ?, formatos = ?`,
-    [fileId, territoriosJson, tagsJson, formatosJson, territoriosJson, tagsJson, formatosJson],
+    `INSERT INTO arquivo_classificacao (file_id, territorios, tags, formatos, status_id) VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE territorios = ?, tags = ?, formatos = ?, status_id = ?`,
+    [fileId, territoriosJson, tagsJson, formatosJson, statusId, territoriosJson, tagsJson, formatosJson, statusId],
   );
-  return next;
+  return { ...next, status: statusId || '' };
 }
 
 export async function saveArquivoOrigem(env, fileId, origem) {
@@ -1165,9 +1212,10 @@ export async function exportClassificacoes(env, { conta = {}, archive = null } =
   const db = await withPool(env);
   const [territorios] = await db.query('SELECT id, name, bg_color, text_color, icon FROM territorios ORDER BY name');
   const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
+  const [statusRows] = await db.query('SELECT id, name, bg_color, text_color FROM status_arquivo ORDER BY id');
   const [pastas] = await db.query('SELECT id, name, parent_id, origem, oculto FROM pastas');
   const [arquivos] = await db.query('SELECT file_id, pasta_id, nome, data_arquivo, oculto FROM arquivos');
-  const [classificacoes] = await db.query('SELECT file_id, territorios, tags, formatos, origem FROM arquivo_classificacao');
+  const [classificacoes] = await db.query('SELECT file_id, territorios, tags, formatos, origem, status_id FROM arquivo_classificacao');
   const driveNames = new Map((archive?.files || []).map(file => [file.id, String(file.name || '')]));
 
   const byId = new Map();
@@ -1184,6 +1232,7 @@ export async function exportClassificacoes(env, { conta = {}, archive = null } =
         tags: [],
         formatos: [],
         origem: '',
+        status: '',
       });
     }
     return byId.get(id);
@@ -1201,6 +1250,7 @@ export async function exportClassificacoes(env, { conta = {}, archive = null } =
     item.tags = parseList(row.tags);
     item.formatos = parseList(row.formatos);
     item.origem = String(row.origem || '').trim();
+    item.status = cleanStatusId(row.status_id);
   }
 
   return {
@@ -1214,6 +1264,7 @@ export async function exportClassificacoes(env, { conta = {}, archive = null } =
     },
     territorios: territorios.map(mapFormato),
     tags: tags.map(mapItem),
+    status: statusRows.map(mapItem),
     pastas: pastas.map(row => ({
       id: row.id,
       name: row.name,
@@ -1250,11 +1301,13 @@ export async function importClassificacoes(env, rawBackup, archive) {
   const backup = readBackup(rawBackup);
   let territorios;
   let tags;
+  let statusList;
   try {
     territorios = cleanFormatos(Array.isArray(backup.territorios) ? backup.territorios : []);
     tags = cleanItems(Array.isArray(backup.tags) ? backup.tags : []);
+    statusList = cleanItems(Array.isArray(backup.status) ? backup.status : []);
   } catch (error) {
-    throw new DriveError(`Os formatos ou as tags do backup estão com problema: ${error.message}`);
+    throw new DriveError(`Os formatos, as tags ou os status do backup estão com problema: ${error.message}`);
   }
 
   const driveFiles = (archive?.files || []).filter(file => RECORD_ID.test(String(file.id)));
@@ -1266,7 +1319,7 @@ export async function importClassificacoes(env, rawBackup, archive) {
 
   const db = await withPool(env);
   const connection = await db.getConnection();
-  const resumo = { porId: 0, porNome: 0, naoEncontrados: 0, exemplos: [], formatosNovos: 0, tagsNovas: 0, pastasNovas: 0 };
+  const resumo = { porId: 0, porNome: 0, naoEncontrados: 0, exemplos: [], formatosNovos: 0, tagsNovas: 0, statusNovos: 0, pastasNovas: 0 };
   try {
     await connection.beginTransaction();
 
@@ -1291,6 +1344,17 @@ export async function importClassificacoes(env, rawBackup, archive) {
       );
       tagIds.add(item.id);
       resumo.tagsNovas += 1;
+    }
+    const [currentStatus] = await connection.query('SELECT id FROM status_arquivo');
+    const statusIds = new Set(currentStatus.map(row => row.id));
+    for (const item of statusList) {
+      if (statusIds.has(item.id)) continue;
+      await connection.query(
+        'INSERT INTO status_arquivo (id, name, bg_color, text_color) VALUES (?, ?, ?, ?)',
+        [item.id, item.name, item.bgColor, item.textColor],
+      );
+      statusIds.add(item.id);
+      resumo.statusNovos += 1;
     }
 
     const [currentPastas] = await connection.query('SELECT id FROM pastas');
@@ -1349,12 +1413,14 @@ export async function importClassificacoes(env, rawBackup, archive) {
       const fileTags = cleanIdList(item.tags).filter(id => tagIds.has(id));
       const fileFormatos = cleanIdList(item.formatos);
       const origem = String(item.origem || '').trim().slice(0, 255) || null;
+      const statusId = cleanStatusId(item.status);
+      const fileStatus = statusId && statusIds.has(statusId) ? statusId : null;
       await connection.query(
-        `INSERT INTO arquivo_classificacao (file_id, territorios, tags, formatos, origem) VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE territorios = ?, tags = ?, formatos = ?, origem = ?`,
+        `INSERT INTO arquivo_classificacao (file_id, territorios, tags, formatos, origem, status_id) VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE territorios = ?, tags = ?, formatos = ?, origem = ?, status_id = ?`,
         [
-          target.id, JSON.stringify(fileTerritorios), JSON.stringify(fileTags), JSON.stringify(fileFormatos), origem,
-          JSON.stringify(fileTerritorios), JSON.stringify(fileTags), JSON.stringify(fileFormatos), origem,
+          target.id, JSON.stringify(fileTerritorios), JSON.stringify(fileTags), JSON.stringify(fileFormatos), origem, fileStatus,
+          JSON.stringify(fileTerritorios), JSON.stringify(fileTags), JSON.stringify(fileFormatos), origem, fileStatus,
         ],
       );
     }
@@ -1506,6 +1572,12 @@ export async function handleDatabaseRequest(req, res, { root, env }) {
   if (req.method === 'PUT' && url.pathname === '/api/database/tags') {
     const body = await readBody(req);
     sendJson(res, 200, { tags: await saveTags(env, body.tags) });
+    return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/api/database/status') {
+    const body = await readBody(req);
+    sendJson(res, 200, { status: await saveStatus(env, body.status) });
     return;
   }
 

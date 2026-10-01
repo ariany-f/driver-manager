@@ -6,6 +6,7 @@ import { mediaLabel } from '../../lib/media.js';
 import Badge from '../ui/Badge.jsx';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import Calendario from '../ui/Calendario.jsx';
+import StatusBadge from '../ui/StatusBadge.jsx';
 
 function formatFileDate(value) {
   const text = String(value || '').trim();
@@ -33,7 +34,7 @@ function Row({ label, children }) {
   );
 }
 
-export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], folderPath, onClose, onSaveOrigem, onSaveData }) {
+export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], statusList = [], folderPath, onClose, onSaveOrigem, onSaveData }) {
   const [origem, setOrigem] = useState('');
   const [dataArquivo, setDataArquivo] = useState('');
   const [saving, setSaving] = useState(false);
@@ -99,6 +100,11 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
         <div className="overflow-y-auto p-4 sm:p-6">
           <dl>
             <Row label="Arquivo">{file.name}</Row>
+            <Row label="Status">
+              {statusList.find(item => item.id === file.status)
+                ? <StatusBadge item={statusList.find(item => item.id === file.status)} />
+                : 'Sem status'}
+            </Row>
             <Row label="Mídia">
               <span>{mediaLabel(file.type)}</span>
             </Row>

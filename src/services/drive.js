@@ -41,6 +41,11 @@ export function saveDriveFolder(folderId) {
   }).then(readJson);
 }
 
+export function getOrdem(campo, direcao) {
+  const params = new URLSearchParams({ campo, direcao });
+  return fetch(`/api/drive/ordem?${params.toString()}`, { credentials: 'same-origin' }).then(readJson);
+}
+
 export function previewDrive() {
   return fetch('/api/drive/novidades').then(readJson);
 }
@@ -138,10 +143,12 @@ export function saveArquivoOrigem(fileId, origem) {
   }).then(readJson);
 }
 
-export function saveDriveClassificacao(fileId, territorios, tags, formatos) {
+export function saveDriveClassificacao(fileId, territorios, tags, formatos, status) {
+  const body = { territorios, tags, formatos: formatos || [] };
+  if (status !== undefined) body.status = status || '';
   return fetch(`/api/drive/files/${fileId}/classificacao`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ territorios, tags, formatos: formatos || [] }),
+    body: JSON.stringify(body),
   }).then(readJson);
 }

@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree, ScrollText,
+  Archive, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree, Loader2, ScrollText,
   Plus, RefreshCw, Search, Tags, Trash2, Upload, X,
 } from 'lucide-react';
 import Badge from '../ui/Badge.jsx';
+import StatusBadge from '../ui/StatusBadge.jsx';
 import FileIcon from '../ui/FileIcon.jsx';
 import FileThumb from './FileThumb.jsx';
 import ClassificacaoModal from '../modals/ClassificacaoModal.jsx';
@@ -15,6 +16,7 @@ import UploadConfirmModal from '../modals/UploadConfirmModal.jsx';
 import MoveFileModal from '../modals/MoveFileModal.jsx';
 import RenameFileModal from '../modals/RenameFileModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
+import { getOrdem } from '../../services/drive.js';
 import { formatArchiveDate } from '../../lib/archiveDate.js';
 import { fileExtension } from '../../lib/fileExtension.js';
 import { MediaGlyph } from '../../lib/mediaIcons.js';
@@ -68,7 +70,40 @@ function FileName({ file, className = '' }) {
   );
 }
 
-export default function Acervo({ isAdmin, files, setFiles, folders, territorios, tags, drive, labelsEnabled }) {
+const SEM_STATUS = '__sem_status__';
+const SEM_ORIGEM = '__sem_origem__';
+
+const SORT_OPTIONS = [
+  { campo: 'nome', label: 'Nome' },
+  { campo: 'dataArquivo', label: 'Data do acervo' },
+  { campo: 'dataDrive', label: 'Data no Drive' },
+  { campo: 'tamanho', label: 'Tamanho' },
+  { campo: 'local', label: 'Localização' },
+  { campo: 'classificacao', label: 'Classificação' },
+  { campo: 'status', label: 'Status' },
+  { campo: 'origem', label: 'Origem' },
+];
+
+function SortButton({ campo, label, sort, sorting, onToggle, className = '' }) {
+  const active = sort.campo === campo;
+  const Icon = sorting === campo ? Loader2 : active ? (sort.direcao === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+  const next = !active ? 'crescente' : sort.direcao === 'asc' ? 'decrescente' : 'sem ordenação';
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(campo)}
+      disabled={Boolean(sorting)}
+      title={`Ordenar por ${label.toLowerCase()}: ${next}`}
+      aria-label={`Ordenar por ${label.toLowerCase()}: ${next}`}
+      className={`inline-flex items-center gap-1 uppercase tracking-widest font-black hover:text-[#C13B22] disabled:cursor-wait ${active ? 'text-[#C13B22]' : ''} ${className}`}
+    >
+      {label}
+      <Icon size={13} strokeWidth={3} className={sorting === campo ? 'animate-spin' : active ? '' : 'opacity-40'} />
+    </button>
+  );
+}
+
+export default function Acervo({ isAdmin, files, setFiles, folders, territorios, tags, statusList = [], drive, labelsEnabled }) {
   const [editingFile, setEditingFile] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
   const [sheetFile, setSheetFile] = useState(null);
@@ -89,10 +124,47 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [selectedExtensions, setSelectedExtensions] = useState([]);
   const [semTerritorio, setSemTerritorio] = useState(false);
   const [semTag, setSemTag] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [uploadQueue, setUploadQueue] = useState([]);
+  const [selectedOrigens, setSelectedOrigens] = useState([]);
+  const [sort, setSort] = useState({ campo: '', direcao: 'asc' });
+  const [sortOrder, setSortOrder] = useState(null);
+  const [sorting, setSorting] = useState('');
+  const [sortError, setSortError] = useState('');
   const uploadRef = useRef(null);
+  const sortRequest = useRef(0);
   const itemsPerPage = 8;
+
+  const applySort = async (campo, direcao) => {
+    if (!campo) {
+      setSort({ campo: '', direcao: 'asc' });
+      setSortOrder(null);
+      setSortError('');
+      return;
+    }
+    const request = sortRequest.current + 1;
+    sortRequest.current = request;
+    setSorting(campo);
+    setSortError('');
+    try {
+      const result = await getOrdem(campo, direcao);
+      if (sortRequest.current !== request) return;
+      setSort({ campo, direcao });
+      setSortOrder(new Map(result.ids.map((id, index) => [id, index])));
+      setCurrentPage(1);
+    } catch (error) {
+      if (sortRequest.current === request) setSortError(error.message || 'Não foi possível ordenar.');
+    } finally {
+      if (sortRequest.current === request) setSorting('');
+    }
+  };
+
+  const toggleSort = (campo) => {
+    if (sort.campo !== campo) applySort(campo, 'asc');
+    else if (sort.direcao === 'asc') applySort(campo, 'desc');
+    else applySort('', 'asc');
+  };
 
   const flatFolders = flattenFolders(folders);
   const origens = useMemo(() => {
@@ -163,6 +235,10 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     return [...found].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [files]);
   const activeExtensions = selectedExtensions.filter(ext => availableExtensions.includes(ext));
+  const statusById = new Map(statusList.map(item => [item.id, item]));
+  const activeStatus = selectedStatus.filter(id => id === SEM_STATUS || statusById.has(id));
+  const fileStatus = (file) => (file.status && statusById.has(file.status) ? file.status : '');
+  const activeOrigens = selectedOrigens.filter(item => item === SEM_ORIGEM || origens.includes(item));
 
   const filteredFiles = files.filter(file => {
     const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -173,8 +249,14 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     const matchesType = selectedTypes.length === 0 || selectedTypes.includes(file.type);
     const matchesExtension = activeExtensions.length === 0 || activeExtensions.includes(fileExtension(file));
     const matchesFolder = activeFolderId === '' ? true : file.folderId === activeFolderId;
-    return matchesSearch && matchesTerritorio && matchesTag && matchesSemTerritorio && matchesSemTag && matchesType && matchesExtension && matchesFolder;
+    const matchesStatus = !labelsEnabled || activeStatus.length === 0 || activeStatus.includes(fileStatus(file) || SEM_STATUS);
+    const matchesOrigem = activeOrigens.length === 0 || activeOrigens.includes(String(file.origem || '').trim() || SEM_ORIGEM);
+    return matchesSearch && matchesTerritorio && matchesTag && matchesSemTerritorio && matchesSemTag && matchesType && matchesExtension && matchesFolder && matchesStatus && matchesOrigem;
   });
+  if (sortOrder) {
+    const last = sortOrder.size;
+    filteredFiles.sort((left, right) => (sortOrder.get(left.id) ?? last) - (sortOrder.get(right.id) ?? last));
+  }
 
   const totalPages = Math.ceil(filteredFiles.length / itemsPerPage) || 1;
   const currentFiles = filteredFiles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -249,8 +331,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     );
   };
 
-  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length;
-  const filterActive = searchQuery.trim() !== '' || selectedTerritorios.length > 0 || selectedTags.length > 0 || selectedTypes.length > 0 || activeExtensions.length > 0 || semTerritorio || semTag;
+  const activeFilterCount = (labelsEnabled ? selectedTerritorios.length + selectedTags.length + activeStatus.length + (semTerritorio ? 1 : 0) + (semTag ? 1 : 0) : 0) + selectedTypes.length + activeExtensions.length + activeOrigens.length;
+  const filterActive = searchQuery.trim() !== '' || selectedTerritorios.length > 0 || selectedTags.length > 0 || activeStatus.length > 0 || activeOrigens.length > 0 || selectedTypes.length > 0 || activeExtensions.length > 0 || semTerritorio || semTag;
   const mediaRowClass = availableExtensions.length
     ? `md:col-span-12 grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-6${labelsEnabled ? ' border-t-2 border-dashed border-[#2C1A14]/20 pt-4' : ''}`
     : labelsEnabled
@@ -448,6 +530,49 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                 </div>
               )}
 
+              {labelsEnabled && statusList.length > 0 && (
+                <div className="md:col-span-12 border-t-2 border-dashed border-[#2C1A14]/20 pt-4">
+                  <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#627933]">Filtrar por Status</span>
+                  <div className="flex flex-wrap gap-2">
+                    {statusList.map(item => (
+                      <button key={item.id} type="button" aria-pressed={activeStatus.includes(item.id)} onClick={() => handleFilterToggle(item.id, setSelectedStatus)}
+                        className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-[#2C1A14] transition-all inline-flex items-center gap-1.5 ${activeStatus.includes(item.id) ? 'shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                        style={activeStatus.includes(item.id) ? { backgroundColor: item.bgColor, color: item.textColor } : {}}
+                      >
+                        <span className="w-2 h-2 border border-current" style={{ backgroundColor: item.bgColor }} aria-hidden="true" />
+                        {item.name}
+                      </button>
+                    ))}
+                    <button type="button" aria-pressed={activeStatus.includes(SEM_STATUS)} onClick={() => handleFilterToggle(SEM_STATUS, setSelectedStatus)}
+                      className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-dashed border-[#2C1A14] transition-all ${activeStatus.includes(SEM_STATUS) ? 'bg-[#2C1A14] text-[#F4EFE6] shadow-[3px_3px_0px_#849B55] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                    >
+                      Sem status
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {origens.length > 0 && (
+                <div className="md:col-span-12 border-t-2 border-dashed border-[#2C1A14]/20 pt-4">
+                  <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#1E3A5F]">Filtrar por Origem</span>
+                  <div className="flex flex-wrap gap-2">
+                    {origens.map(item => (
+                      <button key={item} type="button" aria-pressed={activeOrigens.includes(item)} onClick={() => handleFilterToggle(item, setSelectedOrigens)}
+                        className={`max-w-full truncate px-3 py-1.5 text-xs font-sans font-bold border-2 border-[#2C1A14] transition-all ${activeOrigens.includes(item) ? 'bg-[#1E3A5F] text-white shadow-[3px_3px_0px_#2C1A14] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-70 hover:opacity-100 hover:-translate-y-0.5'}`}
+                        title={item}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                    <button type="button" aria-pressed={activeOrigens.includes(SEM_ORIGEM)} onClick={() => handleFilterToggle(SEM_ORIGEM, setSelectedOrigens)}
+                      className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-dashed border-[#2C1A14] transition-all ${activeOrigens.includes(SEM_ORIGEM) ? 'bg-[#2C1A14] text-[#F4EFE6] shadow-[3px_3px_0px_#1E3A5F] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                    >
+                      Sem origem
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className={mediaRowClass}>
                 <div>
                   <span className="block font-display font-black text-sm uppercase mb-3 tracking-widest text-[#849B55]">Mídia</span>
@@ -484,8 +609,37 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="bg-[#2C1A14] text-[#F4EFE6] px-4 py-2 font-display font-bold uppercase text-xs shadow-[4px_4px_0px_#C13B22]">
-              {filteredFiles.length} registros encontrados
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="bg-[#2C1A14] text-[#F4EFE6] px-4 py-2 font-display font-bold uppercase text-xs shadow-[4px_4px_0px_#C13B22]">
+                {filteredFiles.length} registros encontrados
+              </div>
+              <div className="xl:hidden flex items-center gap-2">
+                <label htmlFor="acervo-ordem" className="sr-only">Ordenar por</label>
+                <select
+                  id="acervo-ordem"
+                  value={sort.campo}
+                  disabled={Boolean(sorting)}
+                  onChange={(event) => applySort(event.target.value, sort.direcao)}
+                  className="min-h-11 border-2 border-[#2C1A14] bg-white px-2 font-display font-black uppercase text-xs tracking-wider text-[#2C1A14] shadow-[3px_3px_0px_#2C1A14]"
+                >
+                  <option value="">Sem ordenação</option>
+                  {SORT_OPTIONS
+                    .filter(option => (option.campo !== 'status' || statusList.length) && (option.campo !== 'origem' || origens.length) && (option.campo !== 'classificacao' || labelsEnabled))
+                    .map(option => <option key={option.campo} value={option.campo}>{option.label}</option>)}
+                </select>
+                {sort.campo && (
+                  <button
+                    type="button"
+                    onClick={() => applySort(sort.campo, sort.direcao === 'asc' ? 'desc' : 'asc')}
+                    disabled={Boolean(sorting)}
+                    className="min-h-11 min-w-11 inline-flex items-center justify-center border-2 border-[#2C1A14] bg-white shadow-[3px_3px_0px_#2C1A14]"
+                    aria-label={sort.direcao === 'asc' ? 'Ordem crescente. Trocar para decrescente' : 'Ordem decrescente. Trocar para crescente'}
+                  >
+                    {sorting ? <Loader2 size={16} strokeWidth={3} className="animate-spin" /> : sort.direcao === 'asc' ? <ArrowUp size={16} strokeWidth={3} /> : <ArrowDown size={16} strokeWidth={3} />}
+                  </button>
+                )}
+              </div>
+              {sortError && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{sortError}</p>}
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               {labelsEnabled && (
@@ -570,6 +724,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                 </div>
                 {labelsEnabled && (
                   <div className="mt-3 flex flex-wrap">
+                    <StatusBadge item={statusById.get(fileStatus(file))} className="mr-2 mb-2" />
                     {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
                     {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
                   </div>
@@ -600,9 +755,28 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             <table className="w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
-                  <th className="px-4 py-4 font-black">Arquivo</th>
-                  <th className="px-4 py-4 font-black w-44">Localização</th>
-                  {labelsEnabled && <th className="px-4 py-4 font-black w-52">Classificação</th>}
+                  <th className="px-4 py-4 font-black" aria-sort={sort.campo === 'nome' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <SortButton campo="nome" label="Arquivo" sort={sort} sorting={sorting} onToggle={toggleSort} />
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[#2C1A14]/70">
+                        <SortButton campo="dataArquivo" label="Data acervo" sort={sort} sorting={sorting} onToggle={toggleSort} />
+                        <SortButton campo="dataDrive" label="Data Drive" sort={sort} sorting={sorting} onToggle={toggleSort} />
+                        <SortButton campo="tamanho" label="Tamanho" sort={sort} sorting={sorting} onToggle={toggleSort} />
+                        {origens.length > 0 && <SortButton campo="origem" label="Origem" sort={sort} sorting={sorting} onToggle={toggleSort} />}
+                      </span>
+                    </div>
+                  </th>
+                  <th className="px-4 py-4 font-black w-44" aria-sort={sort.campo === 'local' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                    <SortButton campo="local" label="Localização" sort={sort} sorting={sorting} onToggle={toggleSort} />
+                  </th>
+                  {labelsEnabled && (
+                    <th className="px-4 py-4 font-black w-52" aria-sort={sort.campo === 'classificacao' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                      <div className="flex flex-col items-start gap-1">
+                        <SortButton campo="classificacao" label="Classificação" sort={sort} sorting={sorting} onToggle={toggleSort} />
+                        {statusList.length > 0 && <SortButton campo="status" label="Status" sort={sort} sorting={sorting} onToggle={toggleSort} className="text-[10px] text-[#2C1A14]/70" />}
+                      </div>
+                    </th>
+                  )}
                   <th className={`px-4 py-4 font-black text-right ${isAdmin && labelsEnabled ? 'w-96' : 'w-64'}`}>Ações</th>
                 </tr>
               </thead>
@@ -632,6 +806,11 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     {labelsEnabled && (
                       <td className="px-4 py-4">
                         <div className="flex flex-col gap-1.5">
+                          {fileStatus(file) && (
+                            <div>
+                              <StatusBadge item={statusById.get(fileStatus(file))} />
+                            </div>
+                          )}
                           <div className="flex flex-wrap gap-1">
                             {(file.territorios || []).map(id => <Badge key={id} item={territorios.find(territorio => territorio.id === id)} isTerritory />)}
                           </div>
@@ -678,7 +857,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
 
       <ConfirmModal
         isOpen={!!fileToHide} title="Tirar do acervo?"
-        text={`"${fileToHide?.name}" sai da lista. Tags, formatos, origem, data e nome ficam guardados e voltam juntos quando você trouxer o arquivo de volta em Sincronizar. O Google Drive não é alterado.`}
+        text={`"${fileToHide?.name}" sai da lista. Tags, formatos, status, origem, data e nome ficam guardados e voltam juntos quando você trouxer o arquivo de volta em Sincronizar. O Google Drive não é alterado.`}
         confirmLabel="Tirar do acervo"
         onCancel={() => setFileToHide(null)}
         onConfirm={() => {
@@ -713,10 +892,10 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
       />
 
       {labelsEnabled && editingFile && (
-        <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} onClose={() => setEditingFile(null)}
-          onSave={(id, nextTerritorios, nextTags, nextFormatos) => {
-            if (drive.active) drive.saveClassificacao(id, nextTerritorios, nextTags, nextFormatos);
-            else setFiles(files.map(file => file.id === id ? { ...file, territorios: nextTerritorios, tags: nextTags, formatos: nextFormatos } : file));
+        <ClassificacaoModal file={editingFile} territorios={territorios} tags={tags} statusList={statusList} onClose={() => setEditingFile(null)}
+          onSave={(id, nextTerritorios, nextTags, nextFormatos, nextStatus) => {
+            if (drive.active) drive.saveClassificacao(id, nextTerritorios, nextTags, nextFormatos, nextStatus);
+            else setFiles(files.map(file => file.id === id ? { ...file, territorios: nextTerritorios, tags: nextTags, formatos: nextFormatos, status: nextStatus } : file));
             setEditingFile(null);
           }}
         />
@@ -738,6 +917,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
         origens={origens}
         territorios={territorios}
         tags={tags}
+        statusList={statusList}
         folderPath={sheetFile ? getDisplayPath(sheetFile.folderId) : ''}
         onClose={() => setSheetFile(null)}
         onSaveData={async (dataArquivo) => {

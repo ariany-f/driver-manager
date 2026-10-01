@@ -28,6 +28,7 @@ import {
   importClassificacoes,
   loadDriveConnection,
   loadFileLabels,
+  loadIdentidade,
   moveArquivo,
   previewDriveLayout,
   renameArquivo,
@@ -109,6 +110,7 @@ function withLabels(placed, labels) {
       tags: labels[file.id]?.tags || [],
       formatos: labels[file.id]?.formatos || [],
       origem: labels[file.id]?.origem || '',
+      status: labels[file.id]?.status || '',
     })),
     novos: placed.novos || [],
     novasPastas: placed.novasPastas || [],
@@ -116,11 +118,65 @@ function withLabels(placed, labels) {
   };
 }
 
+const ARCHIVE_CACHE_MS = 3 * 60 * 1000;
+let archiveCache = { folderId: '', at: 0, archive: null };
+
 async function readDriveArchive(config, env) {
   const database = await databaseStatus(env);
   if (!database.connected) throw new DriveError('Conecte um banco MySQL para usar a aplicação.', 409);
   if (!config.folderId) throw new DriveError('Preencha o ID da pasta do Drive.', 503);
-  return syncArchive(env, config);
+  const archive = await syncArchive(env, config);
+  archiveCache = { folderId: config.folderId, at: Date.now(), archive };
+  return archive;
+}
+
+async function readCachedArchive(config, env) {
+  const fresh = archiveCache.archive
+    && archiveCache.folderId === config.folderId
+    && Date.now() - archiveCache.at < ARCHIVE_CACHE_MS;
+  return fresh ? archiveCache.archive : readDriveArchive(config, env);
+}
+
+const SORT_FIELDS = new Set(['nome', 'local', 'classificacao', 'status', 'origem', 'dataArquivo', 'dataDrive', 'tamanho']);
+
+function folderPaths(tree, prefix = '', paths = new Map()) {
+  for (const folder of tree || []) {
+    const path = `${prefix}/${folder.name}`;
+    paths.set(folder.id, path);
+    folderPaths(folder.children, path, paths);
+  }
+  return paths;
+}
+
+function sortedIds(payload, identidade, campo, direcao) {
+  const paths = folderPaths(payload.folders);
+  const statusNames = new Map((identidade.status || []).map(item => [item.id, item.name]));
+  const territorioNames = new Map((identidade.territorios || []).map(item => [item.id, item.name]));
+  const firstTerritorio = (file) => (file.territorios || []).map(id => territorioNames.get(id)).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'))[0] || '';
+  const valueOf = {
+    nome: file => file.name || '',
+    local: file => (file.folderId ? paths.get(file.folderId) || '' : '/'),
+    classificacao: file => [statusNames.get(file.status) || '', firstTerritorio(file)].filter(Boolean).join(' · '),
+    status: file => statusNames.get(file.status) || '',
+    origem: file => file.origem || '',
+    dataArquivo: file => file.dataArquivo || '',
+    dataDrive: file => file.date || '',
+    tamanho: file => Number(file.sizeBytes) || 0,
+  }[campo];
+  const sign = direcao === 'desc' ? -1 : 1;
+  const collator = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
+  return payload.files
+    .map(file => ({ id: file.id, value: valueOf(file), name: file.name || '' }))
+    .sort((left, right) => {
+      const leftEmpty = left.value === '' || left.value === 0;
+      const rightEmpty = right.value === '' || right.value === 0;
+      if (leftEmpty !== rightEmpty) return leftEmpty ? 1 : -1;
+      const diff = typeof left.value === 'number'
+        ? left.value - right.value
+        : collator.compare(String(left.value), String(right.value));
+      return diff * sign || collator.compare(left.name, right.name);
+    })
+    .map(item => item.id);
 }
 
 async function archivePayload(config, env, selection = null) {
@@ -272,6 +328,17 @@ async function handleDriveRequest(req, res, { root, env }) {
     return;
   }
 
+  if (req.method === 'GET' && pathname === '/api/drive/ordem') {
+    const campo = url.searchParams.get('campo') || 'nome';
+    const direcao = url.searchParams.get('direcao') === 'desc' ? 'desc' : 'asc';
+    if (!SORT_FIELDS.has(campo)) throw new DriveError('Essa coluna não pode ser ordenada.');
+    const archive = await readCachedArchive(config, env);
+    const placed = await previewDriveLayout(env, archive);
+    const payload = withLabels(placed, await loadFileLabels(env));
+    sendJson(res, 200, { campo, direcao, ids: sortedIds(payload, await loadIdentidade(env), campo, direcao) });
+    return;
+  }
+
   if (req.method === 'GET' && pathname === '/api/drive/sync') {
     sendJson(res, 200, await archivePayload(config, env));
     return;
@@ -394,7 +461,7 @@ async function handleDriveRequest(req, res, { root, env }) {
       throw new DriveError('Formatos e tags ficam disponíveis quando o banco estiver conectado.', 409);
     }
     const body = await readJson(req);
-    const saved = await saveFileLabels(env, labels[1], body.territorios, body.tags, body.formatos);
+    const saved = await saveFileLabels(env, labels[1], body.territorios, body.tags, body.formatos, body.status);
     sendJson(res, 200, saved);
     return;
   }

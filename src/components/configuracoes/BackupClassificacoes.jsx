@@ -102,7 +102,7 @@ export default function BackupClassificacoes({ drive }) {
         <FileUp size={18} strokeWidth={2.5} /> Backup de classificações
       </div>
       <p className="font-sans font-bold text-sm text-[#2C1A14]/80">
-        O backup guarda formatos, tags, origem, datas do acervo, nomes ajustados, pastas e arquivos excluídos. Use para recuperar tudo depois de desconectar e conectar o Drive de novo.
+        O backup guarda formatos, tags, status, origem, datas do acervo, nomes ajustados, pastas e arquivos excluídos. Use para recuperar tudo depois de desconectar e conectar o Drive de novo.
       </p>
       <p className="flex items-start gap-2 font-sans text-sm font-bold text-[#2C1A14] border-l-4 border-[#EAB308] pl-3">
         A conta conectada precisa ser compatível com a que estava conectada quando o backup foi feito: a mesma conta, ou uma que enxergue os mesmos arquivos.
@@ -144,7 +144,7 @@ export default function BackupClassificacoes({ drive }) {
           </div>
           <Verdict check={check} />
           <p className="font-sans text-xs font-bold text-[#2C1A14]/70">
-            Os ajustes do backup substituem os destes arquivos. Formatos e tags que não existirem aqui são criados. Nada muda no Google Drive.
+            Os ajustes do backup substituem os destes arquivos. Formatos, tags e status que não existirem aqui são criados. Nada muda no Google Drive.
           </p>
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <button type="button" onClick={() => setBackup(null)} disabled={busy} className="min-h-11 font-display font-bold uppercase text-[#2C1A14] hover:underline underline-offset-4 px-4 py-2 disabled:opacity-50">Cancelar</button>
@@ -165,6 +165,7 @@ export default function BackupClassificacoes({ drive }) {
             {resumo.porNome ? ` (${resumo.porNome} reconhecidos pelo nome)` : ''}.
             {resumo.formatosNovos ? ` ${resumo.formatosNovos} formatos criados.` : ''}
             {resumo.tagsNovas ? ` ${resumo.tagsNovas} tags criadas.` : ''}
+            {resumo.statusNovos ? ` ${resumo.statusNovos} status criados.` : ''}
             {resumo.pastasNovas ? ` ${resumo.pastasNovas} pastas recriadas.` : ''}
           </p>
           {resumo.naoEncontrados > 0 && (

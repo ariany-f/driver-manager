@@ -417,6 +417,7 @@ export async function syncArchive(env, config) {
           tags: label.tags || [],
           date: String(file.modifiedTime || ''),
           size: formatSize(file.size),
+          sizeBytes: Number(file.size) || 0,
           type: mediaType(file.mimeType, file.name),
           mimeType: file.mimeType,
           url: `/api/drive/media/${file.id}`,

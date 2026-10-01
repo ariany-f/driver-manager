@@ -46,7 +46,7 @@ export default function DesconectarModal({ isOpen, account, onExport, onCancel, 
             Ao desconectar{account ? ` ${account}` : ''}, o acervo esquece onde cada arquivo estava, os nomes ajustados, as datas do acervo e os arquivos excluídos. Nada é apagado no Google Drive.
           </p>
           <p className="font-sans font-bold text-sm text-[#2C1A14]">
-            Baixe o backup antes. Depois de conectar de novo, importe esse arquivo em <strong>Configurações › Backup de classificações</strong> para recuperar formatos, tags, origem, datas e pastas.
+            Baixe o backup antes. Depois de conectar de novo, importe esse arquivo em <strong>Configurações › Backup de classificações</strong> para recuperar formatos, tags, status, origem, datas e pastas.
           </p>
         </div>
 

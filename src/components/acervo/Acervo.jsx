@@ -355,7 +355,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   );
 
   const renderFileActions = (file) => (
-    <div className="flex items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       {isAdmin && labelsEnabled && (
         <>
           <button onClick={() => setRenamingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Renomear" aria-label="Renomear">
@@ -732,19 +732,21 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                     {(file.tags || []).map(id => <Badge key={id} item={tags.find(tag => tag.id === id)} />)}
                   </div>
                 )}
-                <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
                   {isAdmin && labelsEnabled && (
-                    <>
-                      <button onClick={() => setRenamingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Renomear">Renomear</button>
-                      <button onClick={() => setMovingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Mover">Mover</button>
-                      <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
+                    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
+                      <button onClick={() => setRenamingFile(file)} className="min-w-0 min-h-11 bg-white border-2 border-[#2C1A14] px-1 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] truncate" aria-label="Renomear">Renomear</button>
+                      <button onClick={() => setMovingFile(file)} className="min-w-0 min-h-11 bg-white border-2 border-[#2C1A14] px-1 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] truncate" aria-label="Mover">Mover</button>
+                      <button onClick={() => setEditingFile(file)} className="min-w-0 min-h-11 bg-white border-2 border-[#2C1A14] px-1 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] truncate" aria-label="Classificar">Classificar</button>
                       <button onClick={() => setFileToHide(file)} className="min-h-11 min-w-11 bg-white border-2 border-[#2C1A14] px-2 text-[#C13B22] shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center" aria-label="Tirar do acervo"><Trash2 size={16} strokeWidth={2.5} /></button>
-                    </>
+                    </div>
                   )}
-                  <button onClick={() => setSheetFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Ficha técnica">Ficha</button>
-                  <button onClick={() => setViewingFile(file)} className="flex-1 min-h-11 bg-[#1E3A5F] text-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center gap-2" aria-label="Abrir arquivo">
-                    <Eye size={16} strokeWidth={2.5} /> Abrir
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setSheetFile(file)} className="min-w-0 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Ficha técnica">Ficha</button>
+                    <button onClick={() => setViewingFile(file)} className="min-w-0 min-h-11 bg-[#1E3A5F] text-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center gap-2" aria-label="Abrir arquivo">
+                      <Eye size={16} strokeWidth={2.5} /> Abrir
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
@@ -759,7 +761,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
               <thead>
                 <tr className="bg-white text-[#2C1A14] font-display uppercase tracking-widest text-[11px] border-b-4 border-[#2C1A14]">
                   {labelsEnabled && (
-                    <th className="px-4 py-4 font-black w-36" aria-sort={sort.campo === 'formato' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                    <th className="px-4 py-4 font-black w-28 2xl:w-36" aria-sort={sort.campo === 'formato' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
                       <SortButton campo="formato" label="Formato" sort={sort} sorting={sorting} onToggle={toggleSort} />
                     </th>
                   )}
@@ -772,15 +774,15 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         <SortButton campo="tamanho" label="Tamanho" sort={sort} sorting={sorting} onToggle={toggleSort} />                      </span>
                     </div>
                   </th>
-                  <th className="px-4 py-4 font-black w-44" aria-sort={sort.campo === 'local' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                  <th className="px-4 py-4 font-black w-36 2xl:w-44" aria-sort={sort.campo === 'local' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
                     <SortButton campo="local" label="Localização" sort={sort} sorting={sorting} onToggle={toggleSort} />
                   </th>
                   {labelsEnabled && (
-                    <th className="px-4 py-4 font-black w-52" aria-sort={sort.campo === 'classificacao' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                    <th className="px-4 py-4 font-black w-40 2xl:w-52" aria-sort={sort.campo === 'classificacao' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
                       <SortButton campo="classificacao" label="Classificação" sort={sort} sorting={sorting} onToggle={toggleSort} />
                     </th>
                   )}
-                  <th className={`px-4 py-4 font-black text-right ${isAdmin && labelsEnabled ? 'w-96' : 'w-64'}`} aria-sort={sort.campo === 'status' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
+                  <th className={`px-4 py-4 font-black text-right ${isAdmin && labelsEnabled ? 'w-48 2xl:w-60' : 'w-44'}`} aria-sort={sort.campo === 'status' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
                     <div className="flex flex-col items-end gap-1">
                       <span>Ações</span>
                       {labelsEnabled && statusList.length > 0 && <SortButton campo="status" label="Status" sort={sort} sorting={sorting} onToggle={toggleSort} className="text-[10px] text-[#2C1A14]/70" />}
@@ -835,7 +837,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         </div>
                       </td>
                     )}
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4">
                       {labelsEnabled && fileStatus(file) && (
                         <div className="flex justify-end mb-2">
                           <StatusBadge item={statusById.get(fileStatus(file))} />

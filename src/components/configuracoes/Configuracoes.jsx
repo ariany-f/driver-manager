@@ -4,6 +4,7 @@ import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, saveFavicon, saveLogo, saveVlibras } from '../../services/database.js';
 import ConfirmModal from '../modals/ConfirmModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
+import BackupClassificacoes from './BackupClassificacoes.jsx';
 import EscolherPastaModal from '../modals/EscolherPastaModal.jsx';
 import { getDriveSettings, saveDriveField, saveDriveFolder } from '../../services/drive.js';
 
@@ -346,6 +347,8 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
             <DriveBar isAdmin={isAdmin} drive={drive} />
           </div>
         )}
+
+        {isAdmin && drive?.status?.connected && databaseState.connected && <BackupClassificacoes drive={drive} />}
 
         <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">

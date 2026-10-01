@@ -90,6 +90,19 @@ export function syncDriveSelection({ arquivos = [], pastas = [], restaurar = [] 
   }).then(readJson);
 }
 
+export function exportClassificacoes() {
+  return fetch('/api/drive/classificacoes', { credentials: 'same-origin' }).then(readJson);
+}
+
+export function importClassificacoes(backup) {
+  return fetch('/api/drive/classificacoes', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(backup),
+  }).then(readJson);
+}
+
 export function hideDriveArquivo(fileId) {
   return fetch(`/api/drive/files/${fileId}`, { method: 'DELETE', credentials: 'same-origin' }).then(readJson);
 }

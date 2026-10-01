@@ -1122,6 +1122,217 @@ export async function saveArquivoOrigem(env, fileId, origem) {
   return { fileId: id, origem: clean };
 }
 
+export const BACKUP_KIND = 'driver-manager/classificacoes';
+const BACKUP_VERSION = 1;
+
+export async function exportClassificacoes(env, { conta = {}, archive = null } = {}) {
+  const db = await withPool(env);
+  const [territorios] = await db.query('SELECT id, name, bg_color, text_color, icon FROM territorios ORDER BY name');
+  const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
+  const [pastas] = await db.query('SELECT id, name, parent_id, origem, oculto FROM pastas');
+  const [arquivos] = await db.query('SELECT file_id, pasta_id, nome, data_arquivo, oculto FROM arquivos');
+  const [classificacoes] = await db.query('SELECT file_id, territorios, tags, formatos, origem FROM arquivo_classificacao');
+  const driveNames = new Map((archive?.files || []).map(file => [file.id, String(file.name || '')]));
+
+  const byId = new Map();
+  const entry = (id) => {
+    if (!byId.has(id)) {
+      byId.set(id, {
+        id,
+        nomeDrive: driveNames.get(id) || '',
+        nome: '',
+        pastaId: '',
+        dataArquivo: '',
+        oculto: false,
+        territorios: [],
+        tags: [],
+        formatos: [],
+        origem: '',
+      });
+    }
+    return byId.get(id);
+  };
+  for (const row of arquivos) {
+    const item = entry(row.file_id);
+    item.nome = String(row.nome || '').trim();
+    item.pastaId = row.pasta_id || '';
+    item.dataArquivo = readStoredDate(row.data_arquivo);
+    item.oculto = Number(row.oculto) === 1;
+  }
+  for (const row of classificacoes) {
+    const item = entry(row.file_id);
+    item.territorios = parseList(row.territorios);
+    item.tags = parseList(row.tags);
+    item.formatos = parseList(row.formatos);
+    item.origem = String(row.origem || '').trim();
+  }
+
+  return {
+    tipo: BACKUP_KIND,
+    versao: BACKUP_VERSION,
+    exportadoEm: new Date().toISOString(),
+    conta: {
+      email: String(conta.email || ''),
+      pastaId: String(conta.pastaId || ''),
+      pastaNome: String(conta.pastaNome || ''),
+    },
+    territorios: territorios.map(mapFormato),
+    tags: tags.map(mapItem),
+    pastas: pastas.map(row => ({
+      id: row.id,
+      name: row.name,
+      parentId: row.parent_id || '',
+      origem: row.origem,
+      oculto: Number(row.oculto) === 1,
+    })),
+    arquivos: [...byId.values()],
+  };
+}
+
+function readBackup(backup) {
+  if (!backup || typeof backup !== 'object' || backup.tipo !== BACKUP_KIND) {
+    throw new DriveError('Esse arquivo não é um backup de classificações do Driver Manager.');
+  }
+  if (Number(backup.versao) > BACKUP_VERSION) {
+    throw new DriveError('Esse backup foi feito por uma versão mais nova da aplicação.');
+  }
+  if (!Array.isArray(backup.arquivos)) throw new DriveError('O backup não tem a lista de arquivos.');
+  return backup;
+}
+
+function uniqueNames(list, nameOf) {
+  const count = new Map();
+  for (const item of list) {
+    const name = nameOf(item);
+    if (!name) continue;
+    count.set(name, (count.get(name) || 0) + 1);
+  }
+  return count;
+}
+
+export async function importClassificacoes(env, rawBackup, archive) {
+  const backup = readBackup(rawBackup);
+  let territorios;
+  let tags;
+  try {
+    territorios = cleanFormatos(Array.isArray(backup.territorios) ? backup.territorios : []);
+    tags = cleanItems(Array.isArray(backup.tags) ? backup.tags : []);
+  } catch (error) {
+    throw new DriveError(`Os formatos ou as tags do backup estão com problema: ${error.message}`);
+  }
+
+  const driveFiles = (archive?.files || []).filter(file => RECORD_ID.test(String(file.id)));
+  const driveById = new Map(driveFiles.map(file => [file.id, file]));
+  const driveNameCount = uniqueNames(driveFiles, file => String(file.name || ''));
+  const driveByName = new Map(driveFiles.filter(file => driveNameCount.get(String(file.name || '')) === 1).map(file => [String(file.name), file]));
+  const backupNameCount = uniqueNames(backup.arquivos, item => String(item?.nomeDrive || ''));
+  const driveFolderIds = new Set(flattenDriveFolders(archive?.folders).map(folder => folder.id));
+
+  const db = await withPool(env);
+  const connection = await db.getConnection();
+  const resumo = { porId: 0, porNome: 0, naoEncontrados: 0, exemplos: [], formatosNovos: 0, tagsNovas: 0, pastasNovas: 0 };
+  try {
+    await connection.beginTransaction();
+
+    const [currentTerritorios] = await connection.query('SELECT id FROM territorios');
+    const territorioIds = new Set(currentTerritorios.map(row => row.id));
+    for (const item of territorios) {
+      if (territorioIds.has(item.id)) continue;
+      await connection.query(
+        'INSERT INTO territorios (id, name, bg_color, text_color, icon) VALUES (?, ?, ?, ?, ?)',
+        [item.id, item.name, item.bgColor, item.textColor, item.icon || ''],
+      );
+      territorioIds.add(item.id);
+      resumo.formatosNovos += 1;
+    }
+    const [currentTags] = await connection.query('SELECT id FROM tags');
+    const tagIds = new Set(currentTags.map(row => row.id));
+    for (const item of tags) {
+      if (tagIds.has(item.id)) continue;
+      await connection.query(
+        'INSERT INTO tags (id, name, bg_color, text_color) VALUES (?, ?, ?, ?)',
+        [item.id, item.name, item.bgColor, item.textColor],
+      );
+      tagIds.add(item.id);
+      resumo.tagsNovas += 1;
+    }
+
+    const [currentPastas] = await connection.query('SELECT id FROM pastas');
+    const pastaIds = new Set(currentPastas.map(row => row.id));
+    const backupPastas = (Array.isArray(backup.pastas) ? backup.pastas : [])
+      .filter(pasta => RECORD_ID.test(String(pasta?.id || '')));
+    const toInsert = backupPastas.filter(pasta => !pastaIds.has(pasta.id)
+      && (pasta.origem === 'app' || driveFolderIds.has(pasta.id)));
+    const willExist = new Set([...pastaIds, ...toInsert.map(pasta => pasta.id)]);
+    for (const pasta of toInsert) {
+      const name = String(pasta.name || 'Pasta').trim().slice(0, 160) || 'Pasta';
+      const parent = pasta.parentId && willExist.has(pasta.parentId) ? pasta.parentId : null;
+      await connection.query(
+        'INSERT INTO pastas (id, name, parent_id, origem, oculto) VALUES (?, ?, ?, ?, ?)',
+        [pasta.id, name, parent, pasta.origem === 'app' ? 'app' : 'drive', pasta.oculto ? 1 : 0],
+      );
+      pastaIds.add(pasta.id);
+      resumo.pastasNovas += 1;
+    }
+    for (const pasta of backupPastas) {
+      if (!pastaIds.has(pasta.id) || toInsert.includes(pasta)) continue;
+      await connection.query('UPDATE pastas SET oculto = ? WHERE id = ?', [pasta.oculto ? 1 : 0, pasta.id]);
+    }
+
+    const claimed = new Set();
+    for (const item of backup.arquivos) {
+      const backupId = String(item?.id || '');
+      const backupName = String(item?.nomeDrive || '');
+      let target = driveById.get(backupId);
+      let how = 'porId';
+      if (!target && backupName && backupNameCount.get(backupName) === 1) {
+        target = driveByName.get(backupName);
+        how = 'porNome';
+      }
+      if (!target || claimed.has(target.id)) {
+        resumo.naoEncontrados += 1;
+        if (resumo.exemplos.length < 5) resumo.exemplos.push(item?.nome || backupName || backupId);
+        continue;
+      }
+      claimed.add(target.id);
+      resumo[how] += 1;
+
+      const ownFolder = target.folderId && pastaIds.has(target.folderId) ? target.folderId : null;
+      const pastaId = item.pastaId && pastaIds.has(item.pastaId) ? item.pastaId : ownFolder;
+      const nome = String(item.nome || '').trim().slice(0, 255) || null;
+      const parsedDate = parseArchiveDate(item.dataArquivo || '');
+      const dataArquivo = parsedDate.ok && parsedDate.iso ? parsedDate.iso : null;
+      const oculto = item.oculto ? 1 : 0;
+      await connection.query(
+        `INSERT INTO arquivos (file_id, pasta_id, nome, data_arquivo, oculto) VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE pasta_id = ?, nome = ?, data_arquivo = ?, oculto = ?`,
+        [target.id, pastaId, nome, dataArquivo, oculto, pastaId, nome, dataArquivo, oculto],
+      );
+
+      const fileTerritorios = cleanIdList(item.territorios).filter(id => territorioIds.has(id));
+      const fileTags = cleanIdList(item.tags).filter(id => tagIds.has(id));
+      const fileFormatos = cleanIdList(item.formatos);
+      const origem = String(item.origem || '').trim().slice(0, 255) || null;
+      await connection.query(
+        `INSERT INTO arquivo_classificacao (file_id, territorios, tags, formatos, origem) VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE territorios = ?, tags = ?, formatos = ?, origem = ?`,
+        [
+          target.id, JSON.stringify(fileTerritorios), JSON.stringify(fileTags), JSON.stringify(fileFormatos), origem,
+          JSON.stringify(fileTerritorios), JSON.stringify(fileTags), JSON.stringify(fileFormatos), origem,
+        ],
+      );
+    }
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback().catch(() => {});
+    throw error;
+  } finally {
+    connection.release();
+  }
+  return resumo;
+}
+
 function sendJson(res, status, body) {
   res.statusCode = status;
   res.setHeader('content-type', 'application/json; charset=utf-8');

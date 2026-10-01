@@ -17,8 +17,10 @@ import { getSession, logout as endSession } from './services/auth.js';
 import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade, getLogo, getVlibras, moveArquivo, renamePasta, saveTags, saveTerritorios } from './services/database.js';
 import {
   disconnectDrive,
+  exportClassificacoes,
   getDriveStatus,
   hideDriveArquivo,
+  importClassificacoes,
   previewDrive,
   renameDriveArquivo,
   saveArquivoData,
@@ -279,6 +281,13 @@ export default function App() {
       } finally {
         setDriveBusy(false);
       }
+    },
+    exportBackup: () => exportClassificacoes(),
+    importBackup: async (backup) => {
+      const result = await importClassificacoes(backup);
+      applyArchive(result);
+      loadIdentidade();
+      return result.resumo;
     },
     hideFile: async (fileId) => {
       setDriveError('');

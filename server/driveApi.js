@@ -22,8 +22,10 @@ import {
   clearDriveFolderId,
   clearSyncedFiles,
   databaseStatus,
+  exportClassificacoes,
   handleDatabaseRequest,
   hideArquivo,
+  importClassificacoes,
   loadDriveConnection,
   loadFileLabels,
   moveArquivo,
@@ -54,14 +56,14 @@ function redirect(res, location) {
   res.end();
 }
 
-function readBody(req, limit) {
+function readBody(req, limit, tooBig = 'O arquivo passa de 200 MB.') {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     req.on('data', chunk => {
       size += chunk.length;
       if (size > limit) {
-        reject(new DriveError('O arquivo passa de 200 MB.'));
+        reject(new DriveError(tooBig));
         req.destroy();
         return;
       }
@@ -72,8 +74,8 @@ function readBody(req, limit) {
   });
 }
 
-async function readJson(req) {
-  const raw = await readBody(req, 1024 * 1024);
+async function readJson(req, limit = 1024 * 1024) {
+  const raw = await readBody(req, limit, 'O pedido passou do tamanho permitido.');
   if (!raw.length) return {};
   try {
     return JSON.parse(raw.toString('utf8'));
@@ -272,6 +274,34 @@ async function handleDriveRequest(req, res, { root, env }) {
 
   if (req.method === 'GET' && pathname === '/api/drive/sync') {
     sendJson(res, 200, await archivePayload(config, env));
+    return;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/drive/classificacoes') {
+    const conta = { email: '', pastaId: config.folderId || '', pastaNome: '' };
+    let archive = null;
+    try {
+      const account = await getAccount(env, config);
+      conta.email = account?.emailAddress || '';
+      if (config.folderId) conta.pastaNome = await getFolderName(env, config);
+      if (config.folderId) archive = await syncArchive(env, config);
+    } catch {
+      archive = null;
+    }
+    sendJson(res, 200, await exportClassificacoes(env, { conta, archive }));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/drive/classificacoes') {
+    const backup = await readJson(req, 25 * 1024 * 1024);
+    const archive = await readDriveArchive(config, env);
+    const resumo = await importClassificacoes(env, backup, archive);
+    const account = await getAccount(env, config).catch(() => null);
+    const placed = await previewDriveLayout(env, archive, { withExcluded: true });
+    sendJson(res, 200, {
+      resumo: { ...resumo, contaAtual: account?.emailAddress || '', contaBackup: String(backup?.conta?.email || '') },
+      ...withLabels(placed, await loadFileLabels(env)),
+    });
     return;
   }
 

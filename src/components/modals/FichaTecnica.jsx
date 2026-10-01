@@ -7,6 +7,7 @@ import Badge from '../ui/Badge.jsx';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import Calendario from '../ui/Calendario.jsx';
 import StatusBadge from '../ui/StatusBadge.jsx';
+import { statusIdOf } from '../../lib/status.js';
 
 function formatFileDate(value) {
   const text = String(value || '').trim();
@@ -101,8 +102,8 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
           <dl>
             <Row label="Arquivo">{file.name}</Row>
             <Row label="Status">
-              {statusList.find(item => item.id === file.status)
-                ? <StatusBadge item={statusList.find(item => item.id === file.status)} />
+              {statusIdOf(file, statusList)
+                ? <StatusBadge item={statusList.find(item => item.id === statusIdOf(file, statusList))} />
                 : 'Sem status'}
             </Row>
             <Row label="Mídia">

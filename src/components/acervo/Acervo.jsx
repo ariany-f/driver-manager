@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import Badge from '../ui/Badge.jsx';
 import StatusBadge from '../ui/StatusBadge.jsx';
+import { defaultStatus, statusIdOf } from '../../lib/status.js';
 import FileIcon from '../ui/FileIcon.jsx';
 import FileThumb from './FileThumb.jsx';
 import ClassificacaoModal from '../modals/ClassificacaoModal.jsx';
@@ -236,8 +237,8 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   }, [files]);
   const activeExtensions = selectedExtensions.filter(ext => availableExtensions.includes(ext));
   const statusById = new Map(statusList.map(item => [item.id, item]));
-  const activeStatus = selectedStatus.filter(id => id === SEM_STATUS || statusById.has(id));
-  const fileStatus = (file) => (file.status && statusById.has(file.status) ? file.status : '');
+  const activeStatus = selectedStatus.filter(id => (id === SEM_STATUS && !defaultStatus(statusList)) || statusById.has(id));
+  const fileStatus = (file) => statusIdOf(file, statusList);
   const activeOrigens = selectedOrigens.filter(item => item === SEM_ORIGEM || origens.includes(item));
 
   const filteredFiles = files.filter(file => {
@@ -543,11 +544,13 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         {item.name}
                       </button>
                     ))}
-                    <button type="button" aria-pressed={activeStatus.includes(SEM_STATUS)} onClick={() => handleFilterToggle(SEM_STATUS, setSelectedStatus)}
-                      className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-dashed border-[#2C1A14] transition-all ${activeStatus.includes(SEM_STATUS) ? 'bg-[#2C1A14] text-[#F4EFE6] shadow-[3px_3px_0px_#849B55] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
-                    >
-                      Sem status
-                    </button>
+                    {!defaultStatus(statusList) && (
+                      <button type="button" aria-pressed={activeStatus.includes(SEM_STATUS)} onClick={() => handleFilterToggle(SEM_STATUS, setSelectedStatus)}
+                        className={`px-3 py-1.5 text-xs font-display font-bold uppercase border-2 border-dashed border-[#2C1A14] transition-all ${activeStatus.includes(SEM_STATUS) ? 'bg-[#2C1A14] text-[#F4EFE6] shadow-[3px_3px_0px_#849B55] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-60 hover:opacity-100 hover:-translate-y-0.5'}`}
+                      >
+                        Sem status
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

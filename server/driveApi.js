@@ -151,13 +151,15 @@ function folderPaths(tree, prefix = '', paths = new Map()) {
 function sortedIds(payload, identidade, campo, direcao) {
   const paths = folderPaths(payload.folders);
   const statusNames = new Map((identidade.status || []).map(item => [item.id, item.name]));
+  const defaultStatusName = (identidade.status || []).find(item => item.padrao)?.name || '';
+  const statusName = (file) => statusNames.get(file.status) || defaultStatusName;
   const territorioNames = new Map((identidade.territorios || []).map(item => [item.id, item.name]));
   const firstTerritorio = (file) => (file.territorios || []).map(id => territorioNames.get(id)).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'))[0] || '';
   const valueOf = {
     nome: file => file.name || '',
     local: file => (file.folderId ? paths.get(file.folderId) || '' : '/'),
-    classificacao: file => [statusNames.get(file.status) || '', firstTerritorio(file)].filter(Boolean).join(' · '),
-    status: file => statusNames.get(file.status) || '',
+    classificacao: file => [statusName(file), firstTerritorio(file)].filter(Boolean).join(' · '),
+    status: statusName,
     origem: file => file.origem || '',
     dataArquivo: file => file.dataArquivo || '',
     dataDrive: file => file.date || '',

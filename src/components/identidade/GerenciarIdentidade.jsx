@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit, Plus, Trash2 } from 'lucide-react';
+import { Edit, Plus, Star, Trash2 } from 'lucide-react';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
 import { getContrastTextColor, PREDEFINED_COLORS } from '../../lib/colors.js';
 import { MEDIA_ICONS, MediaGlyph } from '../../lib/mediaIcons.js';
@@ -22,6 +22,18 @@ const PLACEHOLDER = {
   status: 'Ex: Em revisão',
 };
 
+function PadraoMark({ className = '' }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 border-2 border-dashed border-[#2C1A14] bg-white px-2 py-0.5 font-display text-[10px] font-black uppercase tracking-widest text-[#2C1A14] shrink-0 ${className}`}
+      title="Arquivos sem status aparecem com este"
+    >
+      <Star size={11} strokeWidth={3} className="fill-[#EAB308]" aria-hidden="true" />
+      Padrão
+    </span>
+  );
+}
+
 export default function GerenciarIdentidade({ territorios, tags, statusList = [], onTerritorios, onTags, onStatus }) {
   const [activeTab, setActiveTab] = useState('territorios');
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,6 +41,7 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
   const [name, setName] = useState('');
   const [color, setColor] = useState('#1E3A5F');
   const [icon, setIcon] = useState('newspaper');
+  const [padrao, setPadrao] = useState(false);
 
   const openModal = (item = null) => {
     if (item) {
@@ -36,11 +49,13 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
       setName(item.name);
       setColor(item.bgColor);
       setIcon(item.icon || 'newspaper');
+      setPadrao(Boolean(item.padrao));
     } else {
       setEditingItem(null);
       setName('');
       setColor(PREDEFINED_COLORS[Math.floor(Math.random() * PREDEFINED_COLORS.length)]);
       setIcon(MEDIA_ICONS[Math.floor(Math.random() * MEDIA_ICONS.length)].id);
+      setPadrao(false);
     }
     setModalOpen(true);
   };
@@ -58,10 +73,14 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
       bgColor: color,
       textColor: getContrastTextColor(color),
       ...(activeTab === 'territorios' ? { icon } : {}),
+      ...(activeTab === 'status' ? { padrao } : {}),
     };
 
     const apply = (list) => (editingItem ? list.map(item => item.id === editingItem.id ? newItem : item) : [...list, newItem]);
-    save[activeTab](apply(lists[activeTab]));
+    const next = apply(lists[activeTab]);
+    save[activeTab](activeTab === 'status' && padrao
+      ? next.map(item => (item.id === newItem.id ? item : { ...item, padrao: false }))
+      : next);
     closeModal();
   };
 
@@ -106,6 +125,7 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
                 {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={14} />}
                 <span className="truncate">{item.name}</span>
               </span>
+              {activeTab === 'status' && item.padrao && <PadraoMark />}
               <div className="flex items-center gap-2 shrink-0">
                 <button onClick={() => openModal(item)} className="bg-white border-2 border-[#2C1A14] p-2.5 shadow-[2px_2px_0px_#2C1A14]" title="Editar" aria-label="Editar">
                   <Edit size={16} strokeWidth={2.5} />
@@ -140,6 +160,7 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
                       {activeTab === 'territorios' && <MediaGlyph icon={item.icon} size={16} />}
                       {item.name}
                     </span>
+                    {activeTab === 'status' && item.padrao && <PadraoMark className="ml-4" />}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center justify-end gap-2">
@@ -199,6 +220,23 @@ export default function GerenciarIdentidade({ territorios, tags, statusList = []
                     ))}
                   </div>
                 </div>
+              )}
+
+              {activeTab === 'status' && (
+                <label className="flex items-start gap-3 bg-white border-4 border-[#2C1A14] p-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={padrao}
+                    onChange={(e) => setPadrao(e.target.checked)}
+                    className="mt-0.5 w-5 h-5 shrink-0 accent-[#2C1A14] cursor-pointer"
+                  />
+                  <span>
+                    <span className="block font-display font-black text-sm uppercase tracking-wider text-[#2C1A14]">Status padrão</span>
+                    <span className="block font-sans text-sm text-[#2C1A14]/75 mt-0.5">
+                      Todo arquivo sem status passa a aparecer com este. Só um status pode ser o padrão; marcar este desmarca o anterior.
+                    </span>
+                  </span>
+                </label>
               )}
 
               <div>

@@ -4,11 +4,13 @@ import { fileExtension } from '../../lib/fileExtension.js';
 import { mediaLabel } from '../../lib/media.js';
 import { MediaGlyph } from '../../lib/mediaIcons.js';
 import ButtonPrimary from '../ui/ButtonPrimary.jsx';
+import { defaultStatus } from '../../lib/status.js';
 
 export default function ClassificacaoModal({ file, territorios, tags, statusList = [], onClose, onSave }) {
   const [selectedTerritorios, setSelectedTerritorios] = useState(file.territorios || []);
   const [selectedTags, setSelectedTags] = useState(file.tags || []);
   const [selectedStatus, setSelectedStatus] = useState(statusList.some(item => item.id === file.status) ? file.status : '');
+  const padrao = defaultStatus(statusList);
   const identified = fileExtension(file);
 
   const toggleSelection = (id, setList) => {
@@ -39,9 +41,10 @@ export default function ClassificacaoModal({ file, territorios, tags, statusList
                   role="radio"
                   aria-checked={selectedStatus === ''}
                   onClick={() => setSelectedStatus('')}
-                  className={`min-h-11 border-2 border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedStatus === '' ? 'bg-[#2C1A14] text-[#F4EFE6] shadow-[3px_3px_0px_#C13B22] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-70 hover:opacity-100'}`}
+                  title={padrao ? 'Acompanha o status padrão, mesmo se ele for trocado depois' : undefined}
+                  className={`min-h-11 border-2 border-dashed border-[#2C1A14] px-3 py-1 font-display text-xs font-black uppercase tracking-wider transition-all ${selectedStatus === '' ? 'bg-[#2C1A14] text-[#F4EFE6] shadow-[3px_3px_0px_#C13B22] -translate-y-0.5' : 'bg-white text-[#2C1A14] opacity-70 hover:opacity-100'}`}
                 >
-                  Sem status
+                  {padrao ? `Padrão (${padrao.name})` : 'Sem status'}
                 </button>
                 {statusList.map(item => (
                   <button

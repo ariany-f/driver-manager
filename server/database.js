@@ -39,9 +39,14 @@ const CREATE_STATUS = `
     name VARCHAR(160) NOT NULL,
     bg_color VARCHAR(7) NOT NULL,
     text_color VARCHAR(7) NOT NULL,
+    padrao TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
+
+const STATUS_COLUMNS = [
+  ['padrao', 'TINYINT NOT NULL DEFAULT 0'],
+];
 
 const CREATE_FORMATOS = `
   CREATE TABLE formatos (
@@ -196,7 +201,12 @@ function publicStatus(status) {
   };
 }
 
+const CONNECTION_LIMIT = /max_connections_per_hour|max_user_connections|max_connections/i;
+
 function safeMessage(error, settings) {
+  if (/max_connections_per_hour/i.test(String(error?.message))) {
+    return 'A hospedagem do MySQL bloqueou novas conexões por excesso nesta hora. Libera sozinho em até 1 hora.';
+  }
   let message = String(error?.message || 'Não foi possível conectar no MySQL.');
   for (const secret of [settings.DATABASE_PASSWORD, settings.DATABASE_USER]) {
     if (secret) message = message.split(secret).join('***');
@@ -229,7 +239,10 @@ async function rememberPool(config, ssl) {
   pool = mysql.createPool({
     ...config,
     waitForConnections: true,
-    connectionLimit: 4,
+    connectionLimit: 3,
+    maxIdle: 3,
+    idleTimeout: 10 * 60 * 1000,
+    enableKeepAlive: true,
     connectTimeout: 10000,
     charset: 'utf8mb4',
     ssl,
@@ -333,6 +346,20 @@ async function ensureFormatosColumns(db) {
   }
 }
 
+async function ensureStatusColumns(db) {
+  const [rows] = await db.query(
+    `SELECT column_name AS columnName
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'status_arquivo'`,
+  );
+  const present = new Set(rows.map(columnNameOf));
+  for (const [name, definition] of STATUS_COLUMNS) {
+    if (present.has(name)) continue;
+    await db.query(`ALTER TABLE status_arquivo ADD COLUMN ${name} ${definition}`);
+  }
+}
+
 async function ensureJornal(db) {
   const [rows] = await db.query('SELECT COUNT(*) AS total FROM formatos');
   if (Number(rows[0]?.total) === 0) {
@@ -389,6 +416,7 @@ export async function ensureTables(env) {
   await ensureClassificacaoColumns(db);
   await ensureTerritoriosColumns(db);
   await ensureFormatosColumns(db);
+  await ensureStatusColumns(db);
   await ensureJornal(db);
   tablesKey = key;
   return TABLE_SQL.map(([name]) => name);
@@ -397,23 +425,43 @@ export async function ensureTables(env) {
 async function ping(settings) {
   if (!isConfigured(settings)) return { configured: false, connected: false, error: '', tables: [] };
   const config = connectionConfig(settings);
+  const tableEnv = { ...settings, DATABASE_PORT: String(config.port) };
+  if (pool && poolKey.startsWith(`${configKey(config)}\0`)) {
+    try {
+      await pool.query('SELECT 1');
+      const tables = await ensureTables(tableEnv);
+      return { configured: true, connected: true, error: '', tables };
+    } catch (error) {
+      if (CONNECTION_LIMIT.test(String(error?.message))) {
+        return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited: true };
+      }
+    }
+  }
   let opened;
   try {
     opened = await openConnection(config);
     await rememberPool(config, opened.ssl);
-    const tables = await ensureTables({ ...settings, DATABASE_PORT: String(config.port) });
+    const tables = await ensureTables(tableEnv);
     return { configured: true, connected: true, error: '', tables };
   } catch (error) {
-    return { configured: true, connected: false, error: safeMessage(error, settings), tables: [] };
+    const limited = CONNECTION_LIMIT.test(String(error?.message));
+    return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited };
   } finally {
     await opened?.connection.end().catch(() => {});
   }
 }
 
+function cacheTtl(result) {
+  if (result.connected) return 60 * 1000;
+  if (result.limited) return 5 * 60 * 1000;
+  return 15 * 1000;
+}
+
 export async function databaseStatus(env, { force = false } = {}) {
   const settings = readDatabaseSettings(env);
   const key = configKey(connectionConfig(settings));
-  if (!force && cache && cache.key === key && Date.now() - cache.at < 15000) return cache.result;
+  const fresh = cache && cache.key === key && Date.now() - cache.at < cacheTtl(cache.result);
+  if (fresh && (!force || cache.result.limited)) return cache.result;
   const result = await ping(settings);
   cache = { key, at: Date.now(), result };
   return result;
@@ -723,6 +771,19 @@ function mapFormato(row) {
   return { ...mapItem(row), icon: String(row.icon || '') };
 }
 
+function mapStatus(row) {
+  return { ...mapItem(row), padrao: Boolean(Number(row.padrao)) };
+}
+
+function cleanStatusItems(items) {
+  let defaultSeen = false;
+  return cleanItems(items).map((item, index) => {
+    const padrao = Boolean(items[index]?.padrao) && !defaultSeen;
+    if (padrao) defaultSeen = true;
+    return { ...item, padrao };
+  });
+}
+
 function cleanItems(items) {
   if (!Array.isArray(items)) throw new DriveError('A lista não veio no formato esperado.');
   return items.map(item => {
@@ -766,19 +827,20 @@ export async function loadIdentidade(env) {
   const [territorios] = await db.query('SELECT id, name, bg_color, text_color, icon FROM territorios ORDER BY name');
   const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
   const [formatos] = await db.query('SELECT id, name, bg_color, text_color, icon FROM formatos ORDER BY name');
-  const [statusRows] = await db.query('SELECT id, name, bg_color, text_color FROM status_arquivo ORDER BY id');
+  const [statusRows] = await db.query('SELECT id, name, bg_color, text_color, padrao FROM status_arquivo ORDER BY id');
   return {
     territorios: territorios.map(mapFormato),
     tags: tags.map(mapItem),
     formatos: formatos.map(mapFormato),
-    status: statusRows.map(mapItem),
+    status: statusRows.map(mapStatus),
   };
 }
 
 async function replaceItems(env, table, items) {
   if (!['territorios', 'tags', 'formatos', 'status_arquivo'].includes(table)) throw new DriveError('Tabela inválida.');
   const withIcon = table === 'formatos' || table === 'territorios';
-  const cleaned = withIcon ? cleanFormatos(items) : cleanItems(items);
+  const isStatus = table === 'status_arquivo';
+  const cleaned = withIcon ? cleanFormatos(items) : isStatus ? cleanStatusItems(items) : cleanItems(items);
   const db = await withPool(env);
   const connection = await db.getConnection();
   try {
@@ -789,6 +851,11 @@ async function replaceItems(env, table, items) {
         await connection.query(
           `INSERT INTO ${table} (id, name, bg_color, text_color, icon) VALUES (?, ?, ?, ?, ?)`,
           [item.id, item.name, item.bgColor, item.textColor, item.icon || ''],
+        );
+      } else if (isStatus) {
+        await connection.query(
+          'INSERT INTO status_arquivo (id, name, bg_color, text_color, padrao) VALUES (?, ?, ?, ?, ?)',
+          [item.id, item.name, item.bgColor, item.textColor, item.padrao ? 1 : 0],
         );
       } else {
         await connection.query(
@@ -1212,7 +1279,7 @@ export async function exportClassificacoes(env, { conta = {}, archive = null } =
   const db = await withPool(env);
   const [territorios] = await db.query('SELECT id, name, bg_color, text_color, icon FROM territorios ORDER BY name');
   const [tags] = await db.query('SELECT id, name, bg_color, text_color FROM tags ORDER BY name');
-  const [statusRows] = await db.query('SELECT id, name, bg_color, text_color FROM status_arquivo ORDER BY id');
+  const [statusRows] = await db.query('SELECT id, name, bg_color, text_color, padrao FROM status_arquivo ORDER BY id');
   const [pastas] = await db.query('SELECT id, name, parent_id, origem, oculto FROM pastas');
   const [arquivos] = await db.query('SELECT file_id, pasta_id, nome, data_arquivo, oculto FROM arquivos');
   const [classificacoes] = await db.query('SELECT file_id, territorios, tags, formatos, origem, status_id FROM arquivo_classificacao');
@@ -1264,7 +1331,7 @@ export async function exportClassificacoes(env, { conta = {}, archive = null } =
     },
     territorios: territorios.map(mapFormato),
     tags: tags.map(mapItem),
-    status: statusRows.map(mapItem),
+    status: statusRows.map(mapStatus),
     pastas: pastas.map(row => ({
       id: row.id,
       name: row.name,
@@ -1305,7 +1372,7 @@ export async function importClassificacoes(env, rawBackup, archive) {
   try {
     territorios = cleanFormatos(Array.isArray(backup.territorios) ? backup.territorios : []);
     tags = cleanItems(Array.isArray(backup.tags) ? backup.tags : []);
-    statusList = cleanItems(Array.isArray(backup.status) ? backup.status : []);
+    statusList = cleanStatusItems(Array.isArray(backup.status) ? backup.status : []);
   } catch (error) {
     throw new DriveError(`Os formatos, as tags ou os status do backup estão com problema: ${error.message}`);
   }
@@ -1345,16 +1412,21 @@ export async function importClassificacoes(env, rawBackup, archive) {
       tagIds.add(item.id);
       resumo.tagsNovas += 1;
     }
-    const [currentStatus] = await connection.query('SELECT id FROM status_arquivo');
+    const [currentStatus] = await connection.query('SELECT id, padrao FROM status_arquivo');
     const statusIds = new Set(currentStatus.map(row => row.id));
+    const hasDefault = currentStatus.some(row => Number(row.padrao) === 1);
     for (const item of statusList) {
       if (statusIds.has(item.id)) continue;
       await connection.query(
-        'INSERT INTO status_arquivo (id, name, bg_color, text_color) VALUES (?, ?, ?, ?)',
+        'INSERT INTO status_arquivo (id, name, bg_color, text_color, padrao) VALUES (?, ?, ?, ?, 0)',
         [item.id, item.name, item.bgColor, item.textColor],
       );
       statusIds.add(item.id);
       resumo.statusNovos += 1;
+    }
+    const backupDefault = statusList.find(item => item.padrao);
+    if (!hasDefault && backupDefault && statusIds.has(backupDefault.id)) {
+      await connection.query('UPDATE status_arquivo SET padrao = 1 WHERE id = ?', [backupDefault.id]);
     }
 
     const [currentPastas] = await connection.query('SELECT id FROM pastas');

@@ -8,13 +8,18 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
 
-export default function PdfPreview({ file }) {
+export default function PdfPreview({ file, onReady }) {
+  const readyRef = useRef(onReady);
   const scrollerRef = useRef(null);
   const pagesRef = useRef(null);
   const [pdf, setPdf] = useState(null);
   const [status, setStatus] = useState('loading');
   const [zoom, setZoom] = useState(1);
   const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    readyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +42,9 @@ export default function PdfPreview({ file }) {
       setPdf({ doc, url: file.url });
       setStatus('ready');
     }).catch(() => {
-      if (!cancelled) setStatus('error');
+      if (cancelled) return;
+      setStatus('error');
+      readyRef.current?.();
     });
     return () => {
       cancelled = true;
@@ -86,8 +93,11 @@ export default function PdfPreview({ file }) {
         const task = page.render({ canvasContext: canvas.getContext('2d'), viewport });
         tasks.push(task);
         await task.promise;
+        if (number === 1 && !cancelled) readyRef.current?.();
       }
-    })().catch(() => {});
+    })().catch(() => {
+      if (!cancelled) readyRef.current?.();
+    });
 
     return () => {
       cancelled = true;

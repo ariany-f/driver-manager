@@ -1,23 +1,37 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Music, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight, Loader2, Music, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { isPdf } from '../acervo/PdfThumb.jsx';
 import FileIcon from '../ui/FileIcon.jsx';
 import PdfPreview from './PdfPreview.jsx';
 import SpreadsheetPreview, { isSpreadsheet } from './SpreadsheetPreview.jsx';
 
+function waitsForLoad(file) {
+  return ['image', 'video', 'audio', 'document'].includes(file.type) || isSpreadsheet(file) || isPdf(file);
+}
+
 export default function FileViewer({ file, files = [], onClose, onShowSheet, onShowFile, paused = false }) {
   const [scale, setScale] = useState(1);
+  const [loadedId, setLoadedId] = useState('');
   const index = files.findIndex(item => item.id === file.id);
   const previous = index > 0 ? files[index - 1] : null;
   const next = index >= 0 && index < files.length - 1 ? files[index + 1] : null;
+  const loading = waitsForLoad(file) && loadedId !== file.id;
+  const markLoaded = useCallback(() => setLoadedId(file.id), [file.id]);
 
   useEffect(() => {
     setScale(1);
-  }, [file.id]);
+    const fallback = window.setTimeout(markLoaded, 20000);
+    return () => window.clearTimeout(fallback);
+  }, [file.id, markLoaded]);
 
   useEffect(() => {
     if (paused) return undefined;
     const onKey = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
       const target = event.target;
       const tag = target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'VIDEO' || tag === 'AUDIO' || target?.isContentEditable) return;
@@ -32,7 +46,7 @@ export default function FileViewer({ file, files = [], onClose, onShowSheet, onS
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [paused, previous, next, onShowFile]);
+  }, [paused, previous, next, onShowFile, onClose]);
 
   return (
     <div className="fixed inset-0 bg-[#2C1A14]/90 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-8">
@@ -64,6 +78,15 @@ export default function FileViewer({ file, files = [], onClose, onShowSheet, onS
               <ChevronRight size={28} strokeWidth={3} />
             </button>
           )}
+          {loading && (
+            <>
+              <div className="absolute inset-x-0 top-0 z-30 h-1 bg-[#EAB308] animate-pulse" aria-hidden="true" />
+              <div className="absolute left-1/2 top-4 z-30 -translate-x-1/2 inline-flex items-center gap-2 border-2 border-[#2C1A14] bg-[#F4EFE6] px-3 py-1.5 font-display text-[10px] font-black uppercase tracking-widest text-[#2C1A14] shadow-[3px_3px_0px_#EAB308] animate-in fade-in duration-300" role="status">
+                <Loader2 size={14} strokeWidth={3} className="animate-spin" /> Carregando
+              </div>
+            </>
+          )}
+          <div key={file.id} className={`w-full h-full transition-opacity duration-300 ${loading ? 'opacity-60' : 'opacity-100'}`}>
           {file.type === 'image' && (
             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
               <div className="absolute bottom-6 right-6 z-10 flex gap-2 bg-[#F4EFE6] border-4 border-[#2C1A14] p-2 shadow-[6px_6px_0px_#C13B22]">
@@ -71,28 +94,29 @@ export default function FileViewer({ file, files = [], onClose, onShowSheet, onS
                 <button onClick={() => setScale(s => Math.min(s + 0.5, 3))} className="bg-white p-2 border-2 border-[#2C1A14] hover:bg-[#EAB308]"><ZoomIn size={24} /></button>
               </div>
               <div className="overflow-auto w-full h-full flex items-center justify-center" style={{ overflow: scale > 1 ? 'auto' : 'hidden' }}>
-                <img src={file.url} alt={file.name} style={{ transform: `scale(${scale})` }} className="max-w-full max-h-full object-contain border-4 border-[#F4EFE6] shadow-2xl transition-transform" />
+                <img src={file.url} alt={file.name} onLoad={markLoaded} onError={markLoaded} style={{ transform: `scale(${scale})` }} className="max-w-full max-h-full object-contain border-4 border-[#F4EFE6] shadow-2xl transition-transform" />
               </div>
             </div>
           )}
           {file.type === 'video' && (
             <div className="w-full h-full flex items-center justify-center p-4">
-              <video controls className="w-full max-h-full border-4 border-[#F4EFE6] shadow-[12px_12px_0px_#C13B22] bg-black"><source src={file.url} type="video/mp4" /></video>
+              <video controls onLoadedData={markLoaded} onError={markLoaded} className="w-full max-h-full border-4 border-[#F4EFE6] shadow-[12px_12px_0px_#C13B22] bg-black"><source src={file.url} type="video/mp4" /></video>
             </div>
           )}
           {file.type === 'audio' && (
             <div className="w-full h-full flex items-center justify-center bg-[#E4CFB2] relative">
               <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-10 shadow-[12px_12px_0px_#C13B22] flex flex-col items-center w-full max-w-md">
                 <Music size={48} className="text-[#849B55] mb-6 animate-pulse" />
-                <audio controls className="w-full"><source src={file.url} type="audio/mpeg" /></audio>
+                <audio controls onLoadedMetadata={markLoaded} onError={markLoaded} className="w-full"><source src={file.url} type="audio/mpeg" /></audio>
               </div>
             </div>
           )}
-          {isSpreadsheet(file) && <SpreadsheetPreview file={file} />}
-          {isPdf(file) && <PdfPreview file={file} />}
+          {isSpreadsheet(file) && <SpreadsheetPreview file={file} onReady={markLoaded} />}
+          {isPdf(file) && <PdfPreview file={file} onReady={markLoaded} />}
           {file.type === 'document' && !isSpreadsheet(file) && !isPdf(file) && (
-            <iframe src={file.url} className="w-full h-full border-none bg-white" title="Documento" />
+            <iframe src={file.url} onLoad={markLoaded} className="w-full h-full border-none bg-white" title="Documento" />
           )}
+          </div>
         </div>
       </div>
     </div>

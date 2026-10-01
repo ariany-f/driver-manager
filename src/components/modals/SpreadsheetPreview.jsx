@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const MAX_ROWS = 500;
@@ -29,11 +29,16 @@ function readBook(buffer) {
   });
 }
 
-export default function SpreadsheetPreview({ file }) {
+export default function SpreadsheetPreview({ file, onReady }) {
   const [sheets, setSheets] = useState([]);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const readyRef = useRef(onReady);
+
+  useEffect(() => {
+    readyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
     let activeRequest = true;
@@ -55,7 +60,9 @@ export default function SpreadsheetPreview({ file }) {
         if (activeRequest) setError('Não foi possível ler a planilha.');
       })
       .finally(() => {
-        if (activeRequest) setLoading(false);
+        if (!activeRequest) return;
+        setLoading(false);
+        readyRef.current?.();
       });
     return () => {
       activeRequest = false;

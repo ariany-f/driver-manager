@@ -44,12 +44,6 @@ function Limited({ isAdmin, limit, limitedAt, onOpenSettings }) {
       <p className="font-sans text-sm font-bold text-[#2C1A14]/80">
         Nada foi perdido. A autorização do Google Drive, as pastas, os arquivos, as tags, os formatos e os status continuam guardados no banco e voltam assim que a conexão for liberada.
       </p>
-      {isAdmin && (
-        <p className="font-sans text-sm text-[#2C1A14]/80 border-l-4 border-[#EAB308] pl-3">
-          Precisa agora? Crie outro usuário para o mesmo banco no painel da hospedagem e troque usuário e senha nas configurações. O limite é por usuário, então ele começa com a cota zerada.
-        </p>
-      )}
-
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           type="button"

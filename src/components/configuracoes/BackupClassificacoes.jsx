@@ -97,7 +97,7 @@ export default function BackupClassificacoes({ drive }) {
   const check = backup ? compareAccounts(backup, status) : null;
 
   return (
-    <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-span-2">
+    <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
       <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
         <FileUp size={18} strokeWidth={2.5} /> Backup de classificações
       </div>

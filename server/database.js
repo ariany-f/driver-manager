@@ -156,6 +156,7 @@ const CREATE_DRIVE_CONFIG = `
 `;
 
 let cache = null;
+let pending = null;
 let pool = null;
 let poolKey = '';
 let tablesKey = '';
@@ -224,17 +225,34 @@ function configKey(config) {
   return [config.host, config.port, config.user, config.password, config.database].join('\0');
 }
 
-async function openConnection(config) {
-  const base = { ...config, connectTimeout: 10000, charset: 'utf8mb4' };
+const SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const POOL_SIZE = SERVERLESS ? 1 : 3;
+
+async function dropPool() {
+  if (pool) await pool.end().catch(() => {});
+  pool = null;
+  poolKey = '';
+  tablesKey = '';
+}
+
+async function openPool(config) {
   try {
-    const connection = await mysql.createConnection(base);
-    await connection.query('SELECT 1');
-    return { connection, ssl: undefined };
+    const opened = await rememberPool(config, undefined);
+    await opened.query('SELECT 1');
+    return opened;
   } catch (error) {
-    if (!/ssl|TLS|secure/i.test(String(error?.message))) throw error;
-    const connection = await mysql.createConnection({ ...base, ssl: { rejectUnauthorized: false } });
-    await connection.query('SELECT 1');
-    return { connection, ssl: { rejectUnauthorized: false } };
+    if (!/ssl|TLS|secure/i.test(String(error?.message))) {
+      await dropPool();
+      throw error;
+    }
+    const opened = await rememberPool(config, { rejectUnauthorized: false });
+    try {
+      await opened.query('SELECT 1');
+      return opened;
+    } catch (sslError) {
+      await dropPool();
+      throw sslError;
+    }
   }
 }
 
@@ -245,8 +263,8 @@ async function rememberPool(config, ssl) {
   pool = mysql.createPool({
     ...config,
     waitForConnections: true,
-    connectionLimit: 3,
-    maxIdle: 3,
+    connectionLimit: POOL_SIZE,
+    maxIdle: POOL_SIZE,
     idleTimeout: 10 * 60 * 1000,
     enableKeepAlive: true,
     connectTimeout: 10000,
@@ -441,19 +459,16 @@ async function ping(settings) {
       if (CONNECTION_LIMIT.test(String(error?.message))) {
         return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited: true, limit: limitOf(error) };
       }
+      await dropPool();
     }
   }
-  let opened;
   try {
-    opened = await openConnection(config);
-    await rememberPool(config, opened.ssl);
+    await openPool(config);
     const tables = await ensureTables(tableEnv);
     return { configured: true, connected: true, error: '', tables };
   } catch (error) {
     const limited = CONNECTION_LIMIT.test(String(error?.message));
     return { configured: true, connected: false, error: safeMessage(error, settings), tables: [], limited, limit: limited ? limitOf(error) : 0 };
-  } finally {
-    await opened?.connection.end().catch(() => {});
   }
 }
 
@@ -468,9 +483,17 @@ export async function databaseStatus(env, { force = false } = {}) {
   const key = configKey(connectionConfig(settings));
   const fresh = cache && cache.key === key && Date.now() - cache.at < cacheTtl(cache.result);
   if (fresh && (!force || cache.result.limited)) return cache.result;
-  const result = await ping(settings);
-  cache = { key, at: Date.now(), result };
-  return result;
+  if (pending && pending.key === key) return pending.promise;
+  const promise = ping(settings)
+    .then(result => {
+      cache = { key, at: Date.now(), result };
+      return result;
+    })
+    .finally(() => {
+      if (pending?.promise === promise) pending = null;
+    });
+  pending = { key, promise };
+  return promise;
 }
 
 export async function saveDatabaseSettings(root, env, updates) {
@@ -482,12 +505,7 @@ export async function saveDatabaseSettings(root, env, updates) {
     throw new DriveError('Nesta publicação as credenciais do banco ficam nas variáveis de ambiente do servidor. Não dá para alterá-las por esta tela.', 409);
   }
   cache = null;
-  if (pool) {
-    await pool.end().catch(() => {});
-    pool = null;
-    poolKey = '';
-    tablesKey = '';
-  }
+  await dropPool();
   const status = await databaseStatus(env, { force: true });
   return { ...readDatabaseSettings(env), ...publicStatus(status) };
 }

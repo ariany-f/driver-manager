@@ -18,12 +18,14 @@ import { createPasta, deletePasta, getDatabaseStatus, getFavicon, getIdentidade,
 import {
   disconnectDrive,
   getDriveStatus,
+  hideDriveArquivo,
   previewDrive,
   renameDriveArquivo,
   saveArquivoData,
   saveArquivoOrigem,
   saveDriveClassificacao,
   syncDrive,
+  syncDriveSelection,
   uploadDriveFile,
 } from './services/drive.js';
 import { viewFromLocation, writeViewPath } from './lib/routes.js';
@@ -136,7 +138,7 @@ export default function App() {
             setDriveMessage(pastas.length ? 'Pastas novas gravadas no banco.' : 'Nada de novo no Drive.');
           }
         } else if ((arquivos.length || pastas.length) && !novidadesDispensadas.current) {
-          setNovidades({ arquivos, pastas });
+          setNovidades({ arquivos, pastas, excluidos: archive.excluidos || [] });
         } else {
           setNovidades(null);
         }
@@ -245,6 +247,50 @@ export default function App() {
     active: Boolean(driveStatus?.connected && driveStatus?.folderId),
     chooseFolder: () => setPickFolder(true),
     sync: () => refreshDrive({ commit: true, announce: true }),
+    review: async () => {
+      setDriveBusy(true);
+      setDriveError('');
+      setDriveMessage('');
+      try {
+        const archive = await previewDrive();
+        applyArchive(archive);
+        setNovidades({ arquivos: archive.novos || [], pastas: archive.novasPastas || [], excluidos: archive.excluidos || [] });
+      } catch (error) {
+        setDriveError(error.message);
+      } finally {
+        setDriveBusy(false);
+      }
+    },
+    syncSelection: async (selection) => {
+      setDriveBusy(true);
+      setDriveError('');
+      setDriveMessage('');
+      try {
+        const archive = await syncDriveSelection(selection);
+        applyArchive(archive);
+        setNovidades(null);
+        const novos = archive.novos || [];
+        if (novos.length) setClassificarNovos(novos);
+        const restored = (selection.restaurar || []).length;
+        if (restored) setDriveMessage(restored === 1 ? 'Arquivo de volta ao acervo, com a classificação que já tinha.' : `${restored} arquivos de volta ao acervo, com a classificação que já tinham.`);
+        else if (!novos.length) setDriveMessage('Sincronização gravada no banco.');
+      } catch (error) {
+        setDriveError(error.message);
+      } finally {
+        setDriveBusy(false);
+      }
+    },
+    hideFile: async (fileId) => {
+      setDriveError('');
+      setDriveMessage('');
+      try {
+        await hideDriveArquivo(fileId);
+        setFiles(current => current.filter(file => file.id !== fileId));
+        setDriveMessage('Arquivo tirado do acervo. Para trazer de volta, use Sincronizar.');
+      } catch (error) {
+        setDriveError(error.message);
+      }
+    },
     upload: async (selected, folderId) => {
       setDriveBusy(true);
       setDriveError('');
@@ -443,13 +489,14 @@ export default function App() {
         <NovidadesModal
           arquivos={novidades.arquivos}
           pastas={novidades.pastas}
+          excluidos={novidades.excluidos}
           busy={driveBusy}
           error={driveError}
           onClose={() => {
             novidadesDispensadas.current = true;
             setNovidades(null);
           }}
-          onSync={() => refreshDrive({ commit: true, announce: true })}
+          onSync={drive.syncSelection}
         />
       )}
       {isAdmin && labelsEnabled && classificarNovos.length > 0 && (

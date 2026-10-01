@@ -83,6 +83,7 @@ const CREATE_ARQUIVOS = `
     pasta_id VARCHAR(128) NULL,
     nome VARCHAR(255) NULL,
     data_arquivo VARCHAR(10) NULL,
+    oculto TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (file_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
@@ -90,6 +91,7 @@ const CREATE_ARQUIVOS = `
 const ARQUIVOS_COLUMNS = [
   ['nome', 'VARCHAR(255) NULL'],
   ['data_arquivo', 'VARCHAR(10) NULL'],
+  ['oculto', 'TINYINT NOT NULL DEFAULT 0'],
 ];
 
 const CREATE_DRIVE = `
@@ -821,12 +823,13 @@ async function loadFolderTree(env) {
 
 async function loadPlacements(env) {
   const db = await withPool(env);
-  const [rows] = await db.query('SELECT file_id, pasta_id, nome, data_arquivo FROM arquivos');
+  const [rows] = await db.query('SELECT file_id, pasta_id, nome, data_arquivo, oculto FROM arquivos');
   return rows.map(row => ({
     id: row.file_id,
     folderId: row.pasta_id || '',
     nome: String(row.nome || '').trim(),
     dataArquivo: readStoredDate(row.data_arquivo),
+    oculto: Number(row.oculto) === 1,
   }));
 }
 
@@ -889,7 +892,26 @@ function describeNewFile(file) {
   };
 }
 
-export async function previewDriveLayout(env, archive) {
+function splitStoredFiles(archive, placements) {
+  const files = [];
+  const excluidos = [];
+  for (const file of archive.files || []) {
+    const stored = placements.get(file.id);
+    if (!stored) continue;
+    const placed = applyStoredFile(file, stored);
+    if (stored.oculto) excluidos.push(describeNewFile(placed));
+    else files.push(placed);
+  }
+  return { files, excluidos };
+}
+
+function cleanSelection(selection) {
+  if (!selection) return null;
+  const pick = (value) => new Set((Array.isArray(value) ? value : []).map(String).filter(id => RECORD_ID.test(id)));
+  return { arquivos: pick(selection.arquivos), pastas: pick(selection.pastas), restaurar: pick(selection.restaurar) };
+}
+
+export async function previewDriveLayout(env, archive, { withExcluded = false } = {}) {
   const { folderIds, fileIds } = await knownDriveIds(env);
   const novasPastas = flattenDriveFolders(archive.folders)
     .filter(folder => RECORD_ID.test(folder.id) && !folderIds.has(folder.id))
@@ -898,26 +920,48 @@ export async function previewDriveLayout(env, archive) {
     .filter(file => RECORD_ID.test(String(file.id)) && !fileIds.has(file.id))
     .map(describeNewFile);
   const placements = new Map((await loadPlacements(env)).map(item => [item.id, item]));
+  const { files, excluidos } = splitStoredFiles(archive, placements);
   return {
     folders: await loadFolderTree(env),
-    files: (archive.files || [])
-      .filter(file => fileIds.has(file.id))
-      .map(file => applyStoredFile(file, placements.get(file.id))),
+    files,
     novos,
     novasPastas,
+    excluidos: withExcluded ? excluidos : [],
   };
 }
 
-export async function rememberDriveLayout(env, archive) {
+export async function rememberDriveLayout(env, archive, selection = null) {
   const db = await withPool(env);
+  const chosen = cleanSelection(selection);
   const known = await knownDriveIds(env);
   const folderIds = known.folderIds;
+  const driveFolders = flattenDriveFolders(archive.folders).filter(folder => RECORD_ID.test(folder.id));
+  const parentOf = new Map(driveFolders.map(folder => [folder.id, folder.parentId || '']));
+
+  const wantedFolders = new Set();
+  if (chosen) {
+    for (const id of chosen.pastas) wantedFolders.add(id);
+    for (const file of archive.files || []) {
+      if (!chosen.arquivos.has(String(file.id))) continue;
+      let parent = file.folderId || '';
+      while (parent && parentOf.has(parent) && !folderIds.has(parent)) {
+        wantedFolders.add(parent);
+        parent = parentOf.get(parent);
+      }
+    }
+  }
+
   const novasPastas = [];
-  for (const folder of flattenDriveFolders(archive.folders)) {
-    if (!RECORD_ID.test(folder.id) || folderIds.has(folder.id)) continue;
+  for (const folder of driveFolders) {
+    if (folderIds.has(folder.id)) continue;
+    if (chosen && !wantedFolders.has(folder.id)) continue;
+    let parentId = folder.parentId || '';
+    while (parentId && !folderIds.has(parentId) && !(chosen ? wantedFolders.has(parentId) : parentOf.has(parentId))) {
+      parentId = parentOf.get(parentId) || '';
+    }
     await db.query(
       'INSERT INTO pastas (id, name, parent_id, origem, oculto) VALUES (?, ?, ?, ?, 0)',
-      [folder.id, folder.name || 'Pasta', folder.parentId || null, 'drive'],
+      [folder.id, folder.name || 'Pasta', parentId || null, 'drive'],
     );
     folderIds.add(folder.id);
     novasPastas.push({ id: folder.id, name: folder.name });
@@ -927,19 +971,36 @@ export async function rememberDriveLayout(env, archive) {
   const novos = [];
   for (const file of archive.files || []) {
     if (!RECORD_ID.test(String(file.id)) || fileIds.has(file.id)) continue;
-    const pastaId = file.folderId && folderIds.has(file.folderId) ? file.folderId : null;
-    await db.query('INSERT INTO arquivos (file_id, pasta_id) VALUES (?, ?)', [file.id, pastaId]);
+    if (chosen && !chosen.arquivos.has(String(file.id))) continue;
+    let pastaId = file.folderId || '';
+    while (pastaId && !folderIds.has(pastaId)) pastaId = parentOf.get(pastaId) || '';
+    await db.query('INSERT INTO arquivos (file_id, pasta_id) VALUES (?, ?)', [file.id, pastaId || null]);
     fileIds.add(file.id);
     novos.push({ ...describeNewFile(file), folderId: pastaId || '' });
   }
 
+  if (chosen?.restaurar.size) {
+    const ids = [...chosen.restaurar];
+    await db.query(`UPDATE arquivos SET oculto = 0 WHERE file_id IN (${ids.map(() => '?').join(', ')})`, ids);
+  }
+
   const placements = new Map((await loadPlacements(env)).map(item => [item.id, item]));
+  const { files, excluidos } = splitStoredFiles(archive, placements);
   return {
     folders: await loadFolderTree(env),
-    files: (archive.files || []).map(file => applyStoredFile(file, placements.get(file.id))),
+    files,
     novos,
     novasPastas,
+    excluidos,
   };
+}
+
+export async function hideArquivo(env, fileId) {
+  const id = assertRecordId(fileId, 'arquivo');
+  const db = await withPool(env);
+  const [result] = await db.query('UPDATE arquivos SET oculto = 1 WHERE file_id = ?', [id]);
+  if (!result.affectedRows) throw new DriveError('Arquivo não encontrado.', 404);
+  return { fileId: id };
 }
 
 export async function resolveUploadFolder(env, pastaId) {

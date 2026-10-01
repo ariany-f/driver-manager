@@ -23,6 +23,7 @@ import {
   clearSyncedFiles,
   databaseStatus,
   handleDatabaseRequest,
+  hideArquivo,
   loadDriveConnection,
   loadFileLabels,
   moveArquivo,
@@ -109,6 +110,7 @@ function withLabels(placed, labels) {
     })),
     novos: placed.novos || [],
     novasPastas: placed.novasPastas || [],
+    excluidos: placed.excluidos || [],
   };
 }
 
@@ -119,15 +121,15 @@ async function readDriveArchive(config, env) {
   return syncArchive(env, config);
 }
 
-async function archivePayload(config, env) {
+async function archivePayload(config, env, selection = null) {
   const archive = await readDriveArchive(config, env);
-  const placed = await rememberDriveLayout(env, archive);
+  const placed = await rememberDriveLayout(env, archive, selection);
   return withLabels(placed, await loadFileLabels(env));
 }
 
-async function previewPayload(config, env) {
+async function previewPayload(config, env, withExcluded) {
   const archive = await readDriveArchive(config, env);
-  const placed = await previewDriveLayout(env, archive);
+  const placed = await previewDriveLayout(env, archive, { withExcluded });
   return withLabels(placed, await loadFileLabels(env));
 }
 
@@ -264,12 +266,22 @@ async function handleDriveRequest(req, res, { root, env }) {
   }
 
   if (req.method === 'GET' && pathname === '/api/drive/novidades') {
-    sendJson(res, 200, await previewPayload(config, env));
+    sendJson(res, 200, await previewPayload(config, env, isAdminRequest(req, env)));
     return;
   }
 
   if (req.method === 'GET' && pathname === '/api/drive/sync') {
     sendJson(res, 200, await archivePayload(config, env));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/drive/sync') {
+    const body = await readJson(req);
+    sendJson(res, 200, await archivePayload(config, env, {
+      arquivos: body.arquivos,
+      pastas: body.pastas,
+      restaurar: body.restaurar,
+    }));
     return;
   }
 
@@ -300,7 +312,7 @@ async function handleDriveRequest(req, res, { root, env }) {
       folderId: target.driveParentId,
       bytes: await readBody(req, 200 * 1024 * 1024),
     });
-    const archive = await archivePayload(config, env);
+    const archive = await archivePayload(config, env, { arquivos: [uploaded.id] });
     if (target.pastaId && target.pastaId !== target.driveParentId) {
       await moveArquivo(env, uploaded.id, target.pastaId);
       archive.files = archive.files.map(file => (file.id === uploaded.id ? { ...file, folderId: target.pastaId } : file));
@@ -319,6 +331,10 @@ async function handleDriveRequest(req, res, { root, env }) {
   }
 
   const file = pathname.match(/^\/api\/drive\/files\/([a-zA-Z0-9_-]+)$/);
+  if (file && req.method === 'DELETE') {
+    sendJson(res, 200, await hideArquivo(env, file[1]));
+    return;
+  }
   if (file && req.method === 'PATCH') {
     const body = await readJson(req);
     const cleanName = String(body.name || '').trim();

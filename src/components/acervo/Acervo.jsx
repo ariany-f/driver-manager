@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import {
   Archive, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree, ScrollText,
-  Plus, Search, Tags, Trash2, Upload, X,
+  Plus, RefreshCw, Search, Tags, Trash2, Upload, X,
 } from 'lucide-react';
 import Badge from '../ui/Badge.jsx';
 import FileIcon from '../ui/FileIcon.jsx';
@@ -78,6 +78,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [activeFolderId, setActiveFolderId] = useState('');
   const [folderModalConfig, setFolderModalConfig] = useState({ isOpen: false, mode: 'create', parentId: '', folder: null });
   const [folderToDelete, setFolderToDelete] = useState(null);
+  const [fileToHide, setFileToHide] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState([]);
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -283,6 +284,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
           <button onClick={() => setEditingFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#849B55] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Classificar" aria-label="Classificar">
             <Tags size={18} strokeWidth={2.5} />
           </button>
+          <button onClick={() => setFileToHide(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 text-[#C13B22] hover:bg-[#C13B22] hover:text-white hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Tirar do acervo" aria-label="Tirar do acervo">
+            <Trash2 size={18} strokeWidth={2.5} />
+          </button>
         </>
       )}
       <button onClick={() => setSheetFile(file)} className="bg-white border-2 border-[#2C1A14] p-2.5 hover:bg-[#EAB308] hover:-translate-y-1 transition-all shadow-[2px_2px_0px_#2C1A14]" title="Ficha técnica" aria-label="Ficha técnica">
@@ -369,6 +373,17 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   Busca & <span className="text-[#1E3A5F]">Acervo</span>
                 </h1>
                 <div className="flex shrink-0 gap-2">
+                  {isAdmin && labelsEnabled && drive.active && (
+                    <button
+                      type="button"
+                      onClick={drive.review}
+                      disabled={drive.busy}
+                      className="min-h-11 bg-white text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
+                      title="Escolher o que entra do Drive e trazer de volta arquivos excluídos"
+                    >
+                      <RefreshCw size={18} strokeWidth={3} /> Sincronizar
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setFoldersOpen(true)}
@@ -565,6 +580,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                       <button onClick={() => setRenamingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Renomear">Renomear</button>
                       <button onClick={() => setMovingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Mover">Mover</button>
                       <button onClick={() => setEditingFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Classificar">Classificar</button>
+                      <button onClick={() => setFileToHide(file)} className="min-h-11 min-w-11 bg-white border-2 border-[#2C1A14] px-2 text-[#C13B22] shadow-[2px_2px_0px_#2C1A14] inline-flex items-center justify-center" aria-label="Tirar do acervo"><Trash2 size={16} strokeWidth={2.5} /></button>
                     </>
                   )}
                   <button onClick={() => setSheetFile(file)} className="flex-1 min-h-11 bg-white border-2 border-[#2C1A14] px-2 font-display font-black uppercase text-[10px] tracking-wide shadow-[2px_2px_0px_#2C1A14]" aria-label="Ficha técnica">Ficha</button>
@@ -587,7 +603,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   <th className="px-4 py-4 font-black">Arquivo</th>
                   <th className="px-4 py-4 font-black w-44">Localização</th>
                   {labelsEnabled && <th className="px-4 py-4 font-black w-52">Classificação</th>}
-                  <th className="px-4 py-4 font-black text-right w-64">Ações</th>
+                  <th className={`px-4 py-4 font-black text-right ${isAdmin && labelsEnabled ? 'w-96' : 'w-64'}`}>Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-dashed divide-[#2C1A14]/20 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]">
@@ -658,6 +674,19 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
         isOpen={!!folderToDelete} title="Excluir Pasta?"
         text={`A pasta "${folderToDelete?.name}" sai só do banco. Arquivos e subpastas sobem para a pasta de cima. O Google Drive não é alterado.`}
         onCancel={() => setFolderToDelete(null)} onConfirm={handleConfirmDeleteFolder}
+      />
+
+      <ConfirmModal
+        isOpen={!!fileToHide} title="Tirar do acervo?"
+        text={`"${fileToHide?.name}" sai da lista. Tags, formatos, origem, data e nome ficam guardados e voltam juntos quando você trouxer o arquivo de volta em Sincronizar. O Google Drive não é alterado.`}
+        confirmLabel="Tirar do acervo"
+        onCancel={() => setFileToHide(null)}
+        onConfirm={() => {
+          const target = fileToHide;
+          setFileToHide(null);
+          if (viewingFile?.id === target?.id) setViewingFile(null);
+          if (target) drive.hideFile(target.id);
+        }}
       />
 
       <RenameFileModal

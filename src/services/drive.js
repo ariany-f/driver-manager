@@ -81,6 +81,19 @@ export function syncDrive() {
   return fetch('/api/drive/sync', { credentials: 'same-origin' }).then(readJson);
 }
 
+export function syncDriveSelection({ arquivos = [], pastas = [], restaurar = [] }) {
+  return fetch('/api/drive/sync', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ arquivos, pastas, restaurar }),
+  }).then(readJson);
+}
+
+export function hideDriveArquivo(fileId) {
+  return fetch(`/api/drive/files/${fileId}`, { method: 'DELETE', credentials: 'same-origin' }).then(readJson);
+}
+
 export function disconnectDrive() {
   return fetch('/api/drive/disconnect', { method: 'POST' }).then(readJson);
 }

@@ -138,6 +138,19 @@ export function saveVlibras(enabled) {
   }).then(readJson);
 }
 
+export function getContato() {
+  return fetch('/api/database/contato', { credentials: 'same-origin' }).then(readJson);
+}
+
+export function saveContato(email) {
+  return fetch('/api/database/contato', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email }),
+  }).then(readJson);
+}
+
 export function moveArquivo(fileId, pastaId) {
   return fetch('/api/database/arquivos', {
     method: 'PUT',

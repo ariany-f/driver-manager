@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import LegalPage, { LegalSection } from './LegalPage.jsx';
-
-const CONTACT = 'mell.angelis@unifesp.br';
+import Contato from './Contato.jsx';
 
 export default function TermosServico() {
   useEffect(() => {
@@ -66,9 +65,7 @@ export default function TermosServico() {
       </LegalSection>
 
       <LegalSection title="Contato">
-        <p>
-          Dúvidas sobre estes termos: <a className="underline font-bold" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
-        </p>
+        <Contato prefix="Dúvidas sobre estes termos" />
         <p>
           Estes termos seguem as leis do Brasil.
         </p>

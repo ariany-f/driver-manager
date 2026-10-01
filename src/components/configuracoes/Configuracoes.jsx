@@ -5,6 +5,7 @@ import { getDatabaseSettings, removeFavicon, removeLogo, saveDatabaseSettings, s
 import ConfirmModal from '../modals/ConfirmModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import BackupClassificacoes from './BackupClassificacoes.jsx';
+import ContatoConfig from './ContatoConfig.jsx';
 import EscolherPastaModal from '../modals/EscolherPastaModal.jsx';
 import { getDriveSettings, saveDriveField, saveDriveFolder } from '../../services/drive.js';
 
@@ -625,6 +626,12 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
         {isAdmin && drive?.status?.connected && databaseState.connected && (
           <div className="lg:col-start-1">
             <BackupClassificacoes drive={drive} />
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="lg:col-start-1">
+            <ContatoConfig enabled={databaseState.connected} />
           </div>
         )}
 

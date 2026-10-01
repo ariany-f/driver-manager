@@ -1,7 +1,7 @@
 import mysql from 'mysql2/promise';
 import { parseArchiveDate } from '../src/lib/archiveDate.js';
 import { isMediaIcon } from '../src/lib/mediaIconIds.js';
-import { DriveError, readDriveConfig, saveEnvKeys } from './driveClient.js';
+import { DriveError, getAccount, readDriveConfig, saveEnvKeys } from './driveClient.js';
 
 const DATABASE_ENV_KEYS = ['DATABASE_HOST', 'DATABASE_PORT', 'DATABASE_USER', 'DATABASE_PASSWORD', 'DATABASE_NAME'];
 const ITEM_ID = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -114,6 +114,7 @@ const CREATE_APLICACAO = `
     favicon_mime VARCHAR(64) NOT NULL DEFAULT '',
     favicon MEDIUMBLOB NULL,
     vlibras TINYINT NOT NULL DEFAULT 0,
+    contato_email VARCHAR(255) NOT NULL DEFAULT '',
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 `;
@@ -122,7 +123,10 @@ const APLICACAO_COLUMNS = [
   ['favicon_mime', "VARCHAR(64) NOT NULL DEFAULT ''"],
   ['favicon', 'MEDIUMBLOB NULL'],
   ['vlibras', 'TINYINT NOT NULL DEFAULT 0'],
+  ['contato_email', "VARCHAR(255) NOT NULL DEFAULT ''"],
 ];
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const CREATE_DRIVE_CONFIG = `
   CREATE TABLE drive_config (
@@ -647,6 +651,38 @@ export async function saveVlibras(env, enabled) {
     [value, value],
   );
   return value === 1;
+}
+
+export async function loadContato(env) {
+  const db = await withPool(env);
+  const [rows] = await db.query('SELECT contato_email FROM aplicacao WHERE id = 1');
+  const configurado = String(rows[0]?.contato_email || '').trim();
+  if (configurado) return { email: configurado, origem: 'configurado' };
+  try {
+    const config = await resolveDriveConfig(env);
+    const token = await loadDriveConnection(env);
+    if (token?.refresh_token) {
+      const account = await getAccount(env, config);
+      const email = String(account?.emailAddress || '').trim();
+      if (email) return { email, origem: 'drive' };
+    }
+  } catch {
+    return { email: '', origem: '' };
+  }
+  return { email: '', origem: '' };
+}
+
+export async function saveContato(env, value) {
+  const email = String(value || '').trim();
+  if (email.length > 255) throw new DriveError('O e-mail precisa ter até 255 caracteres.');
+  if (email && !EMAIL.test(email)) throw new DriveError('Esse e-mail não parece válido.');
+  const db = await withPool(env);
+  await db.query(
+    `INSERT INTO aplicacao (id, contato_email) VALUES (1, ?)
+     ON DUPLICATE KEY UPDATE contato_email = ?`,
+    [email, email],
+  );
+  return loadContato(env);
 }
 
 export async function clearSyncedFiles(env) {
@@ -1442,6 +1478,17 @@ export async function handleDatabaseRequest(req, res, { root, env }) {
   if (req.method === 'PUT' && url.pathname === '/api/database/vlibras') {
     const body = await readBody(req);
     sendJson(res, 200, { enabled: await saveVlibras(env, Boolean(body.enabled)) });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/database/contato') {
+    sendJson(res, 200, await loadContato(env));
+    return;
+  }
+
+  if (req.method === 'PUT' && url.pathname === '/api/database/contato') {
+    const body = await readBody(req);
+    sendJson(res, 200, await saveContato(env, body.email));
     return;
   }
 

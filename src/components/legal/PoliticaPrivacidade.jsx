@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import LegalPage, { LegalSection } from './LegalPage.jsx';
-
-const CONTACT = 'mell.angelis@unifesp.br';
+import Contato from './Contato.jsx';
 
 export default function PoliticaPrivacidade() {
   useEffect(() => {
@@ -50,7 +49,7 @@ export default function PoliticaPrivacidade() {
           <li>o identificador da pasta do acervo;</li>
           <li>identificador, nome, tipo e data de modificação dos arquivos exibidos;</li>
           <li>pastas internas, formatos, tags e a mídia identificada de cada arquivo;</li>
-          <li>logo, favicon e a opção de exibir o VLibras.</li>
+          <li>logo, favicon, o e-mail de contato e a opção de exibir o VLibras.</li>
         </ul>
         <p>
           O token fica só no servidor. Quem apenas consulta o acervo não recebe esse token.
@@ -94,9 +93,7 @@ export default function PoliticaPrivacidade() {
       </LegalSection>
 
       <LegalSection title="Contato">
-        <p>
-          Dúvidas sobre estes dados: <a className="underline font-bold" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
-        </p>
+        <Contato prefix="Dúvidas sobre estes dados" />
         <p>
           Os termos de uso estão em <a className="underline font-bold" href="/termos">/termos</a>.
         </p>

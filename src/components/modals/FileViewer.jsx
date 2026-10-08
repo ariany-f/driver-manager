@@ -9,14 +9,35 @@ function waitsForLoad(file) {
   return ['image', 'video', 'audio', 'document'].includes(file.type) || isSpreadsheet(file) || isPdf(file);
 }
 
-export default function FileViewer({ file, files = [], onClose, onShowSheet, onShowFile, paused = false }) {
+export default function FileViewer({ file, files = [], onClose, sheetElement, onShowFile, onReplaceFile, paused = false }) {
   const [scale, setScale] = useState(1);
+  const [showSidePanel, setShowSidePanel] = useState(false);
   const [loadedId, setLoadedId] = useState('');
+  const [replacing, setReplacing] = useState(false);
   const index = files.findIndex(item => item.id === file.id);
   const previous = index > 0 ? files[index - 1] : null;
   const next = index >= 0 && index < files.length - 1 ? files[index + 1] : null;
   const loading = waitsForLoad(file) && loadedId !== file.id;
   const markLoaded = useCallback(() => setLoadedId(file.id), [file.id]);
+
+  const handleFileChange = async (event) => {
+    const selected = event.target.files?.[0];
+    if (!selected || !onReplaceFile) return;
+    setReplacing(true);
+    try {
+      await onReplaceFile(file.id, selected);
+      // Reload the image if it's an image
+      if (file.type === 'image') {
+        const url = new URL(file.url, window.location.origin);
+        url.searchParams.set('t', Date.now());
+        file.url = url.pathname + url.search;
+        setLoadedId(''); // trigger reload
+      }
+    } finally {
+      setReplacing(false);
+      event.target.value = '';
+    }
+  };
 
   useEffect(() => {
     setScale(1);
@@ -50,23 +71,30 @@ export default function FileViewer({ file, files = [], onClose, onShowSheet, onS
 
   return (
     <div className="fixed inset-0 bg-[#2C1A14]/90 backdrop-blur-md flex items-center justify-center z-[200] p-4 md:p-8">
-      <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[6px_6px_0px_#EAB308] sm:shadow-[16px_16px_0px_#EAB308] w-full max-w-6xl h-full max-h-[92vh] flex flex-col relative animate-in fade-in zoom-in duration-200">
-        <div className="flex justify-between items-center p-3 sm:p-5 border-b-4 border-[#2C1A14] bg-[#F4EFE6] shrink-0 gap-3">
+      <div className="bg-[#E4CFB2] border-4 border-[#2C1A14] shadow-[6px_6px_0px_#EAB308] sm:shadow-[16px_16px_0px_#EAB308] w-full max-w-7xl h-full max-h-[92vh] flex flex-col md:flex-row relative animate-in fade-in zoom-in duration-200">
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex justify-between items-center p-3 sm:p-5 border-b-4 border-[#2C1A14] bg-[#F4EFE6] shrink-0 gap-3">
           <h3 className="text-sm sm:text-2xl font-display font-black text-[#2C1A14] uppercase truncate min-w-0 flex items-center gap-2 sm:gap-3">
             <FileIcon file={file} size={22} /> <span className="truncate">{file.name}</span>
           </h3>
           <div className="flex items-center gap-2 shrink-0">
-            {onShowSheet && (
-              <button type="button" onClick={onShowSheet} className="bg-white text-[#2C1A14] hover:bg-[#EAB308] p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all font-display font-black uppercase text-xs tracking-wide">
+            {sheetElement && (
+              <button type="button" onClick={() => setShowSidePanel(!showSidePanel)} className={`bg-white text-[#2C1A14] hover:bg-[#EAB308] p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all font-display font-black uppercase text-xs tracking-wide ${showSidePanel ? 'bg-[#EAB308]' : ''}`}>
                 Ficha técnica
               </button>
+            )}
+            {onReplaceFile && (
+              <label className="bg-white text-[#2C1A14] hover:bg-[#849B55] hover:text-white p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all font-display font-black uppercase text-xs tracking-wide cursor-pointer flex items-center">
+                {replacing ? <Loader2 size={16} className="animate-spin mr-1" /> : null}
+                {replacing ? 'Trocando...' : 'Substituir'}
+                <input type="file" className="hidden" onChange={handleFileChange} disabled={replacing} />
+              </label>
             )}
             <button onClick={onClose} className="bg-white text-[#2C1A14] hover:bg-[#C13B22] hover:text-white p-2 border-4 border-[#2C1A14] shadow-[4px_4px_0px_#2C1A14] hover:-translate-y-1 transition-all shrink-0" aria-label="Fechar visualização">
             <X size={24} strokeWidth={3} />
             </button>
           </div>
         </div>
-
         <div className="flex-1 min-h-0 overflow-hidden relative bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] bg-[#2C1A14]">
           {previous && (
             <button type="button" onClick={() => onShowFile(previous)} className="absolute left-3 top-1/2 z-20 -translate-y-1/2 min-h-11 min-w-11 inline-flex items-center justify-center border-4 border-[#2C1A14] bg-[#F4EFE6] text-[#2C1A14] shadow-[4px_4px_0px_#EAB308] hover:bg-[#EAB308]" aria-label="Arquivo anterior">
@@ -117,6 +145,12 @@ export default function FileViewer({ file, files = [], onClose, onShowSheet, onS
             <iframe src={file.url} onLoad={markLoaded} className="w-full h-full border-none bg-white" title="Documento" />
           )}
           </div>
+        </div>
+        {showSidePanel && sheetElement && (
+          <div className="w-full md:w-96 shrink-0 border-t-4 md:border-t-0 md:border-l-4 border-[#2C1A14] flex flex-col bg-[#F4EFE6] relative z-40 overflow-hidden">
+            {sheetElement}
+          </div>
+        )}
         </div>
       </div>
     </div>

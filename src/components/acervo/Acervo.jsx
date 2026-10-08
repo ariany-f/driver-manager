@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive, ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, CornerDownRight, Edit, Eye, Folder, FolderTree, Loader2, ScrollText,
   Plus, RefreshCw, Search, Tags, Trash2, Upload, X,
@@ -23,6 +23,15 @@ import { fileExtension } from '../../lib/fileExtension.js';
 import { MediaGlyph } from '../../lib/mediaIcons.js';
 import { findFolder, flattenFolders, getAncestorFolderIds } from '../../lib/folders.js';
 
+const loadState = (key, defaultValue) => {
+  try {
+    const saved = sessionStorage.getItem(`acervo_${key}`);
+    return saved !== null ? JSON.parse(saved) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+};
+
 function formatFileDate(value) {
   const text = String(value || '').trim();
   if (!text) return '';
@@ -42,17 +51,11 @@ function formatFileDate(value) {
 
 function FileDates({ file }) {
   const archive = formatArchiveDate(file.dataArquivo);
-  const drive = formatFileDate(file.date);
   return (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
       <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#2C1A14]/70" title="Data do acervo">
         Acervo {archive || 'sem data'}
       </span>
-      {drive && (
-        <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-[#2C1A14]/40" title="Data no Drive">
-          Drive {drive}
-        </span>
-      )}
     </span>
   );
 }
@@ -80,7 +83,6 @@ const SORT_OPTIONS = [
   { campo: 'dataArquivo', label: 'Data do acervo' },
   { campo: 'dataDrive', label: 'Data no Drive' },
   { campo: 'tamanho', label: 'Tamanho' },
-  { campo: 'local', label: 'Localização' },
   { campo: 'classificacao', label: 'Classificação' },
   { campo: 'status', label: 'Status' },
 ];
@@ -111,31 +113,31 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
   const [movingFile, setMovingFile] = useState(null);
   const [renamingFile, setRenamingFile] = useState(null);
   const [renaming, setRenaming] = useState(false);
-  const [activeFolderId, setActiveFolderId] = useState('');
+  const [activeFolderId, setActiveFolderId] = useState(() => loadState('activeFolderId', ''));
   const [folderModalConfig, setFolderModalConfig] = useState({ isOpen: false, mode: 'create', parentId: '', folder: null });
   const [folderToDelete, setFolderToDelete] = useState(null);
   const [fileToHide, setFileToHide] = useState(null);
-  const [expandedFolders, setExpandedFolders] = useState([]);
+  const [expandedFolders, setExpandedFolders] = useState(() => loadState('expandedFolders', []));
   const [foldersOpen, setFoldersOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTerritorios, setSelectedTerritorios] = useState([]);
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedTypes, setSelectedTypes] = useState([]);
-  const [selectedExtensions, setSelectedExtensions] = useState([]);
-  const [semTerritorio, setSemTerritorio] = useState(false);
-  const [semTag, setSemTag] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(() => loadState('filtersOpen', false));
+  const [searchQuery, setSearchQuery] = useState(() => loadState('searchQuery', ''));
+  const [selectedTerritorios, setSelectedTerritorios] = useState(() => loadState('selectedTerritorios', []));
+  const [selectedTags, setSelectedTags] = useState(() => loadState('selectedTags', []));
+  const [selectedTypes, setSelectedTypes] = useState(() => loadState('selectedTypes', []));
+  const [selectedExtensions, setSelectedExtensions] = useState(() => loadState('selectedExtensions', []));
+  const [semTerritorio, setSemTerritorio] = useState(() => loadState('semTerritorio', false));
+  const [semTag, setSemTag] = useState(() => loadState('semTag', false));
+  const [selectedStatus, setSelectedStatus] = useState(() => loadState('selectedStatus', []));
+  const [currentPage, setCurrentPage] = useState(() => loadState('currentPage', 1));
   const [uploadQueue, setUploadQueue] = useState([]);
-  const [selectedOrigens, setSelectedOrigens] = useState([]);
+  const [selectedOrigens, setSelectedOrigens] = useState(() => loadState('selectedOrigens', []));
   const [sort, setSort] = useState({ campo: '', direcao: 'asc' });
   const [sortOrder, setSortOrder] = useState(null);
   const [sorting, setSorting] = useState('');
   const [sortError, setSortError] = useState('');
   const uploadRef = useRef(null);
   const sortRequest = useRef(0);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(() => loadState('itemsPerPage', 8));
 
   const applySort = async (campo, direcao) => {
     if (!campo) {
@@ -166,6 +168,35 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     else if (sort.direcao === 'asc') applySort(campo, 'desc');
     else applySort('', 'asc');
   };
+
+  useEffect(() => {
+    sessionStorage.setItem('acervo_activeFolderId', JSON.stringify(activeFolderId));
+    sessionStorage.setItem('acervo_expandedFolders', JSON.stringify(expandedFolders));
+    sessionStorage.setItem('acervo_filtersOpen', JSON.stringify(filtersOpen));
+    sessionStorage.setItem('acervo_searchQuery', JSON.stringify(searchQuery));
+    sessionStorage.setItem('acervo_selectedTerritorios', JSON.stringify(selectedTerritorios));
+    sessionStorage.setItem('acervo_selectedTags', JSON.stringify(selectedTags));
+    sessionStorage.setItem('acervo_selectedTypes', JSON.stringify(selectedTypes));
+    sessionStorage.setItem('acervo_selectedExtensions', JSON.stringify(selectedExtensions));
+    sessionStorage.setItem('acervo_semTerritorio', JSON.stringify(semTerritorio));
+    sessionStorage.setItem('acervo_semTag', JSON.stringify(semTag));
+    sessionStorage.setItem('acervo_selectedStatus', JSON.stringify(selectedStatus));
+    sessionStorage.setItem('acervo_currentPage', JSON.stringify(currentPage));
+    sessionStorage.setItem('acervo_selectedOrigens', JSON.stringify(selectedOrigens));
+    sessionStorage.setItem('acervo_itemsPerPage', JSON.stringify(itemsPerPage));
+  }, [activeFolderId, expandedFolders, filtersOpen, searchQuery, selectedTerritorios, selectedTags, selectedTypes, selectedExtensions, semTerritorio, semTag, selectedStatus, currentPage, selectedOrigens, itemsPerPage]);
+
+  useEffect(() => {
+    const savedSort = loadState('sort', { campo: '', direcao: 'asc' });
+    if (savedSort.campo) {
+      applySort(savedSort.campo, savedSort.direcao);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem('acervo_sort', JSON.stringify(sort));
+  }, [sort]);
 
   const flatFolders = flattenFolders(folders);
   const origens = useMemo(() => {
@@ -381,9 +412,24 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
     </div>
   );
 
-  const pagination = totalPages > 1 ? (
-    <div className="bg-[#2C1A14] p-3 flex justify-between items-center gap-3 text-white font-display text-xs uppercase">
-      <span>Página {currentPage} de {totalPages}</span>
+  const pagination = filteredFiles.length > 0 ? (
+    <div className="bg-[#2C1A14] p-3 flex flex-wrap justify-between items-center gap-3 text-white font-display text-xs uppercase">
+      <div className="flex items-center gap-3">
+        <span>Página {currentPage} de {totalPages}</span>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => {
+            setItemsPerPage(Number(e.target.value));
+            setCurrentPage(1);
+          }}
+          className="h-8 border-2 border-transparent hover:border-[#EAB308] bg-white px-2 font-display font-black uppercase text-[10px] tracking-wider text-[#2C1A14] transition-colors cursor-pointer outline-none"
+        >
+          <option value={8}>8 por página</option>
+          <option value={16}>16 por página</option>
+          <option value={32}>32 por página</option>
+          <option value={64}>64 por página</option>
+        </select>
+      </div>
       <div className="flex gap-2">
         <button onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage === 1} className="min-h-11 px-4 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Anterior</button>
         <button onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages} className="min-h-11 px-4 py-2 bg-white text-[#2C1A14] disabled:opacity-50 border-2 border-transparent hover:border-[#EAB308] transition-colors">Próxima</button>
@@ -449,36 +495,35 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end border-b-4 border-[#2C1A14] pb-4 sm:pb-6 mb-2 gap-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b-4 border-[#2C1A14] pb-4 sm:pb-6 mb-2 gap-4">
             <div className="min-w-0">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h1 className="min-w-0 text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.25] tracking-tighter">
-                  Busca & <span className="text-[#1E3A5F]">Acervo</span>
-                </h1>
-                <div className="flex shrink-0 gap-2">
-                  {isAdmin && labelsEnabled && drive.active && (
-                    <button
-                      type="button"
-                      onClick={drive.review}
-                      disabled={drive.busy}
-                      className="min-h-11 bg-white text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
-                      title="Escolher o que entra do Drive e trazer de volta arquivos excluídos"
-                    >
-                      <RefreshCw size={18} strokeWidth={3} /> Sincronizar
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setFoldersOpen(true)}
-                    className="lg:hidden min-h-11 bg-[#EAB308] text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2"
-                  >
-                    <FolderTree size={18} strokeWidth={3} /> Pastas
-                  </button>
-                </div>
-              </div>
+              <h1 className="min-w-0 text-[1.875rem] sm:text-[3rem] xl:text-[3.75rem] font-display font-black text-[#2C1A14] uppercase leading-[1.25] tracking-tighter mb-2">
+                Busca & <span className="text-[#1E3A5F]">Acervo</span>
+              </h1>
               <p className="font-mono text-xs sm:text-sm font-bold text-[#2C1A14]/70 tracking-tight bg-white border-2 border-[#2C1A14] inline-block max-w-full px-3 py-1 shadow-[2px_2px_0px_#2C1A14] break-all">
                 Pasta Atual: {getDisplayPath(activeFolderId)}
               </p>
+            </div>
+            
+            <div className="flex shrink-0 gap-2 sm:self-center">
+              {isAdmin && labelsEnabled && drive.active && (
+                <button
+                  type="button"
+                  onClick={drive.review}
+                  disabled={drive.busy}
+                  className="min-h-11 bg-white text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2 disabled:opacity-50"
+                  title="Escolher o que entra do Drive e trazer de volta arquivos excluídos"
+                >
+                  <RefreshCw size={18} strokeWidth={3} /> Sincronizar
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setFoldersOpen(true)}
+                className="lg:hidden min-h-11 bg-[#EAB308] text-[#2C1A14] border-2 border-[#2C1A14] shadow-[3px_3px_0px_#2C1A14] px-3 py-2 font-display font-black uppercase text-xs tracking-wider inline-flex items-center gap-2"
+              >
+                <FolderTree size={18} strokeWidth={3} /> Pastas
+              </button>
             </div>
           </div>
 
@@ -719,10 +764,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                       <span className="text-[10px] font-mono font-bold text-[#2C1A14]/60 uppercase tracking-wider bg-[#2C1A14]/5 px-1">{file.size}</span>
                       <FileDates file={file} />
                     </div>
-                    <div className="mt-2 inline-flex max-w-full items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20" title={getDisplayPath(file.folderId)}>
-                      <Folder size={12} className="shrink-0 text-[#EAB308]" />
-                      <span className="truncate">{getDisplayPath(file.folderId)}</span>
-                    </div>
                   </div>
                 </div>
                 {labelsEnabled && (
@@ -770,12 +811,9 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                       <SortButton campo="nome" label="Arquivo" sort={sort} sorting={sorting} onToggle={toggleSort} />
                       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[#2C1A14]/70">
                         <SortButton campo="dataArquivo" label="Data acervo" sort={sort} sorting={sorting} onToggle={toggleSort} />
-                        <SortButton campo="dataDrive" label="Data Drive" sort={sort} sorting={sorting} onToggle={toggleSort} />
+
                         <SortButton campo="tamanho" label="Tamanho" sort={sort} sorting={sorting} onToggle={toggleSort} />                      </span>
                     </div>
-                  </th>
-                  <th className="px-4 py-4 font-black w-36 2xl:w-44" aria-sort={sort.campo === 'local' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
-                    <SortButton campo="local" label="Localização" sort={sort} sorting={sorting} onToggle={toggleSort} />
                   </th>
                   {labelsEnabled && (
                     <th className="px-4 py-4 font-black w-40 2xl:w-52" aria-sort={sort.campo === 'classificacao' ? (sort.direcao === 'asc' ? 'ascending' : 'descending') : undefined}>
@@ -824,12 +862,6 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 max-w-0">
-                      <div className="flex items-center gap-1.5 font-mono text-[10px] bg-[#2C1A14]/5 px-2 py-1.5 border border-[#2C1A14]/20 min-w-0 max-w-full" title={getDisplayPath(file.folderId)}>
-                        <Folder size={12} className="shrink-0 text-[#EAB308]" />
-                        <span className="truncate">{getDisplayPath(file.folderId)}</span>
-                      </div>
-                    </td>
                     {labelsEnabled && (
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap gap-1">
@@ -848,7 +880,7 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
                   </tr>
                 ))}
                 {currentFiles.length === 0 && (
-                  <tr><td colSpan={labelsEnabled ? 5 : 3} className="px-5 py-12 text-center font-display font-bold uppercase text-[#2C1A14]/50">Nenhum arquivo encontrado com estes filtros.</td></tr>
+                  <tr><td colSpan={labelsEnabled ? 4 : 2} className="px-5 py-12 text-center font-display font-bold uppercase text-[#2C1A14]/50">Nenhum arquivo encontrado com estes filtros.</td></tr>
                 )}
               </tbody>
             </table>
@@ -930,27 +962,52 @@ export default function Acervo({ isAdmin, files, setFiles, folders, territorios,
           paused={Boolean(sheetFile)}
           onClose={() => setViewingFile(null)}
           onShowFile={setViewingFile}
-          onShowSheet={() => setSheetFile(viewingFile)}
+          onReplaceFile={drive.replace}
+          sheetElement={
+            <FichaTecnica
+              inline
+              file={viewingFile}
+              isAdmin={isAdmin && labelsEnabled}
+              origens={origens}
+              territorios={territorios}
+              tags={tags}
+              statusList={statusList}
+              folderPath={viewingFile ? getDisplayPath(viewingFile.folderId) : ''}
+              onClose={() => {}}
+              onSaveData={async (dataArquivo) => {
+                const saved = await drive.saveData(viewingFile.id, dataArquivo);
+                setFiles(prev => prev.map(f => f.id === saved.fileId ? { ...f, dataArquivo: saved.dataArquivo } : f));
+                setViewingFile(current => (current && current.id === saved.fileId ? { ...current, dataArquivo: saved.dataArquivo } : current));
+              }}
+              onSaveOrigem={async (origem) => {
+                const saved = await drive.saveOrigem(viewingFile.id, origem);
+                setFiles(prev => prev.map(f => f.id === saved.fileId ? { ...f, origem: saved.origem } : f));
+                setViewingFile(current => (current && current.id === saved.fileId ? { ...current, origem: saved.origem } : current));
+              }}
+            />
+          }
         />
       )}
-      <FichaTecnica
-        file={sheetFile}
-        isAdmin={isAdmin && labelsEnabled}
-        origens={origens}
-        territorios={territorios}
-        tags={tags}
-        statusList={statusList}
-        folderPath={sheetFile ? getDisplayPath(sheetFile.folderId) : ''}
-        onClose={() => setSheetFile(null)}
-        onSaveData={async (dataArquivo) => {
-          const saved = await drive.saveData(sheetFile.id, dataArquivo);
-          setSheetFile(current => (current && current.id === saved.fileId ? { ...current, dataArquivo: saved.dataArquivo } : current));
-        }}
-        onSaveOrigem={async (origem) => {
-          const saved = await drive.saveOrigem(sheetFile.id, origem);
-          setSheetFile(current => (current && current.id === saved.fileId ? { ...current, origem: saved.origem } : current));
-        }}
-      />
+      {sheetFile && !viewingFile && (
+        <FichaTecnica
+          file={sheetFile}
+          isAdmin={isAdmin && labelsEnabled}
+          origens={origens}
+          territorios={territorios}
+          tags={tags}
+          statusList={statusList}
+          folderPath={sheetFile ? getDisplayPath(sheetFile.folderId) : ''}
+          onClose={() => setSheetFile(null)}
+          onSaveData={async (dataArquivo) => {
+            const saved = await drive.saveData(sheetFile.id, dataArquivo);
+            setSheetFile(current => (current && current.id === saved.fileId ? { ...current, dataArquivo: saved.dataArquivo } : current));
+          }}
+          onSaveOrigem={async (origem) => {
+            const saved = await drive.saveOrigem(sheetFile.id, origem);
+            setSheetFile(current => (current && current.id === saved.fileId ? { ...current, origem: saved.origem } : current));
+          }}
+        />
+      )}
       </div>
     </div>
   );

@@ -82,6 +82,35 @@ export function uploadDriveFile(file, folderId, onProgress) {
   });
 }
 
+export function replaceDriveFile(fileId, file, onProgress) {
+  const params = new URLSearchParams({ id: fileId });
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', `/api/drive/replace?${params.toString()}`);
+    request.withCredentials = true;
+    request.setRequestHeader('content-type', file.type || 'application/octet-stream');
+    request.upload.onprogress = (event) => {
+      if (!onProgress) return;
+      onProgress({
+        loaded: event.loaded,
+        total: event.lengthComputable ? event.total : file.size,
+      });
+    };
+    request.onload = () => {
+      let payload = {};
+      try {
+        payload = JSON.parse(request.responseText || '{}');
+      } catch {
+        payload = {};
+      }
+      if (request.status >= 200 && request.status < 300) resolve(payload);
+      else reject(new Error(payload.error || 'Não foi possível substituir o arquivo.'));
+    };
+    request.onerror = () => reject(new Error('Falha de rede ao conectar com o servidor.'));
+    request.send(file);
+  });
+}
+
 export function syncDrive() {
   return fetch('/api/drive/sync', { credentials: 'same-origin' }).then(readJson);
 }

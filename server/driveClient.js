@@ -556,6 +556,30 @@ export async function uploadDriveFile(env, config, { name, mimeType, folderId, b
   return payload;
 }
 
+export async function replaceDriveFile(env, config, fileId, { mimeType, bytes }) {
+  if (!fileId) throw new DriveError('ID do arquivo não fornecido.');
+  if (!bytes?.length) throw new DriveError('O arquivo está vazio.');
+  const token = await getAccessToken(env, config);
+  const response = await fetch(`${DRIVE_API.replace('/drive/v3', '/upload/drive/v3')}/files/${fileId}?uploadType=media&supportsAllDrives=true&fields=id,name`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': mimeType || 'application/octet-stream',
+    },
+    body: bytes,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const reason = String(payload.error?.message || '');
+    if (response.status === 404 || reason.toLowerCase().includes('not found')) throw new DriveError('Arquivo não encontrado.', 404);
+    if (response.status === 403 || /insufficient permissions/i.test(reason)) {
+      throw new DriveError('Esta conexão só lê o Drive. Conecte de novo para autorizar a gravação.');
+    }
+    throw new DriveError(reason || 'Não foi possível atualizar o arquivo no Google Drive.');
+  }
+  return payload;
+}
+
 export async function openDriveMedia(env, config, fileId, rangeHeader) {
   const token = await getAccessToken(env, config);
   const id = assertDriveId(fileId, 'arquivo');

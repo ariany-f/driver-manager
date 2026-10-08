@@ -21,7 +21,7 @@ export default function ButtonPrimary({ children, onClick, className = '', icon:
       <div className={`absolute inset-0 border-2 border-[#2C1A14] ${bgColors[color]} group-active:translate-x-1 group-active:translate-y-1 transition-transform`}></div>
       <div className="relative flex items-center justify-center gap-2 z-10">
         {Icon && <Icon size={20} strokeWidth={2.5} />}
-        <span className="uppercase tracking-wider">{children}</span>
+        <span className="uppercase tracking-wider whitespace-nowrap">{children}</span>
       </div>
     </button>
   );

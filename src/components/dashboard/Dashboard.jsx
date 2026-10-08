@@ -57,7 +57,7 @@ function RankList({ items, empty }) {
   );
 }
 
-export default function Dashboard({ files, territorios, tags = [], labelsEnabled }) {
+export default function Dashboard({ files, territorios, tags = [], statusList = [], labelsEnabled }) {
   const totalSizeMB = files.reduce((acc, file) => acc + parseSize(file.size), 0);
   const formattedSize = totalSizeMB > 1024 ? `${(totalSizeMB / 1024).toFixed(2)} GB` : `${totalSizeMB.toFixed(2)} MB`;
   const semClassificacao = files.filter(file => !(file.territorios || []).length && !(file.tags || []).length).length;
@@ -93,6 +93,14 @@ export default function Dashboard({ files, territorios, tags = [], labelsEnabled
     return acc;
   }, {});
   const sortedExtensions = Object.entries(extensionCounts).sort(([, a], [, b]) => b - a);
+
+  const statusCounts = files.reduce((acc, file) => {
+    if (file.status) acc[file.status] = (acc[file.status] || 0) + 1;
+    return acc;
+  }, {});
+  
+  const filesWithStatus = Object.values(statusCounts).reduce((a,b) => a + b, 0);
+  const semStatus = files.length - filesWithStatus;
 
   return (
     <div className="h-full overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-8 animate-in fade-in duration-300">
@@ -172,6 +180,43 @@ export default function Dashboard({ files, territorios, tags = [], labelsEnabled
               {sortedExtensions.length === 0 && <p className="text-sm font-mono text-[#2C1A14]/60">Nenhum arquivo no acervo.</p>}
             </div>
           </div>
+        </div>
+
+        <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] p-6 shadow-[8px_8px_0px_rgba(44,26,20,0.15)]">
+          <h3 className="text-xl font-display font-black uppercase mb-2 border-b-2 border-[#2C1A14]/20 pb-2">Saúde do Acervo (Status)</h3>
+          <p className="font-sans text-sm text-[#2C1A14]/70 mb-6 font-bold">
+            Acompanhe a triagem e o tratamento dos arquivos. Uma visão do funil de qualidade do nosso acervo.
+          </p>
+          {labelsEnabled ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {statusList.map(status => {
+                const count = statusCounts[status.id] || 0;
+                const percentage = share(count, files.length);
+                const isConcluido = status.name.toUpperCase() === 'CONCLUÍDO';
+                return (
+                  <div key={status.id} className={`p-4 border-2 border-[#2C1A14] ${isConcluido ? 'bg-[#849B55] text-white shadow-[4px_4px_0px_#2C1A14]' : 'bg-white shadow-[4px_4px_0px_#2C1A14]/20'}`}>
+                    <h4 className="font-display font-black uppercase text-sm mb-1">{status.name}</h4>
+                    <div className="flex justify-between items-end mb-2">
+                      <span className="text-3xl font-black">{count}</span>
+                      <span className="text-sm font-bold opacity-80 mb-1">{percentage}%</span>
+                    </div>
+                    <div className={`w-full h-2 ${isConcluido ? 'bg-black/20' : 'bg-[#E4CFB2]'}`}>
+                      <div className={`h-full ${isConcluido ? 'bg-white' : 'bg-[#C13B22]'}`} style={{ width: `${percentage}%` }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="p-4 border-2 border-[#2C1A14]/20 bg-transparent border-dashed flex flex-col justify-center">
+                <h4 className="font-display font-bold uppercase text-xs mb-1 text-[#2C1A14]/50">Sem Status</h4>
+                <div className="flex justify-between items-end">
+                  <span className="text-2xl font-black text-[#2C1A14]/50">{semStatus}</span>
+                  <span className="text-xs font-bold text-[#2C1A14]/50 mb-1">{share(semStatus, files.length)}%</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm font-mono text-[#2C1A14]/70">Desligado até o banco conectar.</p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import FileIcon from '../ui/FileIcon.jsx';
+import { Loader2 } from 'lucide-react';
 import { schedule } from './thumbQueue.js';
 
 const cache = new Map();
@@ -20,10 +21,11 @@ function loadThumb(id, render) {
   return job;
 }
 
-function Placeholder({ file, iconSize }) {
+function Placeholder({ file, iconSize, isLoading }) {
   return (
-    <div className="w-full h-full bg-[#E4CFB2]/30 flex items-center justify-center">
-      <FileIcon file={file} className="opacity-40" size={iconSize} />
+    <div className={`w-full h-full bg-[#E4CFB2]/30 flex items-center justify-center relative overflow-hidden ${isLoading ? 'animate-pulse' : ''}`}>
+      {isLoading && <Loader2 className="absolute text-[#2C1A14]/10 animate-spin" size={iconSize * 1.5} />}
+      <FileIcon file={file} className="opacity-40 relative z-10" size={iconSize} />
     </div>
   );
 }
@@ -40,6 +42,7 @@ export default function PreviewThumb({ file, iconSize = 28, badge = false, rende
   const box = useRef(null);
   const [src, setSrc] = useState(() => cache.get(file.id) || '');
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (src || failed) return undefined;
@@ -49,12 +52,19 @@ export default function PreviewThumb({ file, iconSize = 28, badge = false, rende
     const observer = new IntersectionObserver(entries => {
       if (!entries.some(entry => entry.isIntersecting)) return;
       observer.disconnect();
+      if (alive) setLoading(true);
       loadThumb(file.id, () => render(file.url))
         .then(image => {
-          if (alive) setSrc(image);
+          if (alive) {
+            setSrc(image);
+            setLoading(false);
+          }
         })
         .catch(() => {
-          if (alive) setFailed(true);
+          if (alive) {
+            setFailed(true);
+            setLoading(false);
+          }
         });
     }, { rootMargin: '160px' });
     observer.observe(node);
@@ -75,7 +85,7 @@ export default function PreviewThumb({ file, iconSize = 28, badge = false, rende
   }
   return (
     <div ref={box} className="w-full h-full">
-      <Placeholder file={file} iconSize={iconSize} />
+      <Placeholder file={file} iconSize={iconSize} isLoading={loading} />
     </div>
   );
 }

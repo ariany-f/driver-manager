@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import LegalPage, { LegalSection } from './LegalPage.jsx';
-import Contato from './Contato.jsx';
 
 export default function PoliticaPrivacidade() {
   useEffect(() => {
@@ -93,7 +92,6 @@ export default function PoliticaPrivacidade() {
       </LegalSection>
 
       <LegalSection title="Contato">
-        <Contato prefix="Dúvidas sobre estes dados" />
         <p>
           Os termos de uso estão em <a className="underline font-bold" href="/termos">/termos</a>.
         </p>

@@ -35,7 +35,7 @@ function Row({ label, children }) {
   );
 }
 
-export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], statusList = [], folderPath, onClose, onSaveOrigem, onSaveData }) {
+export default function FichaTecnica({ file, isAdmin, origens = [], territorios = [], tags = [], statusList = [], folderPath, onClose, onSaveOrigem, onSaveData, inline = false }) {
   const [origem, setOrigem] = useState('');
   const [dataArquivo, setDataArquivo] = useState('');
   const [saving, setSaving] = useState(false);
@@ -87,9 +87,8 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[220] p-4">
-      <div className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[12px_12px_0px_#1E3A5F] w-full max-w-xl max-h-[92vh] flex flex-col">
+  const inner = (
+      <div className={`bg-[#F4EFE6] border-4 border-[#2C1A14] w-full flex flex-col ${inline ? 'h-full border-l-0' : 'shadow-[12px_12px_0px_#1E3A5F] max-w-xl max-h-[92vh]'}`}>
         <div className="flex justify-between items-center gap-3 p-4 border-b-4 border-[#2C1A14] bg-[#EAB308] shrink-0">
           <h3 className="font-display font-black uppercase text-xl text-[#2C1A14] flex items-center gap-2 min-w-0">
             <ScrollText size={24} strokeWidth={2.5} /> <span className="truncate">Ficha técnica</span>
@@ -200,6 +199,13 @@ export default function FichaTecnica({ file, isAdmin, origens = [], territorios 
           )}
         </div>
       </div>
+  );
+
+  if (inline) return inner;
+
+  return (
+    <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[220] p-4">
+      {inner}
     </div>
   );
 }

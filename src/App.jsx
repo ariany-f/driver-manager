@@ -29,6 +29,7 @@ import {
   syncDrive,
   syncDriveSelection,
   uploadDriveFile,
+  replaceDriveFile,
 } from './services/drive.js';
 import { viewFromLocation, writeViewPath } from './lib/routes.js';
 
@@ -350,6 +351,33 @@ export default function App() {
         setDriveBusy(false);
       }
     },
+    replace: async (fileId, file) => {
+      setDriveBusy(true);
+      setDriveError('');
+      setDriveMessage('');
+      try {
+        setUploadProgress({ name: file.name, index: 0, count: 1, loaded: 0, total: file.size || 0, saving: false });
+        const archive = await replaceDriveFile(fileId, file, ({ loaded, total }) => {
+          const size = total || file.size || 0;
+          setUploadProgress({
+            name: file.name,
+            index: 0,
+            count: 1,
+            loaded,
+            total: size,
+            saving: size > 0 && loaded >= size,
+          });
+        });
+        applyArchive(archive);
+        setDriveMessage('Arquivo substituído com sucesso.');
+      } catch (error) {
+        setDriveError(error.message);
+        throw error;
+      } finally {
+        setUploadProgress(null);
+        setDriveBusy(false);
+      }
+    },
     disconnect: async () => {
       setDriveBusy(true);
       setDriveError('');
@@ -555,7 +583,7 @@ export default function App() {
             onLogin={() => setLoginOpen(true)}
           />
         )}
-        {driveReady && labelsEnabled && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} tags={tags} labelsEnabled={labelsEnabled} />}
+        {driveReady && labelsEnabled && activeView === 'dashboard' && <Dashboard files={files} territorios={territorios} tags={tags} statusList={statusList} labelsEnabled={labelsEnabled} />}
         {driveReady && labelsEnabled && activeView === 'acervo' && (
           <Acervo
             isAdmin={isAdmin}

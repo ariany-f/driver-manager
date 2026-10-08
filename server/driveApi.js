@@ -13,6 +13,7 @@ import {
   openDriveMedia,
   renameDriveFile,
   uploadDriveFile,
+  replaceDriveFile,
   resolveRedirectUri,
   saveDriveEnv,
   syncArchive,
@@ -42,6 +43,7 @@ import {
   saveFileLabels,
 } from './database.js';
 import { cookieAttributes, handleAuthRequest, isAdminRequest, openSeal, readCookie, requiresAdmin, seal } from './session.js';
+import { handleUserRequest } from './userApi.js';
 
 const OAUTH_COOKIE = 'acervo_oauth';
 
@@ -297,11 +299,24 @@ async function handleDriveRequest(req, res, { root, env }) {
   }
 
   if (req.method === 'POST' && pathname === '/api/drive/disconnect') {
+    let keepFiles = false;
+    try {
+      const body = await readJson(req);
+      if (body && body.keepFiles) keepFiles = true;
+    } catch (e) {
+      // Body might be empty
+    }
     await clearDriveConnection(env);
-    const kept = await clearSyncedFiles(env);
+    let folders = [];
+    if (!keepFiles) {
+      const kept = await clearSyncedFiles(env);
+      folders = kept.folders;
+    } else {
+      folders = await loadFolderTree(env);
+    }
     await saveDriveEnv(root, env, { DRIVE_FOLDER_ID: '' });
     await clearDriveFolderId(env);
-    sendJson(res, 200, { connected: false, folders: kept.folders });
+    sendJson(res, 200, { connected: false, folders });
     return;
   }
 
@@ -421,6 +436,18 @@ async function handleDriveRequest(req, res, { root, env }) {
     return;
   }
 
+  if (req.method === 'POST' && pathname === '/api/drive/replace') {
+    const fileId = url.searchParams.get('id');
+    if (!fileId) throw new DriveError('ID do arquivo não informado.', 400);
+    const replaced = await replaceDriveFile(env, config, fileId, {
+      mimeType: req.headers['content-type'],
+      bytes: await readBody(req, 200 * 1024 * 1024),
+    });
+    const archive = await archivePayload(config, env, { arquivos: [fileId] });
+    sendJson(res, 200, archive);
+    return;
+  }
+
   if (req.method === 'POST' && pathname === '/api/drive/folders') {
     throw new DriveError('A pasta do cliente só é lida. Nenhuma pasta é criada no Drive.', 403);
   }
@@ -479,6 +506,10 @@ export async function handleApi(req, res, { root, env }) {
       await handleAuthRequest(req, res, env);
       return;
     }
+    if (pathname.startsWith('/api/users')) {
+      await handleUserRequest(req, res, env);
+      return;
+    }
     if (pathname.startsWith('/api/database')) {
       const databaseOpen = req.method === 'GET' && (pathname === '/api/database/status' || pathname === '/api/database/identidade' || pathname === '/api/database/logo' || pathname === '/api/database/favicon' || pathname === '/api/database/vlibras' || pathname === '/api/database/contato');
       if (!databaseOpen && !isAdminRequest(req, env)) {
@@ -515,7 +546,7 @@ export function driveApiPlugin(env) {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = req.url?.split('?')[0] || '';
-        if (!pathname.startsWith('/api/drive') && !pathname.startsWith('/api/auth') && !pathname.startsWith('/api/database')) return next();
+        if (!pathname.startsWith('/api/drive') && !pathname.startsWith('/api/auth') && !pathname.startsWith('/api/database') && !pathname.startsWith('/api/users')) return next();
         await handleApi(req, res, { root, env });
       });
     },

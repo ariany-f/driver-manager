@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import { parseArchiveDate } from '../src/lib/archiveDate.js';
+import { ensureMasterUser } from './services/UserService.js';
 import { isMediaIcon } from '../src/lib/mediaIconIds.js';
 import { DriveError, getAccount, readDriveConfig, saveEnvKeys } from './driveClient.js';
 
@@ -7,6 +8,31 @@ const DATABASE_ENV_KEYS = ['DATABASE_HOST', 'DATABASE_PORT', 'DATABASE_USER', 'D
 const ITEM_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 const RECORD_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const COLOR = /^#[0-9A-Fa-f]{6}$/;
+
+const CREATE_USUARIOS = `
+  CREATE TABLE usuarios (
+    id VARCHAR(64) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY (email)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
+
+const CREATE_AUDIT_LOGS = `
+  CREATE TABLE audit_logs (
+    id VARCHAR(64) NOT NULL,
+    user_id VARCHAR(64),
+    action VARCHAR(100) NOT NULL,
+    entity VARCHAR(100) NOT NULL,
+    entity_id VARCHAR(100),
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+`;
 
 const CREATE_TERRITORIOS = `
   CREATE TABLE territorios (
@@ -256,6 +282,14 @@ async function openPool(config) {
   }
 }
 
+export async function getDbConnection(env) {
+  const settings = readDatabaseSettings(env);
+  if (!isConfigured(settings)) throw new DriveError('Preencha o MySQL da Hostinger.', 503);
+  const config = connectionConfig(settings);
+  const key = configKey(config);
+  return pool && poolKey.startsWith(key) ? pool : await rememberPool(config, undefined);
+}
+
 async function rememberPool(config, ssl) {
   const key = `${configKey(config)}\0${ssl ? 'ssl' : 'plain'}`;
   if (pool && poolKey === key) return pool;
@@ -277,6 +311,8 @@ async function rememberPool(config, ssl) {
 }
 
 const TABLE_SQL = [
+  ['usuarios', CREATE_USUARIOS],
+  ['audit_logs', CREATE_AUDIT_LOGS],
   ['territorios', CREATE_TERRITORIOS],
   ['tags', CREATE_TAGS],
   ['status_arquivo', CREATE_STATUS],
@@ -442,6 +478,7 @@ export async function ensureTables(env) {
   await ensureFormatosColumns(db);
   await ensureStatusColumns(db);
   await ensureJornal(db);
+  await ensureMasterUser(db);
   tablesKey = key;
   return TABLE_SQL.map(([name]) => name);
 }

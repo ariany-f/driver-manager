@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { DriveError } from './driveClient.js';
+import { getDbConnection } from './database.js';
+import { authenticateUser } from './services/UserService.js';
 
 const COOKIE = 'acervo_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -118,15 +120,24 @@ export async function handleAuthRequest(req, res, env) {
 
   if (req.method === 'POST' && url.pathname === '/api/auth/login') {
     const body = await readJson(req);
-    const expected = expectedAdmin(env);
     const email = unwrap(body.email).toLowerCase();
     const password = unwrap(body.password);
-    if (!expected.email || !expected.password || email !== expected.email || !sameSecret(password, expected.password)) {
+    
+    let user = null;
+    try {
+      const db = await getDbConnection(env);
+      user = await authenticateUser(db, email, password);
+    } catch (e) {
+      throw new DriveError(e.message || 'Erro ao conectar no banco de dados.', 500);
+    }
+    
+    if (!user) {
       throw new DriveError('E-mail ou senha incorretos.', 401);
     }
-    const token = seal(env, { exp: Date.now() + SESSION_MS });
+    
+    const token = seal(env, { exp: Date.now() + SESSION_MS, id: user.id, email: user.email, role: user.role });
     res.setHeader('Set-Cookie', `${COOKIE}=${token}; ${cookieAttributes(req)}`);
-    sendJson(res, 200, { admin: true });
+    sendJson(res, 200, { admin: true, user });
     return;
   }
 

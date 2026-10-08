@@ -6,6 +6,7 @@ import ConfirmModal from '../modals/ConfirmModal.jsx';
 import DriveBar from '../drive/DriveBar.jsx';
 import BackupClassificacoes from './BackupClassificacoes.jsx';
 import ContatoConfig from './ContatoConfig.jsx';
+import UsersConfig from './UsersConfig.jsx';
 import EscolherPastaModal from '../modals/EscolherPastaModal.jsx';
 import { getDriveSettings, saveDriveField, saveDriveFolder } from '../../services/drive.js';
 
@@ -95,6 +96,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
   const [error, setError] = useState('');
   const [databaseMessage, setDatabaseMessage] = useState('');
   const [databaseError, setDatabaseError] = useState('');
+  const [activeTab, setActiveTab] = useState('personalizar');
 
   useEffect(() => {
     let active = true;
@@ -339,16 +341,23 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
             Configurações
           </h1>
           <p className="mt-3 font-sans font-bold text-sm text-[#2C1A14]/80">
-            As chaves do Google ficam no MySQL quando o banco já tem essa conexão. Se não tiver, o servidor usa o .env. A URL de retorno segue o endereço desta aplicação e não entra no banco. Sem o MySQL, a aplicação não abre.
+            Gerencie a aparência, credenciais e membros do seu Acervo. Algumas alterações (como banco de dados e drive) afetam todos os usuários.
           </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button type="button" onClick={() => setActiveTab('personalizar')} className={`px-4 py-2 font-display font-black uppercase tracking-widest text-xs border-4 border-[#2C1A14] ${activeTab === 'personalizar' ? 'bg-[#EAB308] text-[#2C1A14]' : 'bg-[#F4EFE6] text-[#2C1A14]/70 hover:bg-[#EAB308]/50'}`}>Personalizar</button>
+            <button type="button" onClick={() => setActiveTab('dev')} className={`px-4 py-2 font-display font-black uppercase tracking-widest text-xs border-4 border-[#2C1A14] ${activeTab === 'dev' ? 'bg-[#EAB308] text-[#2C1A14]' : 'bg-[#F4EFE6] text-[#2C1A14]/70 hover:bg-[#EAB308]/50'}`}>Configurações do Desenvolvedor</button>
+            {isAdmin && <button type="button" onClick={() => setActiveTab('usuarios')} className={`px-4 py-2 font-display font-black uppercase tracking-widest text-xs border-4 border-[#2C1A14] ${activeTab === 'usuarios' ? 'bg-[#EAB308] text-[#2C1A14]' : 'bg-[#F4EFE6] text-[#2C1A14]/70 hover:bg-[#EAB308]/50'}`}>Usuários</button>}
+          </div>
         </div>
 
-        {drive?.status?.connected && (
+        {activeTab === 'dev' && drive?.status?.connected && (
           <div className="lg:col-span-2">
             <DriveBar isAdmin={isAdmin} drive={drive} />
           </div>
         )}
 
+        {activeTab === 'personalizar' && (
+        <>
         <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <ImageIcon size={18} strokeWidth={2.5} /> Logo
@@ -384,7 +393,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {logoMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{logoMessage}</p>}
         </section>
 
-        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-1">
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <ImageIcon size={18} strokeWidth={2.5} /> Favicon
           </div>
@@ -419,7 +428,7 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {faviconMessage && <p className="font-sans font-bold text-sm text-[#1E3A5F]">{faviconMessage}</p>}
         </section>
 
-        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-1">
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Hand size={18} strokeWidth={2.5} /> VLibras
           </div>
@@ -451,8 +460,12 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           )}
           {vlibrasError && <p className="font-sans font-bold text-sm text-[#C13B22]">{vlibrasError}</p>}
         </section>
+        </>
+        )}
 
-        <section className={`bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5 lg:col-start-2 ${drive?.status?.connected ? 'lg:row-start-4' : 'lg:row-start-3'}`}>
+        {activeTab === 'dev' && (
+        <>
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Settings size={18} strokeWidth={2.5} /> Google Drive
           </div>
@@ -506,8 +519,12 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {message && <p className="font-sans text-sm font-bold text-[#627933]">{message}</p>}
           {error && !editing && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{error}</p>}
         </section>
+        </>
+        )}
 
-        <section className={`bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4 lg:col-start-2 ${drive?.status?.connected ? 'lg:row-start-3' : 'lg:row-start-2'}`}>
+        {activeTab === 'dev' && (
+        <>
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-4">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Folder size={18} strokeWidth={2.5} /> Pasta do acervo
           </div>
@@ -540,6 +557,8 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           {folderMessage && <p className="font-sans text-sm font-bold text-[#627933]">{folderMessage}</p>}
           {folderError && <p role="alert" className="font-sans text-sm font-bold text-[#C13B22]">{folderError}</p>}
         </section>
+        </>
+        )}
 
         {editing && (
           <div className="fixed inset-0 bg-[#2C1A14]/80 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
@@ -585,7 +604,9 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
           </div>
         )}
 
-        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5 lg:col-start-2">
+        {activeTab === 'dev' && (
+        <>
+        <section className="bg-[#F4EFE6] border-4 border-[#2C1A14] shadow-[8px_8px_0px_rgba(44,26,20,0.15)] p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 font-display font-black uppercase tracking-widest text-xs text-[#1E3A5F]">
             <Database size={18} strokeWidth={2.5} /> Banco de dados
           </div>
@@ -622,16 +643,24 @@ export default function Configuracoes({ isAdmin, drive, onSaved, onDatabaseChang
             alterar conexão
           </button>
         </section>
+        </>
+        )}
 
-        {isAdmin && drive?.status?.connected && databaseState.connected && (
-          <div className="lg:col-start-1">
+        {activeTab === 'dev' && isAdmin && drive?.status?.connected && databaseState.connected && (
+          <div>
             <BackupClassificacoes drive={drive} />
           </div>
         )}
 
-        {isAdmin && (
-          <div className="lg:col-start-1">
+        {activeTab === 'personalizar' && isAdmin && (
+          <div>
             <ContatoConfig enabled={databaseState.connected} />
+          </div>
+        )}
+
+        {activeTab === 'usuarios' && isAdmin && (
+          <div className="lg:col-span-2 max-w-2xl mx-auto w-full">
+            <UsersConfig enabled={databaseState.connected} />
           </div>
         )}
 

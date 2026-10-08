@@ -146,12 +146,12 @@ export default function FileViewer({ file, files = [], onClose, sheetElement, on
           )}
           </div>
         </div>
+        </div>
         {showSidePanel && sheetElement && (
           <div className="w-full md:w-96 shrink-0 border-t-4 md:border-t-0 md:border-l-4 border-[#2C1A14] flex flex-col bg-[#F4EFE6] relative z-40 overflow-hidden">
             {sheetElement}
           </div>
         )}
-        </div>
       </div>
     </div>
   );
